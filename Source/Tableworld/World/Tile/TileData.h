@@ -24,6 +24,8 @@ public:
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
 
+	void DebugHighlightTile(float Time = 10.0f);
+
 	ETileType getTileType();
 	int32 getArrayIndex();
 

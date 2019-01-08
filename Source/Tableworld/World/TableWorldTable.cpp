@@ -27,6 +27,7 @@ void ATableWorldTable::BeginPlay()
 	TileTypes.Add(ETileType::Water);
 	TileTypes.Add(ETileType::Dirt);
 	TileTypes.Add(ETileType::Sand);
+	TileTypes.Add(ETileType::Rock);
 
 	SetupTilePixels(TileTypes);
 	
@@ -38,9 +39,147 @@ void ATableWorldTable::GenerateMap()
 	if(Noise)
 	{
 		Noise->SetSeed(FMath::RandRange(0, 1000));
-	}
+		Noise->SetFrequency(0.1f);
+	} 
 
 	GenerateChunks();
+
+	int32 MaxXTiles = MaxSizeX * ChunkSize;
+	int32 MaxYTiles = MaxSizeY * ChunkSize;
+
+	//Generate lakes!
+	for(int32 x = 0; x < MaxXTiles; x++)
+	{
+		for (int32 y = 0; y < MaxYTiles; y++)
+		{
+			float v = Noise->GetNoise2D(x, y);
+			
+			if(v >= 0.5f)
+			{
+				int32 Rx = FMath::RandRange(-1, 1);
+				int32 Ry = FMath::RandRange(-1, 1);
+
+				SetTile(x, y, ETileType::Rock);
+				SetTile(x + Rx, y + Ry, ETileType::Rock);
+			}
+			else
+			{
+				if (v >= 0.45f)
+				{
+					SetTile(x, y, ETileType::Water);
+				}
+				else
+				{
+					if (v >= 0.4f)
+					{
+						int32 Rx = FMath::RandRange(-1, 1);
+						int32 Ry = FMath::RandRange(-1, 1);
+
+						SetTile(x, y, ETileType::Sand);
+						SetTile(x + Rx, y + Ry, ETileType::Sand);
+					}
+				}
+			}
+		}
+	}
+
+	//Generate rivers
+	if(bHasRiver)
+	{
+		int32 RiverCount = FMath::RandRange(1,3);
+		RiverCount = 6;
+		for(int32 i = 0; i < RiverCount;  i++)
+		{
+			bool bXRiver = FMath::RandBool();
+			
+			//Get a random river start 
+			int32 RiverStartX = 0;
+			int32 RiverStartY = 0;
+
+			int32 RiverEndX = 0;
+			int32 RiverEndY = 0;
+
+			if(bXRiver)
+			{
+				RiverStartX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
+			}
+			else
+			{
+				RiverStartY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
+			}
+
+			if(!bXRiver)
+			{
+				RiverEndX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
+				RiverEndY = MaxSizeY;
+			}
+			else
+			{
+				RiverEndY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
+				RiverEndX = MaxSizeX;
+			}
+
+			int32 RiverX = RiverStartX;
+			int32 RiverY = RiverStartY;
+
+			SetTile(RiverX, RiverY, ETileType::Water);
+
+			int32 MaxTries = 0;
+			while (RiverX != RiverEndX && RiverY != RiverEndY) 
+			{
+				if (RiverX > RiverEndX)
+				{
+					RiverX--;
+				}
+				else
+				{
+					if (RiverX < RiverEndX)
+					{
+						RiverX++;
+					}
+				}
+
+				if (RiverY > RiverEndY)
+				{
+					RiverY--;
+				}
+				else
+				{
+					if (RiverY < RiverEndY)
+					{
+						RiverY++;
+					}
+				}
+
+				RiverX += FMath::RandRange(-2, 2);
+				RiverY += FMath::RandRange(-2, 2);
+
+				int32 Radius = 3;
+				for (int32 x = -Radius; x < Radius; x++) 
+				{
+					for (int32 y = -Radius; y < Radius; y++)
+					{
+						SetTile(RiverX + x, RiverY + y, ETileType::Water);
+					}
+				}
+
+				MaxTries++;
+				if(MaxTries >= 200)
+				{
+					break;
+				}
+			}
+		}
+	}
+
+	for(int32 i = 0; i < Chunks.Num(); i++)
+	{
+		ATableChunk* Chunk = Chunks[i];
+		if(Chunk)
+		{
+			Chunk->UpdateChunkTexture();
+		}
+	}
 }
 
 void ATableWorldTable::GenerateChunks()
@@ -151,12 +290,10 @@ UTileData* ATableWorldTable::getTile(int32 X, int32 Y)
 
 void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type)
 {
-	DebugWarning("Click tile: " + FString::FromInt(X) + "," + FString::FromInt(Y));
-	
 	ATableChunk* Chunk = getChunkForTile(X, Y);
 	if (Chunk)
 	{
-		return Chunk->SetTile(X, Y, type);
+		return Chunk->SetTile(X, Y, type, false);
 	}
 }
 

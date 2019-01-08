@@ -29,7 +29,7 @@ public:
 
 	virtual void UpdateChunkTexture();
 
-	void SetTile(int32 X, int32 Y, ETileType NewTileType);
+	void SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial = true);
 	void SetTileTexture(int32 X, int32 Y, ETileType Type);
 
 	int32 getX();

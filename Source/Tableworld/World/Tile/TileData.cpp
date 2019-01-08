@@ -4,6 +4,8 @@
 #include "../TableWorldTable.h"
 #include "Tableworld.h"
 #include "Misc/TableHelper.h"
+#include "../TableChunk.h"
+#include "DrawDebugHelpers.h"
 
 void UTileData::Set(int32 nX, int32 nY, int32 nArrayIndex, ETileType nTileType, ATableChunk* nTable)
 {
@@ -16,8 +18,6 @@ void UTileData::Set(int32 nX, int32 nY, int32 nArrayIndex, ETileType nTileType, 
 	ArrayIndex = nArrayIndex;
 	TileType = nTileType;
 	ParentChunk = nTable;
-
-	DebugWarning(FString::FromInt(X) + "," + FString::FromInt(Y));
 }
 
 void UTileData::UpdateTile(int32 nArrayIndex, ETileType nTileType)
@@ -29,6 +29,11 @@ void UTileData::UpdateTile(int32 nArrayIndex, ETileType nTileType)
 void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 {
 	TileObject = nTileObject;
+}
+
+void UTileData::DebugHighlightTile(float Time /*= 10.0f*/)
+{
+	DrawDebugBox(ParentChunk->GetWorld(), getWorldCenter(), FVector(50, 50, 50), FColor::Blue, false, Time, 0, 5.0f);
 }
 
 ETileType UTileData::getTileType()

@@ -49,8 +49,6 @@ void ATableChunk::GenerateChunk()
 	//Add the Verts
 	Vertices.AddUninitialized((ActualChunkSize) * (ActualChunkSize));
 
-	DebugWarning("---------------------------------");
-
 	//Generate the chunk tiles
 	int32 i = 0;
 	for (int32 y = 0; y < ActualChunkSize; y++)
@@ -61,7 +59,8 @@ void ATableChunk::GenerateChunk()
 			float VertX = (x * TileSize);
 			float VertY = (y * TileSize);
 
-			Vertices[i] = FVector(VertX, VertY, 0);
+			float Z = FMath::RandRange(-50.0f, 50.0f);
+			Vertices[i] = FVector(VertX, VertY, Z);
 
 			float UVX = (float)x / ChunkSize;
 			float UVY = (float)y / ChunkSize;
@@ -102,17 +101,7 @@ void ATableChunk::GenerateChunk()
 	ChunkMesh->SetMaterial(0, ParentTable->ChunkMaterial);
 
 	DynamicMaterial = ChunkMesh->CreateDynamicMaterialInstance(0);
-	if(DynamicMaterial)
-	{
-		if (ParentTable) 
-		{
-			UpdateChunkTexture();
-		}
-	}
-}
 
-void ATableChunk::UpdateChunkTexture()
-{
 	uint8 TilesInPixels = ParentTable->TilesInPixels;
 
 	//Create the texture
@@ -126,45 +115,63 @@ void ATableChunk::UpdateChunkTexture()
 	ChunkTexture->SRGB = false;
 	ChunkTexture->Filter = TextureFilter::TF_Nearest;
 	ChunkTexture->UpdateResource();
+}
 
-	FTexture2DMipMap& Mip = ChunkTexture->PlatformData->Mips[0];
-	void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-
-	TArray<FColor> Pixels;
-	Pixels.AddUninitialized(TextureSize*TextureSize);
-	for (int32 ty = 0; ty < ChunkSize; ty++)
+void ATableChunk::UpdateChunkTexture()
+{
+	if (ChunkTexture) 
 	{
-		for (int32 tx = 0; tx < ChunkSize; tx++)
+		if (DynamicMaterial)
 		{
-			UTileData* TileData = Tiles[tx + ty * ChunkSize];
-			if (TileData)
+			uint8 TilesInPixels = ParentTable->TilesInPixels;
+
+			//Create the texture
+			int32 Resolution = 1;
+			int32 TextureSize = ((ChunkSize * TilesInPixels));
+
+			FTexture2DMipMap& Mip = ChunkTexture->PlatformData->Mips[0];
+			void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
+
+			TArray<FColor> Pixels;
+			Pixels.AddUninitialized(TextureSize*TextureSize);
+			for (int32 ty = 0; ty < ChunkSize; ty++)
 			{
-				ETileType TileType = TileData->getTileType();
-
-				int32 TileX = (tx * TilesInPixels);
-				int32 TileY = (ty * TilesInPixels);
-
-				TArray<FColor> TilePixels = ParentTable->getTilePixels(TileType);
-
-				for (int32 py = 0; py < TilesInPixels; py++)
+				for (int32 tx = 0; tx < ChunkSize; tx++)
 				{
-					for (int32 px = 0; px < TilesInPixels; px++)
+					UTileData* TileData = Tiles[tx + ty * ChunkSize];
+					if (TileData)
 					{
-						Pixels[(TileY + py) * TextureSize + (TileX + px)] = TilePixels[py * TilesInPixels + px];
+						ETileType TileType = TileData->getTileType();
+
+						int32 TileX = (tx * TilesInPixels);
+						int32 TileY = (ty * TilesInPixels);
+
+						TArray<FColor> TilePixels = ParentTable->getTilePixels(TileType);
+
+						for (int32 py = 0; py < TilesInPixels; py++)
+						{
+							for (int32 px = 0; px < TilesInPixels; px++)
+							{
+								Pixels[(TileY + py) * TextureSize + (TileX + px)] = TilePixels[py * TilesInPixels + px];
+							}
+						}
 					}
 				}
 			}
+
+			FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
+			Mip.BulkData.Unlock();
+			ChunkTexture->UpdateResource();
+
+			Pixels.Empty();
+			delete[] Data;
+
+			DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
 		}
 	}
-
-	FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
-	Mip.BulkData.Unlock();
-	ChunkTexture->UpdateResource();
-
-	DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
 }
 
-void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType)
+void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial)
 {
 	UTileData* Tile = getTile(X, Y);
 	if(Tile)
@@ -175,9 +182,10 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType)
 			Tile->UpdateTile(0, NewTileType);
 
 			//Update the texture region of the tile to fit the new tile.
-			UpdateChunkTexture();
-
-			DrawDebugBox(GetWorld(), FVector((X * 100) + 50, (Y * 100) + 50, 0), FVector(50, 50, 50), FColor::Red, false, 1, 0, 5);
+			if (bUpdateMaterial) 
+			{
+				UpdateChunkTexture();
+			}
 		}
 	}
 }
