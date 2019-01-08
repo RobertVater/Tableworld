@@ -18,19 +18,21 @@ class TABLEWORLD_API UTileData : public UObject
 	
 public:
 
-	void Set(int32 nX, int32 nY, int32 nArrayIndex, ETileType nTileType, ATableChunk* nTable);
+	void Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ETileType nTileType, ATableChunk* nTable);
 
-	void UpdateTile(int32 nArrayIndex, ETileType nTileType);
+	void UpdateTile(ETileType nTileType);
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
 
 	void DebugHighlightTile(float Time = 10.0f);
 
 	ETileType getTileType();
-	int32 getArrayIndex();
 
 	int32 getX();
 	int32 getY();
+
+	int32 getLocalX();
+	int32 getLocalY();
 
 	int32 getWorldX();
 	int32 getWorldY();
@@ -45,10 +47,12 @@ protected:
 
 	ATableChunk* ParentChunk = nullptr;
 	ETileType TileType = ETileType::Grass;
-	int32 ArrayIndex = 0;
 
 	int32 X = 0;
 	int32 Y = 0;
+
+	int32 LocalX = 0;
+	int32 LocalY = 0;
 
 	int32 WorldX = 0;
 	int32 WorldY = 0;

@@ -44,129 +44,145 @@ void ATableWorldTable::GenerateMap()
 
 	GenerateChunks();
 
-	int32 MaxXTiles = MaxSizeX * ChunkSize;
-	int32 MaxYTiles = MaxSizeY * ChunkSize;
-
-	//Generate lakes!
-	for(int32 x = 0; x < MaxXTiles; x++)
+	for (int32 x = 0; x < MaxSizeX*ChunkSize; x++)
 	{
-		for (int32 y = 0; y < MaxYTiles; y++)
+		for (int32 y = 0; y < MaxSizeY*ChunkSize; y++)
 		{
-			float v = Noise->GetNoise2D(x, y);
-			
-			if(v >= 0.5f)
+			ATableChunk* Chunk = getChunkForTile(x, y);
+			if(Chunk)
 			{
-				int32 Rx = FMath::RandRange(-1, 1);
-				int32 Ry = FMath::RandRange(-1, 1);
-
-				SetTile(x, y, ETileType::Rock);
-				SetTile(x + Rx, y + Ry, ETileType::Rock);
-			}
-			else
-			{
-				if (v >= 0.45f)
-				{
-					SetTile(x, y, ETileType::Water);
-				}
-				else
-				{
-					if (v >= 0.4f)
-					{
-						int32 Rx = FMath::RandRange(-1, 1);
-						int32 Ry = FMath::RandRange(-1, 1);
-
-						SetTile(x, y, ETileType::Sand);
-						SetTile(x + Rx, y + Ry, ETileType::Sand);
-					}
-				}
+				float Height = getNoise()->GetNoise2D(x, y);
+				Chunk->ChangeTileHeight(x, y, 100 * FMath::RoundToInt(Height+1));
 			}
 		}
 	}
 
-	//Generate rivers
-	if(bHasRiver)
+	if (false) 
 	{
-		int32 RiverCount = FMath::RandRange(1,3);
-		RiverCount = 6;
-		for(int32 i = 0; i < RiverCount;  i++)
+		int32 MaxXTiles = MaxSizeX * ChunkSize;
+		int32 MaxYTiles = MaxSizeY * ChunkSize;
+
+		//Generate lakes!
+		for (int32 x = 0; x < MaxXTiles; x++)
 		{
-			bool bXRiver = FMath::RandBool();
-			
-			//Get a random river start 
-			int32 RiverStartX = 0;
-			int32 RiverStartY = 0;
-
-			int32 RiverEndX = 0;
-			int32 RiverEndY = 0;
-
-			if(bXRiver)
+			for (int32 y = 0; y < MaxYTiles; y++)
 			{
-				RiverStartX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
-			}
-			else
-			{
-				RiverStartY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
-			}
+				float v = Noise->GetNoise2D(x, y);
 
-			if(!bXRiver)
-			{
-				RiverEndX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
-				RiverEndY = MaxSizeY;
-			}
-			else
-			{
-				RiverEndY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
-				RiverEndX = MaxSizeX;
-			}
-
-			int32 RiverX = RiverStartX;
-			int32 RiverY = RiverStartY;
-
-			SetTile(RiverX, RiverY, ETileType::Water);
-
-			int32 MaxTries = 0;
-			while (RiverX != RiverEndX && RiverY != RiverEndY) 
-			{
-				if (RiverX > RiverEndX)
+				if (v >= 0.5f)
 				{
-					RiverX--;
+					int32 Rx = FMath::RandRange(-1, 1);
+					int32 Ry = FMath::RandRange(-1, 1);
+
+					SetTile(x, y, ETileType::Rock);
+					SetTile(x + Rx, y + Ry, ETileType::Rock);
 				}
 				else
 				{
-					if (RiverX < RiverEndX)
+					if (v >= 0.45f)
 					{
-						RiverX++;
+						SetTile(x, y, ETileType::Water);
+					}
+					else
+					{
+						if (v >= 0.4f)
+						{
+							int32 Rx = FMath::RandRange(-1, 1);
+							int32 Ry = FMath::RandRange(-1, 1);
+
+							SetTile(x, y, ETileType::Sand);
+							SetTile(x + Rx, y + Ry, ETileType::Sand);
+						}
 					}
 				}
+			}
+		}
 
-				if (RiverY > RiverEndY)
+		//Generate rivers
+		if (bHasRiver)
+		{
+			int32 RiverCount = FMath::RandRange(1, 3);
+			RiverCount = 6;
+			for (int32 i = 0; i < RiverCount; i++)
+			{
+				bool bXRiver = FMath::RandBool();
+
+				//Get a random river start 
+				int32 RiverStartX = 0;
+				int32 RiverStartY = 0;
+
+				int32 RiverEndX = 0;
+				int32 RiverEndY = 0;
+
+				if (bXRiver)
 				{
-					RiverY--;
+					RiverStartX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
 				}
 				else
 				{
-					if (RiverY < RiverEndY)
-					{
-						RiverY++;
-					}
+					RiverStartY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
 				}
 
-				RiverX += FMath::RandRange(-2, 2);
-				RiverY += FMath::RandRange(-2, 2);
-
-				int32 Radius = 3;
-				for (int32 x = -Radius; x < Radius; x++) 
+				if (!bXRiver)
 				{
-					for (int32 y = -Radius; y < Radius; y++)
-					{
-						SetTile(RiverX + x, RiverY + y, ETileType::Water);
-					}
+					RiverEndX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
+					RiverEndY = MaxSizeY;
+				}
+				else
+				{
+					RiverEndY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
+					RiverEndX = MaxSizeX;
 				}
 
-				MaxTries++;
-				if(MaxTries >= 200)
+				int32 RiverX = RiverStartX;
+				int32 RiverY = RiverStartY;
+
+				SetTile(RiverX, RiverY, ETileType::Water);
+
+				int32 MaxTries = 0;
+				while (RiverX != RiverEndX && RiverY != RiverEndY)
 				{
-					break;
+					if (RiverX > RiverEndX)
+					{
+						RiverX--;
+					}
+					else
+					{
+						if (RiverX < RiverEndX)
+						{
+							RiverX++;
+						}
+					}
+
+					if (RiverY > RiverEndY)
+					{
+						RiverY--;
+					}
+					else
+					{
+						if (RiverY < RiverEndY)
+						{
+							RiverY++;
+						}
+					}
+
+					RiverX += FMath::RandRange(-2, 2);
+					RiverY += FMath::RandRange(-2, 2);
+
+					int32 Radius = 3;
+					for (int32 x = -Radius; x < Radius; x++)
+					{
+						for (int32 y = -Radius; y < Radius; y++)
+						{
+							SetTile(RiverX + x, RiverY + y, ETileType::Water);
+						}
+					}
+
+					MaxTries++;
+					if (MaxTries >= 200)
+					{
+						break;
+					}
 				}
 			}
 		}

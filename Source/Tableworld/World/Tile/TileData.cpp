@@ -7,22 +7,23 @@
 #include "../TableChunk.h"
 #include "DrawDebugHelpers.h"
 
-void UTileData::Set(int32 nX, int32 nY, int32 nArrayIndex, ETileType nTileType, ATableChunk* nTable)
+void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ETileType nTileType, ATableChunk* nTable)
 {
 	X = nX;
 	Y = nY;
 
+	LocalX = nLocalX;
+	LocalY = nLocalY;
+
 	WorldX = X * 100;
 	WorldY = Y * 100;
 
-	ArrayIndex = nArrayIndex;
 	TileType = nTileType;
 	ParentChunk = nTable;
 }
 
-void UTileData::UpdateTile(int32 nArrayIndex, ETileType nTileType)
+void UTileData::UpdateTile(ETileType nTileType)
 {
-	ArrayIndex = nArrayIndex;
 	TileType = nTileType;
 }
 
@@ -41,11 +42,6 @@ ETileType UTileData::getTileType()
 	return TileType;
 }
 
-int32 UTileData::getArrayIndex()
-{
-	return ArrayIndex;
-}
-
 int32 UTileData::getX()
 {
 	return X;
@@ -54,6 +50,16 @@ int32 UTileData::getX()
 int32 UTileData::getY()
 {
 	return Y;
+}
+
+int32 UTileData::getLocalX()
+{
+	return LocalX;
+}
+
+int32 UTileData::getLocalY()
+{
+	return LocalY;
 }
 
 int32 UTileData::getWorldX()

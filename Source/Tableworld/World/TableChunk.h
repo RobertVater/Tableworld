@@ -32,12 +32,18 @@ public:
 	void SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial = true);
 	void SetTileTexture(int32 X, int32 Y, ETileType Type);
 
+	void ChangeTileHeight(int32 X, int32 Y, float Heigth);
+	void ChangeVertHeight(int32 WorldX, int32 WorldY, float Heigth);
+	void UpdateMesh();
+
 	int32 getX();
 	int32 getY();
 
 	UTileData* getTile(int32 X, int32 Y);
 
 protected:
+
+	TArray<FVector> Vertices;
 
 
 	uint8 TileSize = 100;

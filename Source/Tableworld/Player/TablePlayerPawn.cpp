@@ -12,6 +12,7 @@
 #include "World/TableWorldTable.h"
 #include "World/Tile/BuildableTile.h"
 #include "World/Tile/TileData.h"
+#include "World/TableChunk.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -160,7 +161,7 @@ void ATablePlayerPawn::Input_RightMouse_Pressed()
 
 		if (hit.bBlockingHit)
 		{
-			DrawDebugPoint(GetWorld(), hit.ImpactPoint, 10.0f, FColor::Red, false, 5, 0);
+			DrawDebugPoint(GetWorld(), hit.ImpactPoint, 10.0f, FColor::Orange, false, 5, 0);
 
 			if(getGamemode())
 			{
@@ -171,7 +172,13 @@ void ATablePlayerPawn::Input_RightMouse_Pressed()
 					int32 y = (hit.ImpactPoint.Y / 100);
 
 					//DrawDebugString(GetWorld(), hit.ImpactPoint, FString::FromInt(x) + "," + FString::FromInt(y), NULL, FColor::White, 1, false);
-					Table->SetTile(x, y, ETileType::Sand);
+					//Table->SetTile(x, y, ETileType::Sand);
+
+					ATableChunk* Chunk = Table->getChunkForTile(x, y);
+					if(Chunk)
+					{
+						Chunk->ChangeTileHeight(x, y, 100.0f);
+					}
 				}
 			}
 		}
