@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{C40974C3-4DA8-70E3-0FF6-4E8A88112087}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Tableworld",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject",
+				"UMG"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SteamVR",
+			"Enabled": false
+		}
+	]
+}

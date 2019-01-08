@@ -1,0 +1,60 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "Misc/TableHelper.h"
+#include "TableChunk.generated.h"
+
+class UProceduralMeshComponent;
+class UTileData;
+class ATableWorldTable;
+
+UCLASS()
+class TABLEWORLD_API ATableChunk : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UProceduralMeshComponent* ChunkMesh = nullptr;
+
+	ATableChunk();
+	virtual void BeginPlay() override;
+
+	virtual void SetupChunk(uint8 nX, uint8 nY, ATableWorldTable* nParentTable);
+	virtual void GenerateChunk();
+
+	virtual void UpdateChunkTexture();
+
+	void SetTile(int32 X, int32 Y, ETileType NewTileType);
+	void SetTileTexture(int32 X, int32 Y, ETileType Type);
+
+	int32 getX();
+	int32 getY();
+
+	UTileData* getTile(int32 X, int32 Y);
+
+protected:
+
+
+	uint8 TileSize = 100;
+
+	uint8 X = 0;
+	uint8 Y = 0;
+	int32 ChunkSize = 0;
+
+	UPROPERTY()
+	TArray<UTileData*> Tiles;
+
+	UPROPERTY()
+	ATableWorldTable* ParentTable = nullptr;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* DynamicMaterial = nullptr;
+
+	UPROPERTY()
+	UTexture2D* ChunkTexture = nullptr;
+};
