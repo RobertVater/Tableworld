@@ -155,9 +155,6 @@ void ATableChunk::UpdateChunkTexture()
 							for (int32 px = 0; px < TilesInPixels; px++)
 							{
 								FColor PixelColor = TilePixels[py * TilesInPixels + px];
-								PixelColor.R += FMath::RandRange(-0.5f, 0.5f);
-								PixelColor.G += FMath::RandRange(-0.5f, 0.5f);
-								PixelColor.B += FMath::RandRange(-0.5f, 0.5f);
 
 								Pixels[(TileY + py) * TextureSize + (TileX + px)] = PixelColor;
 							}
@@ -166,17 +163,22 @@ void ATableChunk::UpdateChunkTexture()
 				}
 			}
 
+			DebugLog(FString::FromInt(Pixels.Num()) + " pixels!");
+
 			if (Pixels.Num() > 0)
 			{
 				FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
+				Pixels.Empty();
 			}
 			
 			Mip.BulkData.Unlock();
+
+			if (Data) 
+			{
+				//delete[] Data;
+			}
+
 			ChunkTexture->UpdateResource();
-
-			Pixels.Empty();
-			delete[] Data;
-
 			DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
 		}
 	}

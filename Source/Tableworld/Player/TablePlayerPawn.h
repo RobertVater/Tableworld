@@ -59,10 +59,12 @@ public:
 	virtual void Input_Forward(float v);
 	virtual void Input_Right(float v);
 
+	virtual void PlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
+
 	virtual void AdjustZoom();
 
 	bool HasValidBuildableTile();
-	bool CanBuild(FVector2D BuildingSize);
+	bool CanBuild(FVector2D BuildingSize, UTileData* PlaceTile);
 
 	ATableGamemode* getGamemode();
 	ATablePlayerController* getPlayerController();
@@ -70,7 +72,7 @@ public:
 	FVector getMouseWorldLocation();
 	FVector getMouseWorldLocationGrid();
 
-	FVector getBuildingBuildLocation();
+	FVector getBuildingBuildLocation(UTileData* Tile);
 
 protected:
 
@@ -82,7 +84,13 @@ protected:
 	ABuildableTile* TileActor = nullptr;
 
 	bool bIsDragBuilding = false;
-	TArray<ABuildableTile*> DragTileActors;
+
+	int32 MaxDragTiles = 32;
+
+	FVector2D DragTileLocation;
+	FVector2D StartDragTile;
+	FVector2D EndDragTile;
+	TArray<FVector2D> DragTiles;
 
 	ATableGamemode* GM = nullptr;
 	ATablePlayerController* PC = nullptr;
