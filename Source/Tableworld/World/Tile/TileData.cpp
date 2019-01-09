@@ -7,7 +7,7 @@
 #include "../TableChunk.h"
 #include "DrawDebugHelpers.h"
 
-void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ETileType nTileType, ATableChunk* nTable)
+void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ATableChunk* nTable)
 {
 	X = nX;
 	Y = nY;
@@ -18,13 +18,34 @@ void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ETileType 
 	WorldX = X * 100;
 	WorldY = Y * 100;
 
-	TileType = nTileType;
 	ParentChunk = nTable;
 }
 
-void UTileData::UpdateTile(ETileType nTileType)
+void UTileData::SetHeigth(float nHeight)
 {
-	TileType = nTileType;
+	Heigth = nHeight;
+}
+
+void UTileData::CopyTileData(UTileData* CopyTile)
+{
+	if(CopyTile)
+	{
+		X = CopyTile->getX();
+		Y = CopyTile->getY();
+
+		LocalX = CopyTile->getLocalX();
+		LocalY = CopyTile->getLocalY();
+
+		WorldX = CopyTile->getWorldX();
+		WorldY = CopyTile->getWorldY();
+
+		ParentChunk = CopyTile->getParentChunk();
+
+		TileObject = CopyTile->TileObject;
+
+		TileRescource = CopyTile->getTileRescources();
+		RescourceCount = CopyTile->getTileRescourceAmount();
+	}
 }
 
 void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
@@ -32,14 +53,40 @@ void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 	TileObject = nTileObject;
 }
 
+void UTileData::AddRescource(ETileRescources Type, int32 Amount)
+{
+	TileRescource = Type;
+	RescourceCount = Amount;
+}
+
 void UTileData::DebugHighlightTile(float Time /*= 10.0f*/)
 {
 	DrawDebugBox(ParentChunk->GetWorld(), getWorldCenter(), FVector(50, 50, 50), FColor::Blue, false, Time, 0, 5.0f);
 }
 
+ETileRescources UTileData::getTileRescources()
+{
+	return TileRescource;
+}
+
+int32 UTileData::getTileRescourceAmount()
+{
+	return RescourceCount;
+}
+
 ETileType UTileData::getTileType()
 {
-	return TileType;
+	return ETileType::Grass;
+}
+
+float UTileData::getBaseHeigth()
+{
+	return 0.0f;
+}
+
+float UTileData::getHeigth()
+{
+	return Heigth;
 }
 
 int32 UTileData::getX()
@@ -77,7 +124,20 @@ FVector UTileData::getWorldCenter()
 	return FVector(getWorldX() + 50, getWorldY() + 50, 0);
 }
 
-bool UTileData::HasTileObject()
+ATableChunk* UTileData::getParentChunk()
 {
-	return (TileObject != nullptr);
+	return ParentChunk;
+}
+
+bool UTileData::CanBuildOnTile()
+{
+	if (TileObject)return false;
+	if (getTileRescources() != ETileRescources::None)return false;
+
+	return true;
+}
+
+bool UTileData::HasRescource()
+{
+	return (getTileRescources() != ETileRescources::None);
 }

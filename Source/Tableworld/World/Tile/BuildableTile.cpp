@@ -26,9 +26,6 @@ void ABuildableTile::BeginPlay()
 	Super::BeginPlay();
 	
 	DefaultMaterial = TileMesh->GetMaterial(0);
-
-	float RYaw = FMath::RandRange(0, 360);
-	TileMesh->SetRelativeRotation(FRotator(0, RYaw, 0));
 }
 
 void ABuildableTile::Tick(float DeltaTime)
@@ -42,14 +39,23 @@ void ABuildableTile::SetIsGhost()
 	bIsGhost = true;
 
 	TileMesh->SetMaterial(0, GhostMaterial);
+
+	DynMaterial = TileMesh->CreateDynamicMaterialInstance(0);
 }
 
-void ABuildableTile::Place(int32 X, int32 Y)
+void ABuildableTile::Place(TArray<FVector2D> nPlacedOnTiles)
 {
-	TileX = X;
-	TileY = Y;
+	PlacedOnTiles = nPlacedOnTiles;
 
 	TileMesh->SetMaterial(0, DefaultMaterial);
 	bIsGhost = false;
 }
 
+void ABuildableTile::SetIsBlocked(bool bBlocked)
+{
+	if(DynMaterial)
+	{
+		float v = bBlocked ? 0.0f : 1.0f;
+		DynMaterial->SetScalarParameterValue("bBlocked", v);
+	}
+}

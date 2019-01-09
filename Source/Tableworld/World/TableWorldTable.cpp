@@ -6,6 +6,7 @@
 #include "DrawDebugHelpers.h"
 #include "TableChunk.h"
 #include "Misc/Math/FastNoise.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -28,6 +29,7 @@ void ATableWorldTable::BeginPlay()
 	TileTypes.Add(ETileType::Dirt);
 	TileTypes.Add(ETileType::Sand);
 	TileTypes.Add(ETileType::Rock);
+	TileTypes.Add(ETileType::DirtRoad);
 
 	SetupTilePixels(TileTypes);
 	
@@ -36,163 +38,109 @@ void ATableWorldTable::BeginPlay()
 
 void ATableWorldTable::GenerateMap()
 {
+	InstancedRescourcesMesh.Empty();
+	for(uint8 i = 0; i < (uint8)ETileRescources::Max; i++)
+	{
+		ETileRescources Res = (ETileRescources)i;
+		if(Res != ETileRescources::None && Res != ETileRescources::Max)
+		{
+			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
+			if(InstMesh)
+			{
+				InstMesh->AttachToComponent(GetRootComponent(),FAttachmentTransformRules::KeepRelativeTransform);
+				InstMesh->SetStaticMesh(RescourceMesh.FindRef(Res));
+				InstMesh->RegisterComponent();
+
+				InstancedRescourcesMesh.Add(Res, InstMesh);
+			}
+		}
+	}
+	
+	//Setup the noise
 	if(Noise)
 	{
-		Noise->SetSeed(FMath::RandRange(0, 1000));
-		Noise->SetFrequency(0.1f);
+		Noise->SetSeed(FMath::RandRange(0, 9000));
+		Noise->SetFrequency(0.05f);
 	} 
 
+	//Generate the base chunks
 	GenerateChunks();
 
-	for (int32 x = 0; x < MaxSizeX*ChunkSize; x++)
+	int32 MaxXTiles = MaxSizeX * ChunkSize;
+	int32 MaxYTiles = MaxSizeY * ChunkSize;
+
+	//Generate the base tiles
+	for(int32 x = 0; x < MaxXTiles; x++)
 	{
-		for (int32 y = 0; y < MaxSizeY*ChunkSize; y++)
+		for(int32 y = 0; y < MaxYTiles; y++)
 		{
-			ATableChunk* Chunk = getChunkForTile(x, y);
-			if(Chunk)
+			float PerlinValue = Noise->GetNoise2D(x, y);
+
+			float WaterLevel = -0.7f;
+			float RockLevel = 0.5f;
+			
+			//Place sand
+			if(PerlinValue < WaterLevel+0.15f)
 			{
-				float Height = getNoise()->GetNoise2D(x, y);
-				Chunk->ChangeTileHeight(x, y, 100 * FMath::RoundToInt(Height+1));
+				SetTile(x, y, ETileType::Sand);
+
+				int32 dx = FMath::RandRange(-1, 1);
+				int32 dy = FMath::RandRange(-1, 1);
+				SetTileIfTile(x+dx, y+dy, ETileType::Sand, ETileType::Grass);
+			}
+
+			//Place water
+			if(PerlinValue < WaterLevel)
+			{
+				SetTile(x, y, ETileType::Water);
+			}
+
+			//Rock
+			if(PerlinValue > RockLevel)
+			{
+				SetTileIfTile(x, y, ETileType::Rock, ETileType::Grass);
+
+				int32 dx = FMath::RandRange(-1, 1);
+				int32 dy = FMath::RandRange(-1, 1);
+				SetTileIfTile(x+dx, y+dy, ETileType::Rock, ETileType::Grass);
 			}
 		}
 	}
 
-	if (false) 
+	//Generate Rescources
+	for (int32 x = 0; x < MaxXTiles; x++)
 	{
-		int32 MaxXTiles = MaxSizeX * ChunkSize;
-		int32 MaxYTiles = MaxSizeY * ChunkSize;
-
-		//Generate lakes!
-		for (int32 x = 0; x < MaxXTiles; x++)
+		for (int32 y = 0; y < MaxYTiles; y++)
 		{
-			for (int32 y = 0; y < MaxYTiles; y++)
+			float PerlinValue = Noise->GetNoise2D(x, y);
+
+			float TreeTile = 0.3f;
+			float RockChance = 0.15f;
+
+			//Place a tree
+			if (PerlinValue > TreeTile)
 			{
-				float v = Noise->GetNoise2D(x, y);
-
-				if (v >= 0.5f)
-				{
-					int32 Rx = FMath::RandRange(-1, 1);
-					int32 Ry = FMath::RandRange(-1, 1);
-
-					SetTile(x, y, ETileType::Rock);
-					SetTile(x + Rx, y + Ry, ETileType::Rock);
-				}
-				else
-				{
-					if (v >= 0.45f)
-					{
-						SetTile(x, y, ETileType::Water);
-					}
-					else
-					{
-						if (v >= 0.4f)
-						{
-							int32 Rx = FMath::RandRange(-1, 1);
-							int32 Ry = FMath::RandRange(-1, 1);
-
-							SetTile(x, y, ETileType::Sand);
-							SetTile(x + Rx, y + Ry, ETileType::Sand);
-						}
-					}
-				}
+				SetRescource(x, y, ETileRescources::Tree, 100, ETileType::Grass);
 			}
-		}
 
-		//Generate rivers
-		if (bHasRiver)
-		{
-			int32 RiverCount = FMath::RandRange(1, 3);
-			RiverCount = 6;
-			for (int32 i = 0; i < RiverCount; i++)
+			//Place iron ore!
+			if(FMath::RandRange(0.0f,1.0f) <= RockChance)
 			{
-				bool bXRiver = FMath::RandBool();
-
-				//Get a random river start 
-				int32 RiverStartX = 0;
-				int32 RiverStartY = 0;
-
-				int32 RiverEndX = 0;
-				int32 RiverEndY = 0;
-
-				if (bXRiver)
-				{
-					RiverStartX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
-				}
-				else
-				{
-					RiverStartY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
-				}
-
-				if (!bXRiver)
-				{
-					RiverEndX = FMath::RandRange(ChunkSize, MaxXTiles - ChunkSize);
-					RiverEndY = MaxSizeY;
-				}
-				else
-				{
-					RiverEndY = FMath::RandRange(ChunkSize, MaxYTiles - ChunkSize);
-					RiverEndX = MaxSizeX;
-				}
-
-				int32 RiverX = RiverStartX;
-				int32 RiverY = RiverStartY;
-
-				SetTile(RiverX, RiverY, ETileType::Water);
-
-				int32 MaxTries = 0;
-				while (RiverX != RiverEndX && RiverY != RiverEndY)
-				{
-					if (RiverX > RiverEndX)
-					{
-						RiverX--;
-					}
-					else
-					{
-						if (RiverX < RiverEndX)
-						{
-							RiverX++;
-						}
-					}
-
-					if (RiverY > RiverEndY)
-					{
-						RiverY--;
-					}
-					else
-					{
-						if (RiverY < RiverEndY)
-						{
-							RiverY++;
-						}
-					}
-
-					RiverX += FMath::RandRange(-2, 2);
-					RiverY += FMath::RandRange(-2, 2);
-
-					int32 Radius = 3;
-					for (int32 x = -Radius; x < Radius; x++)
-					{
-						for (int32 y = -Radius; y < Radius; y++)
-						{
-							SetTile(RiverX + x, RiverY + y, ETileType::Water);
-						}
-					}
-
-					MaxTries++;
-					if (MaxTries >= 200)
-					{
-						break;
-					}
-				}
+				SetRescource(x, y, ETileRescources::IronOre, 50, ETileType::Rock);
 			}
 		}
 	}
 
+	//Generate the chunk visuals
 	for(int32 i = 0; i < Chunks.Num(); i++)
 	{
 		ATableChunk* Chunk = Chunks[i];
 		if(Chunk)
 		{
+			//Generate the chunk mesh
+			Chunk->GenerateChunkMesh();
+
+			//Generate the chunk texture
 			Chunk->UpdateChunkTexture();
 		}
 	}
@@ -304,12 +252,61 @@ UTileData* ATableWorldTable::getTile(int32 X, int32 Y)
 	return nullptr;
 }
 
-void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type)
+void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType)
+{
+	if (Res != ETileRescources::None)
+	{
+		if (Amount > 0)
+		{
+			UTileData* Tile = getTile(X, Y);
+			if (Tile)
+			{
+				if (Tile->getTileType() == NeededType) 
+				{
+					if (!Tile->HasRescource()) 
+					{
+						UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Res);
+						if (Mesh)
+						{
+							float OffsetX = 25.0f;
+							float OffsetY = 25.0f;
+							float RX = FMath::RandRange(-OffsetX, OffsetX);
+							float RY = FMath::RandRange(-OffsetY, OffsetY);
+							
+							FTransform Trans;
+							FRotator Rot = FRotator(FMath::RandRange(-2.5f,2.5f), FMath::RandRange(0.0f, 360.0f), 0.0f);
+							float Scale = FMath::RandRange(0.9f, 1.1f);
+
+							Trans.SetLocation(Tile->getWorldCenter() + FVector(RX,RY,0.0f));
+							Trans.SetRotation(Rot.Quaternion());
+							Trans.SetScale3D(FVector(Scale, Scale, Scale));
+
+							Mesh->AddInstanceWorldSpace(Trans);
+
+							Tile->AddRescource(Res, Amount);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture)
 {
 	ATableChunk* Chunk = getChunkForTile(X, Y);
 	if (Chunk)
 	{
-		return Chunk->SetTile(X, Y, type, false);
+		return Chunk->SetTile(X, Y, type, bUpdateTexture);
+	}
+}
+
+void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile)
+{
+	ATableChunk* Chunk = getChunkForTile(X, Y);
+	if (Chunk)
+	{
+		return Chunk->SetTileIfTile(X, Y, NewTile, IfTile, false);
 	}
 }
 
@@ -324,7 +321,14 @@ TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)
 		}
 	}
 
-	return TArray<FColor>();
+	TArray<FColor> NullArray;
+
+	for(int32 i = 0; i < (TilesInPixels*TilesInPixels) ; i++)
+	{
+		NullArray.Add(FColor::Red);
+	}
+
+	return NullArray;
 }
 
 UFastNoise* ATableWorldTable::getNoise()

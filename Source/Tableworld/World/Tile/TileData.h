@@ -18,15 +18,22 @@ class TABLEWORLD_API UTileData : public UObject
 	
 public:
 
-	void Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ETileType nTileType, ATableChunk* nTable);
+	void Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ATableChunk* nTable);
+	void SetHeigth(float nHeight);
 
-	void UpdateTile(ETileType nTileType);
+	void CopyTileData(UTileData* CopyTile);
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
+	void AddRescource(ETileRescources Type, int32 Amount);
 
 	void DebugHighlightTile(float Time = 10.0f);
 
-	ETileType getTileType();
+	ETileRescources getTileRescources();
+	int32 getTileRescourceAmount();
+
+	virtual ETileType getTileType();
+	virtual float getBaseHeigth();
+	float getHeigth();
 
 	int32 getX();
 	int32 getY();
@@ -37,8 +44,10 @@ public:
 	int32 getWorldX();
 	int32 getWorldY();
 	FVector getWorldCenter();
+	ATableChunk* getParentChunk();
 
-	bool HasTileObject();
+	bool CanBuildOnTile();
+	bool HasRescource();
 
 protected:
 	
@@ -46,14 +55,18 @@ protected:
 	ABuildableTile* TileObject = nullptr;
 
 	ATableChunk* ParentChunk = nullptr;
-	ETileType TileType = ETileType::Grass;
+	
+	float Heigth = 0.0f;
 
 	int32 X = 0;
 	int32 Y = 0;
 
-	int32 LocalX = 0;
-	int32 LocalY = 0;
+	uint8 LocalX = 0;
+	uint8 LocalY = 0;
 
 	int32 WorldX = 0;
 	int32 WorldY = 0;
+
+	ETileRescources TileRescource = ETileRescources::None;
+	int32 RescourceCount = 0;
 };

@@ -70,13 +70,18 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 	if(SelectedTile)
 	{
 		DrawDebugBox(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50, 0), FVector(50, 50, 10), FColor::Red, false, 0, 0, 2.0f);
+
+		DrawDebugString(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50, 0), FString::FromInt((uint8)SelectedTile->getTileType()), NULL, FColor::White, 0, true);
+		DrawDebugString(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50 + 20, 0), FString::FromInt((uint8)SelectedTile->getTileRescources()), NULL, FColor::White, 0, true);
 	}
 
 	if(HasValidBuildableTile())
 	{
 		if (SelectedTile)
 		{
-			TileActor->SetActorLocation(SelectedTile->getWorldCenter());
+			TileActor->SetActorLocation(getBuildingBuildLocation());
+
+			TileActor->SetIsBlocked(CanBuild(CurrentBuilding.BuildingSize));
 		}
 	}
 }
@@ -104,17 +109,18 @@ void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 {
-	if(Building.ID != NAME_None)
+	CurrentBuilding = Building;
+
+	if (TileActor)
 	{
-		CurrentBuilding = Building;
-
-		if(TileActor)
-		{
-			TileActor->Destroy();
-		}
-
+		TileActor->Destroy();
+		TileActor = nullptr;
+	}
+	
+	if (Building.ID != NAME_None)
+	{
 		TileActor = GetWorld()->SpawnActor<ABuildableTile>(CurrentBuilding.TileClass, FVector::ZeroVector, FRotator::ZeroRotator);
-		if(TileActor)
+		if (TileActor)
 		{
 			TileActor->SetIsGhost();
 		}
@@ -123,23 +129,85 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 
 void ATablePlayerPawn::Input_LeftMouse_Pressed()
 {
-	if(CanBuild())
+	if (CurrentBuilding.bDragBuilding)
 	{
-		ABuildableTile* PlacedTile = GetWorld()->SpawnActor<ABuildableTile>(TileActor->GetClass(), SelectedTile->getWorldCenter(), FRotator::ZeroRotator);
-		if (PlacedTile) 
-		{
-			SelectedTile->AddBuildableTile(PlacedTile);
-			PlacedTile->Place(SelectedTile->getX(), SelectedTile->getY());
+		bIsDragBuilding = true;
+		return;
+	}
 
-			//Select the same building again
-			SetCurrentBuilding(CurrentBuilding);
+	if (CanBuild(CurrentBuilding.BuildingSize))
+	{
+		if(CurrentBuilding.BuildType == ETableBuildingBuildType::Tile)
+		{
+			if (SelectedTile)
+			{
+				if (getGamemode())
+				{
+					FVector2D BuildingSize = CurrentBuilding.BuildingSize;
+					for (int32 x = 0; x < BuildingSize.X; x++)
+					{
+						for (int32 y = 0; y < BuildingSize.Y; y++)
+						{
+							getGamemode()->SetTile(SelectedTile->getX(), SelectedTile->getY(), CurrentBuilding.BuildTileType, true);
+						}
+					}
+
+					//getGamemode()->SetTile(SelectedTile->getX(), SelectedTile->getY(), ETileType::Sand, true);
+					SetCurrentBuilding(CurrentBuilding);
+				}
+			}
+			return;
+		}
+		
+		if (CurrentBuilding.BuildType == ETableBuildingBuildType::Actor) 
+		{
+			//Place a normal tile
+			ABuildableTile* PlacedTile = GetWorld()->SpawnActor<ABuildableTile>(TileActor->GetClass(), getBuildingBuildLocation(), FRotator::ZeroRotator);
+			if (PlacedTile)
+			{
+				TArray<FVector2D> PlacedOnTiles;
+
+				FVector2D BuildingSize = CurrentBuilding.BuildingSize;
+				if (BuildingSize > FVector2D(1, 1))
+				{
+					for (int32 x = 0; x < BuildingSize.X; x++)
+					{
+						for (int32 y = 0; y < BuildingSize.Y; y++)
+						{
+							UTileData* TileData = getGamemode()->getTile(SelectedTile->getX() + x, SelectedTile->getY() + y);
+							if (TileData)
+							{
+								TileData->AddBuildableTile(PlacedTile);
+								PlacedOnTiles.Add(FVector2D(TileData->getX(), TileData->getY()));
+							}
+						}
+					}
+				}
+				else
+				{
+					//The building is a 1 by 1
+					PlacedOnTiles.Add(FVector2D(SelectedTile->getX(), SelectedTile->getY()));
+					SelectedTile->AddBuildableTile(PlacedTile);
+				}
+
+				PlacedTile->Place(PlacedOnTiles);
+
+				//Select the same building again
+				SetCurrentBuilding(CurrentBuilding);
+			}
 		}
 	}
 }
 
 void ATablePlayerPawn::Input_LeftMouse_Released()
 {
-
+	if(bIsDragBuilding)
+	{
+		if(DragTileActors.Num() > 0)
+		{
+			
+		}
+	}
 }
 
 void ATablePlayerPawn::Input_MiddleMouse_Pressed()
@@ -154,58 +222,15 @@ void ATablePlayerPawn::Input_MiddleMouse_Released()
 
 void ATablePlayerPawn::Input_RightMouse_Pressed()
 {
-	if (getPlayerController())
+	if(TileActor)
 	{
-		FHitResult hit;
-		getPlayerController()->GetHitResultUnderCursor(ECC_Visibility, false, hit);
-
-		if (hit.bBlockingHit)
-		{
-			DrawDebugPoint(GetWorld(), hit.ImpactPoint, 10.0f, FColor::Orange, false, 5, 0);
-
-			if(getGamemode())
-			{
-				ATableWorldTable* Table = getGamemode()->getTable();
-				if(Table)
-				{
-					int32 x = (hit.ImpactPoint.X / 100);
-					int32 y = (hit.ImpactPoint.Y / 100);
-
-					//DrawDebugString(GetWorld(), hit.ImpactPoint, FString::FromInt(x) + "," + FString::FromInt(y), NULL, FColor::White, 1, false);
-					//Table->SetTile(x, y, ETileType::Sand);
-
-					ATableChunk* Chunk = Table->getChunkForTile(x, y);
-					if(Chunk)
-					{
-						Chunk->ChangeTileHeight(x, y, 100.0f);
-					}
-				}
-			}
-		}
+		SetCurrentBuilding(FTableBuilding());
 	}
-	/*
-	if(GetWorld()->GetFirstPlayerController())
-	{
-		float x, y;
-		GetWorld()->GetFirstPlayerController()->GetMousePosition(x, y);
-
-		FVector2D MouseLoc = FVector2D(x, y);
-
-		CamRotStart = MouseLoc;
-		CamRotDif = FVector2D::ZeroVector;
-		CamRotEnd = MouseLoc;
-
-		bRotateCamera = true;
-	}*/
 }
 
 void ATablePlayerPawn::Input_RightMouse_Released()
 {
-	CamRotStart = FVector2D::ZeroVector;
-	CamRotDif = FVector2D::ZeroVector;
-	CamRotEnd = FVector2D::ZeroVector;
-
-	bRotateCamera = false;
+	
 }
 
 void ATablePlayerPawn::Input_ZoomIn()
@@ -262,16 +287,48 @@ bool ATablePlayerPawn::HasValidBuildableTile()
 	return false;
 }
 
-bool ATablePlayerPawn::CanBuild()
+bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize)
 {
-	if (SelectedTile) 
+	if(HasValidBuildableTile())
 	{
-		if(SelectedTile->HasTileObject())
+		if(BuildingSize <= FVector2D(1,1))
 		{
-			return false;
+			if (!CurrentBuilding.BlockedTiles.Contains(SelectedTile->getTileType()))
+			{
+				return SelectedTile->CanBuildOnTile();
+			}
 		}
 
-		return HasValidBuildableTile();
+		if (getGamemode())
+		{
+			if (SelectedTile)
+			{
+				for (int32 x = 0; x < BuildingSize.X; x++)
+				{
+					for (int32 y = 0; y < BuildingSize.Y; y++)
+					{
+						UTileData* Tile = getGamemode()->getTile(SelectedTile->getX() + x, SelectedTile->getY() + y);
+						if(Tile)
+						{
+							if(CurrentBuilding.BlockedTiles.Contains(Tile->getTileType()))
+							{
+								return false;
+							}
+							
+							if(!Tile->CanBuildOnTile())
+							{
+								return false;
+							}
+						}else
+						{
+							return false;
+						}
+					}
+				}
+
+				return true;
+			}
+		}
 	}
 
 	return false;
@@ -324,5 +381,15 @@ FVector ATablePlayerPawn::getMouseWorldLocationGrid()
 	Loc.Y = UKismetMathLibrary::GridSnap_Float(Loc.Y, 50) + 50;
 
 	return FVector(Loc.X, Loc.Y, 0.0f);
+}
+
+FVector ATablePlayerPawn::getBuildingBuildLocation()
+{
+	float X = SelectedTile->getX() * 100;
+	float Y = SelectedTile->getY() * 100;
+	float OffsetX = CurrentBuilding.BuildingSize.X * 50;
+	float OffsetY = CurrentBuilding.BuildingSize.X * 50;
+
+	return FVector(X + OffsetX, Y + OffsetY, 0.0f);
 }
 

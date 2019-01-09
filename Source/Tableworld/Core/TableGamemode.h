@@ -36,7 +36,7 @@ public:
 	virtual void SelectBuilding(FName SelectedBuildingID);
 
 	UFUNCTION(BlueprintCallable, Category = "Tile")
-	void SetTile(int32 X, int32 Y, ETileType type);
+	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	ATablePlayerController* getPlayerController();

@@ -8,6 +8,7 @@
 #include "Tile/TileData.h"
 #include "Misc/TableHelper.h"
 #include "Misc/Math/FastNoise.h"
+#include "Tile/GrassTile.h"
 
 ATableChunk::ATableChunk()
 {
@@ -31,10 +32,31 @@ void ATableChunk::SetupChunk(uint8 nX, uint8 nY, ATableWorldTable* nParentTable)
 
 	ChunkSize = ParentTable->ChunkSize;
 
-	GenerateChunk();
+	GenerateTileData();
 }
 
-void ATableChunk::GenerateChunk()
+void ATableChunk::GenerateTileData()
+{
+	for (int32 y = 0; y < ChunkSize; y++)
+	{
+		for (int32 x = 0; x < ChunkSize; x++)
+		{
+			//Create the tile data
+			UGrassTile* Tile = NewObject<UGrassTile>(this, UGrassTile::StaticClass());
+			if (Tile)
+			{
+				int32 TX = (getX() * ChunkSize) + x;
+				int32 TY = (getY() * ChunkSize) + y;
+
+				//Setup the tile data
+				Tile->Set(TX, TY, x, y, this);
+				Tiles.Add(Tile);
+			}
+		}
+	}
+}
+
+void ATableChunk::GenerateChunkMesh()
 {
 	if (!ParentTable)return;
 
@@ -62,7 +84,6 @@ void ATableChunk::GenerateChunk()
 			float CY = VertY + (Y * (ChunkSize * TileSize));
 
 			Vertices[i] = FVector(VertX, VertY, 0.0f);
-			//DrawDebugString(GetWorld(), FVector(CX,CY, 0), FString::FromInt(i), NULL, FColor::Green, 99999, true);
 
 			float UVX = (float)x / ChunkSize;
 			float UVY = (float)y / ChunkSize;
@@ -72,27 +93,6 @@ void ATableChunk::GenerateChunk()
 			i++;
 		}
 	}
-
-	for (int32 y = 0; y < ChunkSize; y++)
-	{
-		for (int32 x = 0; x < ChunkSize; x++)
-		{
-			//Create the tile data
-			UTileData* Tile = NewObject<UTileData>(this, UTileData::StaticClass());
-			if (Tile)
-			{
-				int32 TX = (getX() * ChunkSize) + x;
-				int32 TY = (getY() * ChunkSize) + y;
-				
-				//Setup the tile data
-				Tile->Set(TX, TY, x, y, ETileType::Grass, this);
-				Tiles.Add(Tile);
-			}
-		}
-	}
-
-	bool bGenerateRivers = ParentTable->bHasRiver;
-	int32 RiverWidth = ParentTable->RiverSize;
 
 	//Generate the Tris and Tangents / Normals of the plane
 	UKismetProceduralMeshLibrary::CreateGridMeshTriangles(ActualChunkSize, ActualChunkSize, true, Triangles);
@@ -113,7 +113,7 @@ void ATableChunk::GenerateChunk()
 	ChunkTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
 	ChunkTexture->AddToRoot();
 	ChunkTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
-	ChunkTexture->MipGenSettings = TextureMipGenSettings::TMGS_NoMipmaps;
+	//ChunkTexture->MipMap = TextureMipGenSettings::TMGS_NoMipmaps;
 	ChunkTexture->SRGB = false;
 	ChunkTexture->Filter = TextureFilter::TF_Nearest;
 	ChunkTexture->UpdateResource();
@@ -121,7 +121,6 @@ void ATableChunk::GenerateChunk()
 
 void ATableChunk::UpdateChunkTexture()
 {
-	return;
 	if (ChunkTexture) 
 	{
 		if (DynamicMaterial)
@@ -155,14 +154,23 @@ void ATableChunk::UpdateChunkTexture()
 						{
 							for (int32 px = 0; px < TilesInPixels; px++)
 							{
-								Pixels[(TileY + py) * TextureSize + (TileX + px)] = TilePixels[py * TilesInPixels + px];
+								FColor PixelColor = TilePixels[py * TilesInPixels + px];
+								PixelColor.R += FMath::RandRange(-0.5f, 0.5f);
+								PixelColor.G += FMath::RandRange(-0.5f, 0.5f);
+								PixelColor.B += FMath::RandRange(-0.5f, 0.5f);
+
+								Pixels[(TileY + py) * TextureSize + (TileX + px)] = PixelColor;
 							}
 						}
 					}
 				}
 			}
 
-			FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
+			if (Pixels.Num() > 0)
+			{
+				FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
+			}
+			
 			Mip.BulkData.Unlock();
 			ChunkTexture->UpdateResource();
 
@@ -182,10 +190,45 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 		if (Tile->getTileType() != NewTileType)
 		{
 			//Update the tile data
-			Tile->UpdateTile(NewTileType);
+			
+			TSubclassOf<UTileData> TileClass = UTableHelper::getTileClass(NewTileType);
+			if (TileClass) 
+			{
+				UTileData* NewTile = NewObject<UTileData>(this, TileClass);
+				if (NewTile)
+				{
+					NewTile->CopyTileData(Tile);
+					Tiles[Tile->getLocalY() * ChunkSize + Tile->getLocalX()] = NewTile;
+				}
+			}
 
 			//Update the texture region of the tile to fit the new tile.
 			if (bUpdateMaterial) 
+			{
+				UpdateChunkTexture();
+			}
+		}
+	}
+}
+
+
+void ATableChunk::SetTileIfTile(int32 X, int32 Y, ETileType NewTileType, ETileType IfTile, bool bUpdateMaterial /*= true*/)
+{
+	UTileData* Tile = getTile(X, Y);
+	if (Tile)
+	{
+		if (Tile->getTileType() == IfTile)
+		{
+			//Update the tile data
+			UTileData* NewTile = NewObject<UTileData>(this, UTableHelper::getTileClass(NewTileType));
+			if (NewTile)
+			{
+				NewTile->CopyTileData(Tile);
+				Tiles[Tile->getLocalY() * ChunkSize + Tile->getLocalX()] = NewTile;
+			}
+
+			//Update the texture region of the tile to fit the new tile.
+			if (bUpdateMaterial)
 			{
 				UpdateChunkTexture();
 			}
@@ -212,9 +255,9 @@ void ATableChunk::ChangeTileHeight(int32 X, int32 Y, float Heigth)
 	UTileData* Tile = getTile(X, Y);
 	if(Tile)
 	{
-		Tile->DebugHighlightTile(1.0f);
-		
+		//How many verts are in a chunk along x or y
 		int32 Size = ChunkSize+1;
+
 		for(int32 x = 0; x < 2; x++)
 		{
 			for (int32 y = 0; y < 2; y++)
@@ -223,118 +266,7 @@ void ATableChunk::ChangeTileHeight(int32 X, int32 Y, float Heigth)
 				int32 VertY = (Tile->getLocalY() + y);
 
 				ChangeVertHeight(VertX, VertY, Heigth);
-
-				DebugWarning(FString::FromInt(VertX) + "," + FString::FromInt(VertY));
-
-				//X
-
-				//+1 X
-				if(VertX >= ChunkSize)
-				{
-					//get the tile +1 x from our tile.
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X + 1, Y);
-					if(PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(0, Tile->getLocalY(), Heigth);
-						PlusXChunk->ChangeVertHeight(0, Tile->getLocalY() + 1, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				//-1 X
-				if (VertX <= 0)
-				{
-					//get the tile +1 x from our tile.
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X - 1, Y);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(Size-1, Tile->getLocalY(), Heigth);
-						PlusXChunk->ChangeVertHeight(Size-1, Tile->getLocalY()+1, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				//Y
-
-				//+1 Y
-				if (VertY >= ChunkSize)
-				{
-					//get the tile +1 x from our tile.
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X, Y + 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(Tile->getLocalX(), 0, Heigth);
-						PlusXChunk->ChangeVertHeight(Tile->getLocalX() + 1, 0, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				//-1 Y
-				if (VertY <= 0)
-				{
-					//get the tile +1 x from our tile.
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X, Y - 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(Tile->getLocalX(), Size-1, Heigth);
-						PlusXChunk->ChangeVertHeight(Tile->getLocalX() + 1, Size-1, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				//Diag
-
-				// +1 X | +1 Y
-				if(VertX >= ChunkSize && VertY >= ChunkSize)
-				{
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X + 1, Y + 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(0, 0, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				// -1 X | +1 Y
-				if (VertX <= 0 && VertY >= ChunkSize)
-				{
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X - 1, Y + 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(Size-1, 0, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				// +1 X | -1 Y
-				if (VertX >= ChunkSize && VertY <= 0)
-				{
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X + 1, Y - 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(0, Size -1, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
-
-				// -1 X | -1 Y
-				if (VertX <= 0 && VertY <= 0)
-				{
-					ATableChunk* PlusXChunk = ParentTable->getChunkForTile(X - 1, Y - 1);
-					if (PlusXChunk)
-					{
-						PlusXChunk->ChangeVertHeight(Size - 1, Size - 1, Heigth);
-
-						PlusXChunk->UpdateMesh();
-					}
-				}
+				Tile->SetHeigth(Heigth);
 			}
 		}
 
@@ -349,9 +281,9 @@ void ATableChunk::ChangeVertHeight(int32 X, int32 Y, float Heigth)
 	if (Vertices.IsValidIndex(VertIndex))
 	{
 		FVector VertLoc = Vertices[VertIndex];
-		DrawDebugPoint(GetWorld(), VertLoc, 5, FColor::Red, false, 20, 0);
 
 		VertLoc.Z = Heigth;
+
 		Vertices[VertIndex] = VertLoc;
 	}
 }

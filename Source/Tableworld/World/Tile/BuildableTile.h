@@ -33,10 +33,16 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetIsGhost();
-	virtual void Place(int32 X, int32 Y);
+	virtual void Place(TArray<FVector2D> nPlacedOnTiles);
+
+	virtual void SetIsBlocked(bool bBlocked);
 
 protected:
 
+	//A array with the global tile locations that this building is placed on!
+	TArray<FVector2D> PlacedOnTiles;
+
+	UMaterialInstanceDynamic* DynMaterial = nullptr;
 	UMaterialInterface* DefaultMaterial = nullptr;
 
 	bool bIsGhost = false;

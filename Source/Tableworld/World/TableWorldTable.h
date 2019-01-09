@@ -10,6 +10,7 @@
 class UTileData;
 class ATableChunk;
 class UFastNoise;
+class UInstancedStaticMeshComponent;
 
 UCLASS()
 class TABLEWORLD_API ATableWorldTable : public AActor
@@ -35,6 +36,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	TMap<ETileType, FVector2D> TileMaterials;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+	TMap<ETileRescources, UStaticMesh*> RescourceMesh;
 
 	//The max width in chunks of the map
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
@@ -72,12 +76,18 @@ public:
 
 	ATableChunk* getChunkForTile(int32 X, int32 Y);
 	UTileData* getTile(int32 X, int32 Y);
-	void SetTile(int32 X, int32 Y, ETileType type);
+
+	void SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType);
+	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
+	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 
 	TArray<FColor> getTilePixels(ETileType TileType);
 	UFastNoise* getNoise();
 
 protected:
+
+	UPROPERTY()
+	TMap<ETileRescources, UInstancedStaticMeshComponent*> InstancedRescourcesMesh;
 
 	UPROPERTY()
 	UFastNoise* Noise = nullptr;

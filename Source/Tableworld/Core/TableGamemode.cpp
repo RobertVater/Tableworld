@@ -91,11 +91,11 @@ ETableAge ATableGamemode::getCurrentAge()
 	return CurrentAge;
 }
 
-void ATableGamemode::SetTile(int32 X, int32 Y, ETileType type)
+void ATableGamemode::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture)
 {
 	if(getTable())
 	{
-		getTable()->SetTile(X, Y, type);
+		getTable()->SetTile(X, Y, type,bUpdateTexture);
 	}
 }
 

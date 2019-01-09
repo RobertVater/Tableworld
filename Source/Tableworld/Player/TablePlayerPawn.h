@@ -62,7 +62,7 @@ public:
 	virtual void AdjustZoom();
 
 	bool HasValidBuildableTile();
-	bool CanBuild();
+	bool CanBuild(FVector2D BuildingSize);
 
 	ATableGamemode* getGamemode();
 	ATablePlayerController* getPlayerController();
@@ -70,12 +70,19 @@ public:
 	FVector getMouseWorldLocation();
 	FVector getMouseWorldLocationGrid();
 
+	FVector getBuildingBuildLocation();
+
 protected:
 
+	//Building
 	UTileData* SelectedTile = nullptr;
 
 	FTableBuilding CurrentBuilding;
+
 	ABuildableTile* TileActor = nullptr;
+
+	bool bIsDragBuilding = false;
+	TArray<ABuildableTile*> DragTileActors;
 
 	ATableGamemode* GM = nullptr;
 	ATablePlayerController* PC = nullptr;
