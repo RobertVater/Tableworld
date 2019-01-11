@@ -17,4 +17,5 @@ class TABLEWORLD_API URockTile : public UTileData
 public:
 
 	virtual ETileType getTileType() override;
+	virtual int32 getMovementCost() override;
 };

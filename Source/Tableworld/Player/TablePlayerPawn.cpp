@@ -10,9 +10,9 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "World/TableWorldTable.h"
-#include "World/Tile/BuildableTile.h"
 #include "World/Tile/TileData.h"
 #include "World/TableChunk.h"
+#include "World/Tile/Building/BuildableTile.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -89,51 +89,25 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 				EndDragTile = FVector2D(SelectedTile->getX(), SelectedTile->getY());
 				if(DragTileLocation != EndDragTile)
 				{
-					//Clear the drag tiles
 					DragTiles.Empty();
-					DragTileLocation = StartDragTile;
-
-					DragTiles.Add(StartDragTile);
-					TileActor->SetIsBlocked(false);
-					
-					for(int32 i = 0; i < MaxDragTiles; i++)
+					DragTileLocation = EndDragTile;
+					if(getGamemode())
 					{
-						if(DragTileLocation.X < EndDragTile.X)
+						if(getGamemode()->getTable())
 						{
-							DragTileLocation.X++;
-						}
+							TArray<UTileData*> PathTile = getGamemode()->getTable()->FindPath(StartDragTile, EndDragTile, CurrentBuilding.BlockedTiles, false, false);
+							//Add the starttile
+							UTileData* StartTile = getGamemode()->getTile((int32)StartDragTile.X, (int32)StartDragTile.Y);
+							PathTile.Add(StartTile);
 
-						if (DragTileLocation.X > EndDragTile.X)
-						{
-							DragTileLocation.X--;
-						}
-
-						if (DragTileLocation.Y < EndDragTile.Y)
-						{
-							DragTileLocation.Y++;
-						}
-
-						if (DragTileLocation.Y > EndDragTile.Y)
-						{
-							DragTileLocation.Y--;
-						}
-
-						UTileData* TileData = getGamemode()->getTile((int32)DragTileLocation.X, (int32)DragTileLocation.Y);
-						if(TileData)
-						{
-							//TileData->DebugHighlightTile(0.5f);
-							if(CurrentBuilding.BlockedTiles.Contains(TileData->getTileType()))
+							for(int32 i = 0; i < PathTile.Num(); i++)
 							{
-								TileActor->SetIsBlocked(true);
-								break;
+								UTileData* Tile = PathTile[i];
+								if(Tile)
+								{
+									DragTiles.Add(FVector2D(Tile->getX(), Tile->getY()));
+								}
 							}
-							
-							DragTiles.Add(DragTileLocation);
-						}
-
-						if(DragTileLocation == EndDragTile)
-						{
-							break;
 						}
 					}
 				}
@@ -141,7 +115,7 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 				for(int32 i = 0; i < DragTiles.Num(); i++)
 				{
 					FVector2D Loc = DragTiles[i];
-					DrawDebugPoint(GetWorld(), FVector(Loc.X*100,Loc.Y*100,0), 10, FColor::Red, false, 0, 0);
+					DrawDebugPoint(GetWorld(), FVector(Loc.X*100 + 50,Loc.Y*100 + 50,0), 10, FColor::Red, false, 0, 0);
 				}
 			}
 		}
@@ -352,7 +326,7 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 							SelectedTile->AddBuildableTile(PlacedTile);
 						}
 
-						PlacedTile->Place(PlacedOnTiles);
+						PlacedTile->Place(PlacedOnTiles, Data);
 
 						//Select the same building again
 						SetCurrentBuilding(CurrentBuilding);

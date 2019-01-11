@@ -6,3 +6,8 @@ ETileType UGrassTile::getTileType()
 {
 	return ETileType::Grass;
 }
+
+int32 UGrassTile::getMovementCost()
+{
+	return 3;
+}

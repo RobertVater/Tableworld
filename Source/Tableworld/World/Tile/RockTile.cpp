@@ -6,3 +6,8 @@ ETileType URockTile::getTileType()
 {
 	return ETileType::Rock;
 }
+
+int32 URockTile::getMovementCost()
+{
+	return 7;
+}

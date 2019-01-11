@@ -76,13 +76,31 @@ public:
 
 	ATableChunk* getChunkForTile(int32 X, int32 Y);
 	UTileData* getTile(int32 X, int32 Y);
+	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius);
+	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource);
 
+	bool HarvestRescource(UTileData* Tile, int32 Amount);
 	void SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType);
 	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 
 	TArray<FColor> getTilePixels(ETileType TileType);
 	UFastNoise* getNoise();
+
+	//Pathfinding
+
+	/*
+	Finds a path from the StartTile to the EndTile
+	Arg0 = The Start of the search
+	Arg1 = The End of the search
+	Arg2 = A Array of forbidden tiles that will act like they are blocked tiles
+	Arg3 = True if the path can go diagonal
+	Arg4 = True if we should consider the Movement Penalty of tiles
+	*/
+	TArray<UTileData*> FindPath(FVector2D StartTile, FVector2D EndTile, TArray<ETileType> ForbidenTiles, bool bAllowDiag = false, bool bIgnoreWeigths = false);
+	TArray<UTileData*> RetracePath(UTileData* Start, UTileData* End);
+	TArray<UTileData*> GetNeighbours(UTileData* Tile, bool bAllowDiag);
+	int32 getDistance(UTileData* TileA, UTileData* TileB);
 
 protected:
 

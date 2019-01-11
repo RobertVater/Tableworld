@@ -7,6 +7,7 @@
 #include "TableChunk.h"
 #include "Misc/Math/FastNoise.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include <time.h>
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -252,6 +253,83 @@ UTileData* ATableWorldTable::getTile(int32 X, int32 Y)
 	return nullptr;
 }
 
+TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Radius)
+{
+	TArray<UTileData*> Tiles;
+
+	for(int32 x = -Radius; x <= Radius; x++)
+	{
+		for(int32 y  = -Radius; y <= Radius; y++)
+		{
+			if((x * x) + (y * y) <= (Radius * Radius))
+			{
+				UTileData* Tile = getTile(X + x, Y + y);
+				if(Tile)
+				{
+					Tiles.Add(Tile);
+				}
+			}
+		}
+	}
+
+	return Tiles;
+}
+
+TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource)
+{
+	TArray<UTileData*> Tiles;
+
+	for (int32 x = -Radius; x <= Radius; x++)
+	{
+		for (int32 y = -Radius; y <= Radius; y++)
+		{
+			if ((x * x) + (y * y) <= (Radius * Radius))
+			{
+				UTileData* Tile = getTile(X + x, Y + y);
+				if (Tile)
+				{
+					if (Tile->getTileRescources() == Rescource) 
+					{
+						Tile->DebugHighlightTile(1.0f);
+						Tiles.Add(Tile);
+					}
+				}
+			}
+		}
+	}
+
+	return Tiles;
+}
+
+bool ATableWorldTable::HarvestRescource(UTileData* Tile, int32 Amount)
+{
+	if(Tile)
+	{
+		if(Tile->getTileRescources() != ETileRescources::None)
+		{
+			int32 NewAmount = Tile->getTileRescourceAmount() - Amount;
+			
+			if(NewAmount <= 0)
+			{
+				//Remove the Instance from the rescource
+				UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(ETileRescources::Tree);
+				if(Mesh)
+				{
+					Mesh->UpdateInstanceTransform(Tile->getTileRescourceIndex(), FTransform(FRotator::ZeroRotator, FVector(0, 0, -500.0f), FVector::OneVector), true, true, true);
+				}
+
+				Tile->ClearRescource();
+				return true;
+			}else
+			{
+				Tile->UpdateRescource(NewAmount);
+			}
+		}
+	}
+
+	return false;
+}
+
 void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType)
 {
 	if (Res != ETileRescources::None)
@@ -281,9 +359,9 @@ void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32
 							Trans.SetRotation(Rot.Quaternion());
 							Trans.SetScale3D(FVector(Scale, Scale, Scale));
 
-							Mesh->AddInstanceWorldSpace(Trans);
+							int32 Index = Mesh->AddInstanceWorldSpace(Trans);
 
-							Tile->AddRescource(Res, Amount);
+							Tile->SetRescource(Index, Res, Amount);
 						}
 					}
 				}
@@ -334,4 +412,179 @@ TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)
 UFastNoise* ATableWorldTable::getNoise()
 {
 	return Noise;
+}
+
+TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D EndTileCord, TArray<ETileType> ForbidenTiles, bool bAllowDiag, bool bIgnoreWeigths)
+{
+	DebugWarning("Starting Search!");
+	clock_t t = clock();
+	
+	UTileData* StartTile = getTile((int32)StartTileCord.X, (int32)StartTileCord.Y);
+	UTileData* EndTile = getTile((int32)EndTileCord.X, (int32)EndTileCord.Y);
+
+	if(StartTile)
+	{
+		if (EndTile)
+		{
+			if(StartTile->IsBlocked() || EndTile->IsBlocked())
+			{
+				//Start or end is blocked
+				return TArray<UTileData*>();
+			}
+
+			if(ForbidenTiles.Contains(StartTile->getTileType())  || ForbidenTiles.Contains(EndTile->getTileType()) )
+			{
+				//We tried to build a path on forbidden tiles!
+				return TArray<UTileData*>();
+			}
+		}
+	}
+
+	TArray<UTileData*> ClosedSet;
+	TArray<UTileData*> OpenSet;
+
+	OpenSet.Add(StartTile);
+
+	int32 MaxTries = 0;
+	while(OpenSet.Num() > 0)
+	{
+		UTileData* CurrentTile = OpenSet[0];
+		if(CurrentTile)
+		{
+			for(int32 i = 1; i < OpenSet.Num(); i++)
+			{
+				if(OpenSet[i]->getFCost() < CurrentTile->getFCost() || OpenSet[i]->getFCost() == CurrentTile->getFCost() && OpenSet[i]->getHCost() < CurrentTile->getHCost())
+				{
+					CurrentTile = OpenSet[i];
+				}
+			}
+
+			OpenSet.Remove(CurrentTile);
+			ClosedSet.Add(CurrentTile);
+
+			if(CurrentTile == EndTile)
+			{
+				t = clock() - t;
+				DebugWarning("Found! It took " + FString::SanitizeFloat((float)t / CLOCKS_PER_SEC ) + " secconds!");
+				TArray<UTileData*> Path  = RetracePath(StartTile,EndTile);
+
+				return Path;
+			}
+
+			//Check neighbours
+			TArray<UTileData*> Neighbours = GetNeighbours(CurrentTile, bAllowDiag);
+			for(int32 j = 0; j < Neighbours.Num(); j++)
+			{
+				UTileData* Neighbour = Neighbours[j];
+				if(Neighbour)
+				{
+					if(Neighbour->IsBlocked() || ClosedSet.Contains(Neighbour) || ForbidenTiles.Contains(Neighbour->getTileType()))
+					{
+						continue;
+					}
+
+					int32 newMovementCost = CurrentTile->getGCost() + getDistance(CurrentTile, Neighbour);
+					if(!bIgnoreWeigths)
+					{
+						newMovementCost += Neighbour->getMovementCost();
+					}
+
+					if(newMovementCost < Neighbour->getGCost() || !OpenSet.Contains(Neighbour))
+					{
+						Neighbour->GCost = newMovementCost;
+						Neighbour->HCost = getDistance(Neighbour, EndTile);
+
+						Neighbour->PathParent = CurrentTile;
+
+						OpenSet.Add(Neighbour);
+					}
+				}
+				
+			}
+
+			//MaxTries++;
+			if(MaxTries >= 500)
+			{
+				DebugError("Path took too long to find. Abort!");
+				return  TArray<UTileData*>();
+			}
+		}
+	}
+
+	return TArray<UTileData*>();
+}
+
+TArray<UTileData*> ATableWorldTable::RetracePath(UTileData* Start, UTileData* End)
+{
+	TArray<UTileData*> Path;
+	UTileData* Current = End;
+
+	if(Start && End)
+	{
+		while(Current != Start)
+		{
+			Path.Add(Current);
+			Current = Current->PathParent;
+		}
+	}
+	
+
+	return Path;
+}
+
+TArray<UTileData*> ATableWorldTable::GetNeighbours(UTileData* Node, bool bAllowDiag)
+{
+	TArray<UTileData*> Neighbours;
+	
+	if (Node)
+	{
+		if (bAllowDiag)
+		{
+			for (int32 x = -1; x <= 1; x++)
+			{
+				for (int32 y = -1; y <= 1; y++)
+				{
+					if (x == 0 && y == 0)
+					{
+						continue;
+					}
+
+					int32 CheckX = Node->getX() + x;
+					int32 CheckY = Node->getY() + y;
+
+					Neighbours.Add(getTile(CheckX, CheckY));
+				}
+			}
+
+			return Neighbours;
+		}
+		int32 X = Node->getX();
+		int32 Y = Node->getY();
+
+		Neighbours.Add(getTile(X - 1, Y));
+		Neighbours.Add(getTile(X + 1, Y));
+		Neighbours.Add(getTile(X, Y-1));
+		Neighbours.Add(getTile(X, Y+1));
+	}
+
+	return Neighbours;
+}
+
+int32 ATableWorldTable::getDistance(UTileData* TileA, UTileData* TileB)
+{
+	if (TileA && TileB) 
+	{
+		int32 DistX = FMath::Abs(TileA->getX() - TileB->getX());
+		int32 DistY = FMath::Abs(TileA->getY() - TileB->getY());
+
+		if(DistX > DistY)
+		{
+			return 14 * DistY + 10 * (DistX - DistY);
+		}else
+		{
+			return 14 * DistX + 10 * (DistY - DistX);
+		}
+	}
+
+	return 0;
 }

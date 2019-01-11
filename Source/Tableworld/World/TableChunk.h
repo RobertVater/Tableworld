@@ -67,4 +67,6 @@ protected:
 
 	UPROPERTY()
 	UTexture2D* ChunkTexture = nullptr;
+
+	void* TextureData = nullptr;
 };

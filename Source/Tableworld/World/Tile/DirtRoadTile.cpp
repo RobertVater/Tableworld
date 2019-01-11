@@ -6,3 +6,8 @@ ETileType UDirtRoadTile::getTileType()
 {
 	return ETileType::DirtRoad;
 }
+
+int32 UDirtRoadTile::getMovementCost()
+{
+	return 0;
+}

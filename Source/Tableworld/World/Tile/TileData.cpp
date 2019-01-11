@@ -53,15 +53,43 @@ void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 	TileObject = nTileObject;
 }
 
-void UTileData::AddRescource(ETileRescources Type, int32 Amount)
+void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount)
 {
+	RescourceIndex = Index;
 	TileRescource = Type;
 	RescourceCount = Amount;
+}
+
+void UTileData::GiveHarvester()
+{
+	bHasHarvester = true;
+}
+
+void UTileData::UpdateRescource(int32 Amount)
+{
+	if(TileRescource != ETileRescources::None)
+	{
+		RescourceCount = Amount;
+	}
+}
+
+void UTileData::ClearRescource()
+{
+	RescourceIndex = 0;
+	RescourceCount = 0;
+	TileRescource = ETileRescources::None;
+
+	bHasHarvester = false;
 }
 
 void UTileData::DebugHighlightTile(float Time /*= 10.0f*/)
 {
 	DrawDebugBox(ParentChunk->GetWorld(), getWorldCenter(), FVector(50, 50, 50), FColor::Blue, false, Time, 0, 5.0f);
+}
+
+int32 UTileData::getTileRescourceIndex()
+{
+	return RescourceIndex;
 }
 
 ETileRescources UTileData::getTileRescources()
@@ -129,6 +157,31 @@ ATableChunk* UTileData::getParentChunk()
 	return ParentChunk;
 }
 
+int32 UTileData::getFCost()
+{
+	return getGCost() + getHCost();
+}
+
+int32 UTileData::getHCost()
+{
+	return HCost;
+}
+
+int32 UTileData::getGCost()
+{
+	return GCost;
+}
+
+bool UTileData::IsBlocked()
+{
+	return !CanBuildOnTile();
+}
+
+int32 UTileData::getMovementCost()
+{
+	return 0;
+}
+
 bool UTileData::CanBuildOnTile()
 {
 	if (TileObject)return false;
@@ -140,4 +193,14 @@ bool UTileData::CanBuildOnTile()
 bool UTileData::HasRescource()
 {
 	return (getTileRescources() != ETileRescources::None);
+}
+
+bool UTileData::HasHarvester()
+{
+	return bHasHarvester;
+}
+
+bool UTileData::HasTileObject()
+{
+	return TileObject;
 }

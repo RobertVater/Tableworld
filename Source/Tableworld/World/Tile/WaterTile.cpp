@@ -11,3 +11,8 @@ float UWaterTile::getBaseHeigth()
 {
 	return -50.0f;
 }
+
+int32 UWaterTile::getMovementCost()
+{
+	return 10;
+}

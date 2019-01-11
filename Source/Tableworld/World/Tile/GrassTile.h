@@ -17,4 +17,5 @@ class TABLEWORLD_API UGrassTile : public UTileData
 public:
 
 	virtual ETileType getTileType() override;
+	virtual int32 getMovementCost() override;
 };

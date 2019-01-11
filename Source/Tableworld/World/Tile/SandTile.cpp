@@ -6,3 +6,8 @@ ETileType USandTile::getTileType()
 {
 	return ETileType::Sand;
 }
+
+int32 USandTile::getMovementCost()
+{
+	return 5;
+}

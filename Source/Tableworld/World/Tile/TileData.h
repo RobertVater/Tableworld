@@ -24,10 +24,15 @@ public:
 	void CopyTileData(UTileData* CopyTile);
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
-	void AddRescource(ETileRescources Type, int32 Amount);
+	void SetRescource(int32 Index, ETileRescources Type, int32 Amount);
+
+	void GiveHarvester();
+	void UpdateRescource(int32 Amount);
+	void ClearRescource();
 
 	void DebugHighlightTile(float Time = 10.0f);
 
+	int32 getTileRescourceIndex();
 	ETileRescources getTileRescources();
 	int32 getTileRescourceAmount();
 
@@ -46,11 +51,26 @@ public:
 	FVector getWorldCenter();
 	ATableChunk* getParentChunk();
 
+	int32 getFCost();
+	int32 getHCost();
+	int32 getGCost();
+	virtual bool IsBlocked();
+	virtual int32 getMovementCost();
+
 	bool CanBuildOnTile();
+
 	bool HasRescource();
+	bool HasHarvester();
+	bool HasTileObject();
+
+	//Pathfinding
+	int32 GCost = 0;
+	int32 HCost = 0;
+	UTileData* PathParent = nullptr;
 
 protected:
 	
+
 	//The building that is sitting on this tile
 	ABuildableTile* TileObject = nullptr;
 
@@ -67,6 +87,8 @@ protected:
 	int32 WorldX = 0;
 	int32 WorldY = 0;
 
+	bool bHasHarvester = false;
+	int32 RescourceIndex = 0;
 	ETileRescources TileRescource = ETileRescources::None;
 	int32 RescourceCount = 0;
 };

@@ -132,7 +132,7 @@ void ATableChunk::UpdateChunkTexture()
 			int32 TextureSize = ((ChunkSize * TilesInPixels));
 
 			FTexture2DMipMap& Mip = ChunkTexture->PlatformData->Mips[0];
-			void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
+			TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
 
 			TArray<FColor> Pixels;
 			Pixels.AddUninitialized(TextureSize*TextureSize);
@@ -163,23 +163,14 @@ void ATableChunk::UpdateChunkTexture()
 				}
 			}
 
-			DebugLog(FString::FromInt(Pixels.Num()) + " pixels!");
-
-			if (Pixels.Num() > 0)
-			{
-				FMemory::Memcpy(Data, Pixels.GetData(), (TextureSize * TextureSize * 4));
-				Pixels.Empty();
-			}
-			
+			FMemory::Memcpy(TextureData, Pixels.GetData(), (TextureSize * TextureSize * 4));
 			Mip.BulkData.Unlock();
-
-			if (Data) 
-			{
-				//delete[] Data;
-			}
-
 			ChunkTexture->UpdateResource();
+
 			DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
+
+			delete[] TextureData;
+			Pixels.Empty();
 		}
 	}
 }
@@ -305,20 +296,17 @@ int32 ATableChunk::getY()
 	return Y;
 }
 
-UTileData* ATableChunk::getTile(int32 X, int32 Y)
+UTileData* ATableChunk::getTile(int32 WorldX, int32 WorldY)
 {
 	if(Tiles.Num() > 0)
 	{
-		for(int32 i = 0; i < Tiles.Num(); i++)
+		int32 LocalX = WorldX - (getX() * ChunkSize);
+		int32 LocalY = WorldY - (getY() * ChunkSize);
+		
+		int32 Index = LocalY * ChunkSize + LocalX;
+		if(Tiles.IsValidIndex(Index))
 		{
-			UTileData* Tile = Tiles[i];
-			if(Tile)
-			{
-				if(Tile->getX() == X && Tile->getY() == Y)
-				{
-					return Tile;
-				}
-			}
+			return Tiles[Index];
 		}
 	}
 
