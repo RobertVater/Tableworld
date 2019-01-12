@@ -21,6 +21,9 @@ public:
 	FTableBuilding getBuilding(const FName& ID);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
+	FTableItem getItem(EItem Item);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
 	TArray<FTableBuilding> getBuildingsForAgeAndCategory(ETableAge Age, ETableTileCategory Category);
 
 };

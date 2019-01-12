@@ -25,6 +25,11 @@ void ATableGamemode::BeginPlay()
 	}
 }
 
+void ATableGamemode::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
+{
+	Event_FloatingItem.Broadcast(item, Amount, WorldLoc);
+}
+
 void ATableGamemode::SetCurrentAge(ETableAge nCurrentAge)
 {
 	CurrentAge = nCurrentAge;

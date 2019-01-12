@@ -184,7 +184,7 @@ int32 UTileData::getMovementCost()
 
 bool UTileData::CanBuildOnTile()
 {
-	if (TileObject)return false;
+	if (TileObject != nullptr)return false;
 	if (getTileRescources() != ETileRescources::None)return false;
 
 	return true;

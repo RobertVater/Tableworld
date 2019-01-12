@@ -4,6 +4,7 @@
 #include "World/TableWorldTable.h"
 #include "Creature/HarvesterCreature.h"
 #include "../TileData.h"
+#include "Core/TableGamemode.h"
 
 void AHarvesterTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData)
 {
@@ -19,7 +20,7 @@ void AHarvesterTile::StartWork()
 	//Try to find valid rescource tiles
 	if (getTable())
 	{
-		HarvestAbleTiles = getTable()->getRescourcesInRadius(getTileX(),getTileY(), SearchRangeInTiles, HarvestRescource );
+		HarvestAbleTiles = getTable()->getRescourcesInRadius(getTileX(),getTileY(), SearchRangeInTiles + (int32)(BuildingData.BuildingSize.X + BuildingData.BuildingSize.Y), HarvestRescource );
 
 		for (int32 i = 0; i < MaxHarvesterCreatureCount; i++) 
 		{
@@ -76,6 +77,38 @@ void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
 	if(Creature)
 	{
 		UpdateHarvestableTiles();
+
+		if(!bIsWorking)
+		{
+			//This building isnt active. Destroy the worker
+			Creature->Destroy();
+			return;
+		}
+
+		if(Creature->hasHarvested())
+		{
+			if (CurrentInventory < InventorySize)
+			{
+				//Add a item to the inventory
+				CurrentInventory++;
+
+				if(getGamemode())
+				{
+					getGamemode()->AddFloatingItem(ProducedItems, 1, GetActorLocation());
+				}
+
+			}else
+			{
+				Creature->Destroy();
+				Workers.Empty();
+				
+				//If the inventory is full stop working
+				StopWork();
+				return;
+			}
+
+			Creature->ResetHasHarvested();
+		}
 
 		//If the worker has no valid tile anymore try to give it a new one
 		if(!Creature->HasTileStillRescources())
@@ -135,4 +168,14 @@ UTileData* AHarvesterTile::getNextHarvestTile()
 	}
 
 	return nullptr;
+}
+
+int32 AHarvesterTile::getBuildGridRadius()
+{
+	if(BuildingData.ID != NAME_None)
+	{
+		return SearchRangeInTiles + (int32)(BuildingData.BuildingSize.X + BuildingData.BuildingSize.Y);
+	}
+
+	return Super::getBuildGridRadius();
 }

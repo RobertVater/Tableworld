@@ -14,6 +14,8 @@ class ATablePlayerController;
 class USpringArmComponent;
 class UCameraComponent;
 
+class UMaterialExpressionCollectionParameter;
+
 UCLASS()
 class TABLEWORLD_API ATablePlayerPawn : public APawn
 {
@@ -31,10 +33,22 @@ public:
 	UCameraComponent* Camera = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
+	UMaterialParameterCollection* GlobalMaterialVariables = nullptr;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
+	float ZoomSpeed = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
 	float MinZoom = 250.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
 	float MaxZoom = 2000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
+	float MinPitch = 75.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
+	float MaxPitch = 89.0f;
 
 	ATablePlayerPawn();
 
@@ -69,6 +83,7 @@ public:
 	ATableGamemode* getGamemode();
 	ATablePlayerController* getPlayerController();
 
+	FVector2D getScreenMouseLocation();
 	FVector getMouseWorldLocation();
 	FVector getMouseWorldLocationGrid();
 
@@ -95,10 +110,17 @@ protected:
 	ATableGamemode* GM = nullptr;
 	ATablePlayerController* PC = nullptr;
 
-	float ZoomAlpha = 0.0f;
+	float ZoomLerpGoal = 1.0f;
+	float ZoomAlpha = 1.0f;
 
 	//Camera Rotation
 	FVector2D CamRotStart,CamRotDif,CamRotEnd;
 	bool bRotateCamera = false;
+
+	//Camera Drag
+	bool bDraggingCamera = false;
+	FVector2D CameraDragStart;
+	FVector2D CameraDragDif;
+	FVector2D CameraDragEnd;
 
 };

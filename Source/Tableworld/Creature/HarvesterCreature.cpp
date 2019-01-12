@@ -38,7 +38,7 @@ void AHarvesterCreature::GiveReturnJob()
 			for (int32 i = 0; i < TilesAroundBuilding.Num(); i++)
 			{
 				UTileData* Tile = TilesAroundBuilding[i];
-				if (Tile)
+				if (Tile != nullptr)
 				{
 					if (!Tile->IsBlocked())
 					{
@@ -61,6 +61,9 @@ void AHarvesterCreature::GiveReturnJob()
 
 			if(!BestTile)
 			{
+				HomeTile.X = getHarvesterTile()->getTileX();
+				HomeTile.Y = getHarvesterTile()->getTileY();
+
 				//We cannot find a way home. Just return to the home tile
 				SimpleMoveTo(FVector(getHarvesterTile()->getTileX() * 100 + 50, getHarvesterTile()->getTileY() * 100 + 50, 0));
 			}else
@@ -116,6 +119,11 @@ void AHarvesterCreature::OnMoveCompleted()
 	}
 }
 
+void AHarvesterCreature::ResetHasHarvested()
+{
+	bHasHarvested = false;
+}
+
 void AHarvesterCreature::StartHarvesting()
 {
 	if(!HasTileStillRescources())
@@ -144,7 +152,8 @@ void AHarvesterCreature::StartHarvesting()
 
 		if(getHarvesterTile())
 		{
-			GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, getHarvesterTile()->HarvestTime, false);
+			float HarvestTime = FMath::RandRange(getHarvesterTile()->HarvestTime / 2.0f, getHarvesterTile()->HarvestTime);
+			GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, HarvestTime, false);
 		}
 	}
 }
@@ -158,7 +167,8 @@ void AHarvesterCreature::OnHarvest()
 			if(getGamemode()->getTable())
 			{
 				//Harvest the tile
-				bool bDestroyed = getGamemode()->getTable()->HarvestRescource(getHarvestTile(), 50);
+				bool bDestroyed = getGamemode()->getTable()->HarvestRescource(getHarvestTile(), 1);
+				bHasHarvested = true;
 			}
 		}
 
@@ -188,4 +198,9 @@ bool AHarvesterCreature::HasTileStillRescources()
 	}
 
 	return false;
+}
+
+bool AHarvesterCreature::hasHarvested()
+{
+	return bHasHarvested;
 }

@@ -36,7 +36,7 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void SetIsGhost();
+	virtual void SetIsGhost(FTableBuilding nBuildingData);
 	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData);
 
 	virtual void SetIsBlocked(bool bBlocked);
@@ -53,6 +53,9 @@ public:
 
 	int32 getTileX();
 	int32 getTileY();
+	FVector getWorldCenter();
+
+	virtual int32 getBuildGridRadius();
 
 	TArray<UTileData*> getTilesAroundUs();
 

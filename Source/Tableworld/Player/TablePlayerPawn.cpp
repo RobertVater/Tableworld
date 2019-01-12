@@ -13,6 +13,7 @@
 #include "World/Tile/TileData.h"
 #include "World/TableChunk.h"
 #include "World/Tile/Building/BuildableTile.h"
+#include "Kismet/KismetMaterialLibrary.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -35,11 +36,30 @@ void ATablePlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	ZoomLerpGoal = ZoomAlpha;
+	AdjustZoom();
 }
 
 void ATablePlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	//Smoothly zoom to the target ZoomLevel
+	ZoomAlpha = FMath::Lerp(ZoomAlpha, ZoomLerpGoal, ZoomSpeed*DeltaTime);
+	AdjustZoom();
+
+	//Camera Drag
+	if(bDraggingCamera)
+	{
+		float DragStrength = FMath::Lerp(1.0f, 2.5f, ZoomAlpha);
+
+		CameraDragEnd = getScreenMouseLocation();
+		CameraDragDif = (CameraDragStart - CameraDragEnd) * DragStrength;
+
+		AddActorWorldOffset(FVector(CameraDragDif.X, CameraDragDif.Y, 0));
+
+		CameraDragStart = CameraDragEnd;
+	}
 
 	//Get the currently selected tile
 	bool bCanGetNewHoverTile = true;
@@ -82,6 +102,11 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 			TileActor->SetActorLocation(getBuildingBuildLocation(SelectedTile));
 
 			TileActor->SetIsBlocked(CanBuild(CurrentBuilding.BuildingSize, SelectedTile));
+
+			if (GlobalMaterialVariables)
+			{
+				UKismetMaterialLibrary::SetVectorParameterValue(this, GlobalMaterialVariables, "GridOrigin", TileActor->getWorldCenter());
+			}
 
 			if(bIsDragBuilding)
 			{
@@ -151,14 +176,30 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 	{
 		TileActor->Destroy();
 		TileActor = nullptr;
+
+		if (GlobalMaterialVariables)
+		{
+			UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "bShowGrid", 0.0f);
+		}
 	}
 	
 	if (Building.ID != NAME_None)
 	{
+
 		TileActor = GetWorld()->SpawnActor<ABuildableTile>(CurrentBuilding.TileClass, FVector::ZeroVector, FRotator::ZeroRotator);
 		if (TileActor)
 		{
-			TileActor->SetIsGhost();
+			TileActor->SetIsGhost(Building);
+
+			if(GlobalMaterialVariables)
+			{
+				UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "bShowGrid", (TileActor->getBuildGridRadius() <= 0) ? 0 : 1 );
+			}
+
+			if (GlobalMaterialVariables)
+			{
+				UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "Tiles", TileActor->getBuildGridRadius());
+			}
 		}
 	}
 }
@@ -212,18 +253,36 @@ void ATablePlayerPawn::Input_LeftMouse_Released()
 
 void ATablePlayerPawn::Input_MiddleMouse_Pressed()
 {
+	//Drag movement
+	if(!bDraggingCamera)
+	{
+		if (getPlayerController()) 
+		{
+			bDraggingCamera = true;
 
+			CameraDragStart = getScreenMouseLocation();
+			CameraDragEnd = getScreenMouseLocation();
+			CameraDragDif = FVector2D::ZeroVector;
+		}
+	}
 }
 
 void ATablePlayerPawn::Input_MiddleMouse_Released()
 {
+	bDraggingCamera = false;
 
+	CameraDragStart = FVector2D::ZeroVector;
+	CameraDragEnd = FVector2D::ZeroVector;
+	CameraDragDif = FVector2D::ZeroVector;
 }
 
 void ATablePlayerPawn::Input_RightMouse_Pressed()
 {
 	if(TileActor)
 	{
+		bIsDragBuilding = false;
+		DragTiles.Num();
+
 		SetCurrentBuilding(FTableBuilding());
 	}
 }
@@ -235,19 +294,14 @@ void ATablePlayerPawn::Input_RightMouse_Released()
 
 void ATablePlayerPawn::Input_ZoomIn()
 {
-	ZoomAlpha -= 10 * GetWorld()->GetDeltaSeconds();
-	ZoomAlpha = FMath::Clamp(ZoomAlpha, 0.0f, 1.0f);
-
-	DebugWarning("ZoomAlpha: " + FString::SanitizeFloat(ZoomAlpha));
-	AdjustZoom();
+	ZoomLerpGoal -= 10 * GetWorld()->GetDeltaSeconds();
+	ZoomLerpGoal = FMath::Clamp(ZoomLerpGoal, 0.0f, 1.0f);
 }
 
 void ATablePlayerPawn::Input_ZoomOut()
 {
-	ZoomAlpha += 10 * GetWorld()->GetDeltaSeconds();
-	ZoomAlpha = FMath::Clamp(ZoomAlpha, 0.0f, 1.0f);
-
-	AdjustZoom();
+	ZoomLerpGoal += 10 * GetWorld()->GetDeltaSeconds();
+	ZoomLerpGoal = FMath::Clamp(ZoomLerpGoal, 0.0f, 1.0f);
 }
 
 void ATablePlayerPawn::Input_Forward(float v)
@@ -340,9 +394,11 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 void ATablePlayerPawn::AdjustZoom()
 {
 	float NewZoom = FMath::Lerp(MinZoom, MaxZoom, ZoomAlpha);
-
-	DebugWarning("Zoom: " + FString::SanitizeFloat(NewZoom));
 	SpringArm->TargetArmLength = NewZoom;
+
+	float NewPitch = FMath::Lerp(MinPitch, MaxPitch, ZoomAlpha);
+	FRotator Rot = SpringArm->RelativeRotation;
+	SpringArm->SetRelativeRotation(FRotator(-NewPitch, Rot.Yaw, 0));
 }
 
 bool ATablePlayerPawn::HasValidBuildableTile()
@@ -423,6 +479,19 @@ ATablePlayerController* ATablePlayerPawn::getPlayerController()
 	}
 
 	return PC;
+}
+
+FVector2D ATablePlayerPawn::getScreenMouseLocation()
+{
+	if (getPlayerController())
+	{
+		float X, Y;
+		getPlayerController()->GetMousePosition(X, Y);
+
+		return FVector2D(X, Y);
+	}
+
+	return FVector2D::ZeroVector;
 }
 
 FVector ATablePlayerPawn::getMouseWorldLocation()

@@ -38,8 +38,10 @@ void ABuildableTile::Tick(float DeltaTime)
 
 }
 
-void ABuildableTile::SetIsGhost()
+void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
 {
+	BuildingData = nBuildingData;
+
 	bIsGhost = true;
 
 	TileMesh->SetMaterial(0, GhostMaterial);
@@ -186,6 +188,24 @@ int32 ABuildableTile::getTileX()
 int32 ABuildableTile::getTileY()
 {
 	return TileY;
+}
+
+FVector ABuildableTile::getWorldCenter()
+{
+	FVector Loc = GetActorLocation();
+
+	if(BuildingData.ID != NAME_None)
+	{
+		Loc.X = ((getTileX() + BuildingData.BuildingSize.X) * 100) + 50;
+		Loc.Y = ((getTileY() + BuildingData.BuildingSize.Y) * 100) + 50;
+	}
+
+	return Loc;
+}
+
+int32 ABuildableTile::getBuildGridRadius()
+{
+	return 0;
 }
 
 TArray<UTileData*> ABuildableTile::getTilesAroundUs()

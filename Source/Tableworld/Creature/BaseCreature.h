@@ -15,6 +15,10 @@ class TABLEWORLD_API ABaseCreature : public AActor
 	GENERATED_BODY()
 	
 public:	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
+	float MovementSpeed = 100;
+
 	ABaseCreature();
 
 	virtual void BeginPlay() override;

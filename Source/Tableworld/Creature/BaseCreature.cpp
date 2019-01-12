@@ -37,7 +37,7 @@ void ABaseCreature::Tick(float DeltaTime)
 		Dir.Normalize();
 
 		FVector CurrentLoc = GetActorLocation();
-		CurrentLoc += Dir * (750 * DeltaTime);
+		CurrentLoc += Dir * (MovementSpeed * DeltaTime);
 
 		SetActorLocation(CurrentLoc);
 

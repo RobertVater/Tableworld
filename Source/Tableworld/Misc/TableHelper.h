@@ -26,6 +26,31 @@ enum class ETileType : uint8
 };
 
 UENUM(BlueprintType)
+enum class EItem : uint8
+{
+	None,
+	WoodLog,
+	WoodPlank,
+	Fish,
+	Charcoal,
+	Clay,
+	ClayBrick,
+	IronOre,
+	IronBar,
+	CooperOre,
+	CopperBar,
+	BronzeBar,
+	Steel,
+	Coal,
+	Thatch,
+	Berries,
+	Apples,
+	DeerMeat,
+	DeerCorpse,
+	Max
+};
+
+UENUM(BlueprintType)
 enum class ETileRescources : uint8
 {
 	None,
@@ -73,6 +98,21 @@ struct FTilePixels
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TilePixels")
 	TArray<FColor> Pixels;
+};
+
+USTRUCT(BlueprintType)
+struct FTableItem : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	EItem ItemEnum = EItem::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	FText ItemName = FText::AsCultureInvariant("NAME IS MISSING");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	UTexture2D* ItemIcon;
 };
 
 USTRUCT(BlueprintType)

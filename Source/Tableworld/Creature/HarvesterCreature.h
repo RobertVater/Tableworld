@@ -22,6 +22,7 @@ public:
 	void GiveReturnJob();
 
 	virtual void OnMoveCompleted() override;
+	void ResetHasHarvested();
 
 	//Harvesting
 	void StartHarvesting();
@@ -30,11 +31,15 @@ public:
 	AHarvesterTile* getHarvesterTile();
 	UTileData* getHarvestTile();
 	bool HasTileStillRescources();
+	bool hasHarvested();
 
 protected:
 
 	FTimerHandle HarvestTimer;
 
+	bool bHasHarvested = false;
 	AHarvesterTile* HarvesterBuilding = nullptr;
+
 	UTileData* HarvestTile = nullptr;
+	UTileData* ReturnTile = nullptr;
 };

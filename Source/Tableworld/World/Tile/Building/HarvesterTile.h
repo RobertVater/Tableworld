@@ -19,6 +19,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	ETileRescources HarvestRescource = ETileRescources::None;
 
+	//The item this harvester produces
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
+	EItem ProducedItems;
+
 	//The time it takes for a Harvester to harvest 1 rescource
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	float HarvestTime = 1.0f;
@@ -51,6 +55,8 @@ public:
 	void UpdateHarvestableTiles();
 	UTileData* getNextHarvestTile();
 
+	virtual int32 getBuildGridRadius() override;
+
 protected:
 
 	//A Array containing all HarvesterCreatures that got created by this actor
@@ -58,4 +64,7 @@ protected:
 
 	//A Array containing all tiles this harvester can harvest
 	TArray<UTileData*> HarvestAbleTiles;
+
+	//How many items this harvester has stored
+	int32 CurrentInventory = 0;
 };

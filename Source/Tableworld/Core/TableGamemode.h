@@ -14,6 +14,8 @@ class ATablePlayerPawn;
 class UTileData;
 class ATableChunk;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHudFloatingItem, EItem, Item, int32, Amount, FVector, WorldLocation);
+
 UCLASS()
 class TABLEWORLD_API ATableGamemode : public AGameModeBase
 {
@@ -28,6 +30,8 @@ public:
 	int32 StartFunds = 9000;
 
 	virtual void BeginPlay() override;
+
+	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
 
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	virtual void SetCurrentAge(ETableAge mCurrentAge);
@@ -62,6 +66,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FTableBuilding getSelectedBuilding();
 
+	//Events
+
+	UPROPERTY()
+	FHudFloatingItem Event_FloatingItem;
 
 protected:
 

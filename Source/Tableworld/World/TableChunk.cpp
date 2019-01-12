@@ -121,7 +121,7 @@ void ATableChunk::GenerateChunkMesh()
 
 void ATableChunk::UpdateChunkTexture()
 {
-	if (ChunkTexture) 
+	if (ChunkTexture)
 	{
 		if (DynamicMaterial)
 		{
@@ -131,8 +131,6 @@ void ATableChunk::UpdateChunkTexture()
 			int32 Resolution = 1;
 			int32 TextureSize = ((ChunkSize * TilesInPixels));
 
-			FTexture2DMipMap& Mip = ChunkTexture->PlatformData->Mips[0];
-			TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
 
 			TArray<FColor> Pixels;
 			Pixels.AddUninitialized(TextureSize*TextureSize);
@@ -163,13 +161,16 @@ void ATableChunk::UpdateChunkTexture()
 				}
 			}
 
-			FMemory::Memcpy(TextureData, Pixels.GetData(), (TextureSize * TextureSize * 4));
+			FTexture2DMipMap& Mip = ChunkTexture->PlatformData->Mips[0];
+			Mip.BulkData.Lock(LOCK_READ_WRITE);
+
+			uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
+			FMemory::Memcpy(TextureData, Pixels.GetData(), sizeof(uint8) * (TextureSize * TextureSize * 4));
 			Mip.BulkData.Unlock();
 			ChunkTexture->UpdateResource();
 
 			DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
 
-			delete[] TextureData;
 			Pixels.Empty();
 		}
 	}

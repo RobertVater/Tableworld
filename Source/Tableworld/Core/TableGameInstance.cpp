@@ -12,3 +12,8 @@ TArray<FTableBuilding> UTableGameInstance::getBuildingsForAgeAndCategory_Impleme
 {
 	return TArray<FTableBuilding>();
 }
+
+FTableItem UTableGameInstance::getItem_Implementation(EItem Item)
+{
+	return FTableItem();
+}
