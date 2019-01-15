@@ -37,6 +37,7 @@ void AHarvesterTile::TryCreateCreature()
 	//Check if we have a creature slot avaiable
 	if(Workers.Num() < MaxHarvesterCreatureCount)
 	{
+		DebugError("Created New Creature! (" + FString::FromInt(Workers.Num()) + " / " + FString::FromInt(MaxHarvesterCreatureCount) + ")");
 		if (HarvestAbleTiles.Num() > 0) 
 		{
 			AHarvesterCreature* NewWorker = SpawnCreature();
@@ -72,6 +73,14 @@ AHarvesterCreature* AHarvesterTile::SpawnCreature()
 	return nullptr;
 }
 
+void AHarvesterTile::TransferInventory(AHaulerCreature* Hauler)
+{
+	Super::TransferInventory(Hauler);
+
+	//Resume work
+	StartWork();
+}
+
 void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
 {
 	if(Creature)
@@ -81,6 +90,7 @@ void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
 		if(!bIsWorking)
 		{
 			//This building isnt active. Destroy the worker
+			Workers.Remove(Creature);
 			Creature->Destroy();
 			return;
 		}
@@ -97,10 +107,12 @@ void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
 					getGamemode()->AddFloatingItem(ProducedItems, 1, GetActorLocation());
 				}
 
+				DebugWarning("+1 Inventory " + FString::FromInt(getStoredItemCount()));
+
 			}else
 			{
+				Workers.Remove(Creature);
 				Creature->Destroy();
-				Workers.Empty();
 				
 				//If the inventory is full stop working
 				StopWork();
@@ -131,8 +143,6 @@ void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
 			}
 		}
 
-		DebugWarning("Return Worker");
-
 		//Just let the creature return to his rescource
 		Creature->GiveHarvestJob(Creature->getHarvestTile());
 	}
@@ -155,6 +165,7 @@ void AHarvesterTile::UpdateHarvestableTiles()
 
 UTileData* AHarvesterTile::getNextHarvestTile()
 {
+	UTileData* BestTile = nullptr;
 	for(int32 i = 0; i < HarvestAbleTiles.Num(); i++)
 	{
 		UTileData* Tile = HarvestAbleTiles[i];
@@ -162,12 +173,24 @@ UTileData* AHarvesterTile::getNextHarvestTile()
 		{
 			if(!Tile->HasHarvester())
 			{
-				return Tile;
+				if(!BestTile)
+				{
+					BestTile = Tile;
+					continue;
+				}
+				
+				int32 OldDistance = getGamemode()->getTable()->getDistance(getTileX(), getTileY(), BestTile->getX(), BestTile->getY());
+				int32 Distance = getGamemode()->getTable()->getDistance(getTileX(), getTileY(), Tile->getX(), Tile->getY());
+
+				if(Distance < OldDistance)
+				{
+					BestTile = Tile;
+				}
 			}
 		}
 	}
 
-	return nullptr;
+	return BestTile;
 }
 
 int32 AHarvesterTile::getBuildGridRadius()
@@ -178,4 +201,9 @@ int32 AHarvesterTile::getBuildGridRadius()
 	}
 
 	return Super::getBuildGridRadius();
+}
+
+EItem AHarvesterTile::getItemType()
+{
+	return ProducedItems;
 }

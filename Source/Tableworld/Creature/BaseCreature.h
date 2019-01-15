@@ -26,6 +26,11 @@ public:
 
 	virtual void SimpleMoveTo(FVector TargetLocation, float nMinDistance = 50.0f);
 
+	virtual void PathMoveTo(UTileData* TargetTile, float nMinDistance = 50.0f);
+	virtual void RoadMoveTo(UTileData* TargetTile, float nMinDistance = 50.0f);
+	virtual void RetracePath();
+
+
 	virtual void OnMoveCompleted();
 
 	ATableGamemode* getGamemode();
@@ -38,6 +43,9 @@ protected:
 	float MinDistance = 0.0f;
 	int32 CurrentPathIndex = 0;
 	TArray<FVector> PathPoints;
+
+	//The last path we calculated
+	TArray<UTileData*> LastCalculatedPath;
 
 	FVector2D HomeTile;
 };

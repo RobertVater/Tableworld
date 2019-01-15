@@ -3,6 +3,10 @@
 #include "BaseCreature.h"
 #include "Kismet/GameplayStatics.h"
 #include "Core/TableGamemode.h"
+#include "World/TableWorldTable.h"
+#include "World/Tile/TileData.h"
+#include "DrawDebugHelpers.h"
+#include "HeapSort.h"
 
 ABaseCreature::ABaseCreature()
 {
@@ -22,6 +26,11 @@ void ABaseCreature::Tick(float DeltaTime)
 
 	if(PathPoints.Num() > 0)
 	{
+		for(int32 i = 0; i < PathPoints.Num(); i++)
+		{
+			DrawDebugString(GetWorld(), PathPoints[i], FString::FromInt(i), NULL, FColor::Cyan, 0, true);
+		}
+		
 		if(!PathPoints.IsValidIndex(CurrentPathIndex))
 		{
 			PathPoints.Empty();
@@ -36,12 +45,18 @@ void ABaseCreature::Tick(float DeltaTime)
 		FVector Dir = -(GetActorLocation() - CurrentMoveTarget);
 		Dir.Normalize();
 
+		DrawDebugLine(GetWorld(), GetActorLocation(), CurrentMoveTarget, FColor::Green, false, 0, 0, 2.0f);
+		DrawDebugPoint(GetWorld(), CurrentMoveTarget, 10.0f, FColor::Red, false, 0, 0);
+		DrawDebugString(GetWorld(), CurrentMoveTarget, FString::FromInt(CurrentPathIndex), NULL, FColor::White, 0, true);
+
 		FVector CurrentLoc = GetActorLocation();
 		CurrentLoc += Dir * (MovementSpeed * DeltaTime);
 
 		SetActorLocation(CurrentLoc);
+		float Dist = (GetActorLocation() - CurrentMoveTarget).Size2D();
+		DrawDebugString(GetWorld(), GetActorLocation(), FString::SanitizeFloat(Dist), NULL, FColor::White, 0, true);
 
-		if(GetActorLocation().Equals(CurrentMoveTarget, MinDistance))
+		if(Dist <= MinDistance)
 		{
 			CurrentPathIndex++;
 			return;
@@ -51,12 +66,83 @@ void ABaseCreature::Tick(float DeltaTime)
 
 void ABaseCreature::SimpleMoveTo(FVector TargetLocation, float nMinDistance /*= 50.0f*/)
 {
-	CurrentPathIndex = 0,
+	CurrentPathIndex = 0;
 	
 	PathPoints.Empty();
 	PathPoints.Add(TargetLocation);
 
 	MinDistance = nMinDistance;
+}
+
+void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.0f*/)
+{
+	if (TargetTile) 
+	{
+		if (getGamemode()) 
+		{
+			if (getGamemode()->getTable()) 
+			{
+				CurrentPathIndex = 0;
+				MinDistance = nMinDistance;
+				PathPoints.Empty();
+
+				LastCalculatedPath = getGamemode()->getTable()->FindPath(FVector2D(getStandingTile()->getX(), getStandingTile()->getY()), FVector2D(TargetTile->getX(), TargetTile->getY()), TArray<ETileType>());
+				for(int32 i = LastCalculatedPath.Num()-1; i > 0; i--)
+				{
+					UTileData* Tile = LastCalculatedPath[i];
+					if(Tile)
+					{
+						PathPoints.Add(Tile->getWorldCenter());
+					}
+				}
+			}
+		}
+	}
+}
+
+void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.0f*/)
+{
+	if (TargetTile)
+	{
+		if (getGamemode())
+		{
+			if (getGamemode()->getTable())
+			{
+				CurrentPathIndex = 0;
+				MinDistance = nMinDistance;
+				PathPoints.Empty();
+
+				LastCalculatedPath = getGamemode()->getTable()->FindPathRoad(getStandingTile(), TargetTile, false);
+				for (int32 i = 0; i < LastCalculatedPath.Num(); i++)
+				{
+					UTileData* Tile = LastCalculatedPath[i];
+					if (Tile)
+					{
+						PathPoints.Add(Tile->getWorldCenter());
+					}
+				}
+			}
+		}
+	}
+}
+
+void ABaseCreature::RetracePath()
+{
+	CurrentPathIndex = 0;
+	MinDistance = 50.0f;
+	PathPoints.Empty();
+
+	TArray<UTileData*> ReversePath = LastCalculatedPath;
+	Algo::Reverse(ReversePath);
+
+	for (int32 i = 0; i < ReversePath.Num(); i++)
+	{
+		UTileData* Tile = ReversePath[i];
+		if (Tile)
+		{
+			PathPoints.Add(Tile->getWorldCenter());
+		}
+	}
 }
 
 void ABaseCreature::OnMoveCompleted()

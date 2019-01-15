@@ -16,6 +16,11 @@ class TABLEWORLD_API UMainHud : public UUserWidget
 
 public:
 
+	virtual void NativeConstruct() override;
+
 	UFUNCTION(BlueprintCallable,BlueprintNativeEvent,Category = "Building")
 	void BuildBuildableTiles();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Building")
+	void UpdateRescourceUI();
 };

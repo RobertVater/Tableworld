@@ -14,6 +14,7 @@
 #include "World/TableChunk.h"
 #include "World/Tile/Building/BuildableTile.h"
 #include "Kismet/KismetMaterialLibrary.h"
+#include "World/Tile/Building/CityCentreTile.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -90,9 +91,6 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 	if(SelectedTile)
 	{
 		DrawDebugBox(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50, 0), FVector(50, 50, 10), FColor::Red, false, 0, 0, 2.0f);
-
-		DrawDebugString(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50, 0), FString::FromInt((uint8)SelectedTile->getTileType()), NULL, FColor::White, 0, true);
-		DrawDebugString(GetWorld(), FVector(SelectedTile->getWorldX() + 50, SelectedTile->getWorldY() + 50 + 20, 0), FString::FromInt((uint8)SelectedTile->getTileRescources()), NULL, FColor::White, 0, true);
 	}
 
 	if(HasValidBuildableTile())
@@ -105,7 +103,7 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 
 			if (GlobalMaterialVariables)
 			{
-				UKismetMaterialLibrary::SetVectorParameterValue(this, GlobalMaterialVariables, "GridOrigin", TileActor->getWorldCenter());
+				UKismetMaterialLibrary::SetVectorParameterValue(this, GlobalMaterialVariables, "GridOrigin", TileActor->GetActorLocation());
 			}
 
 			if(bIsDragBuilding)
@@ -120,19 +118,17 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 					{
 						if(getGamemode()->getTable())
 						{
-							TArray<UTileData*> PathTile = getGamemode()->getTable()->FindPath(StartDragTile, EndDragTile, CurrentBuilding.BlockedTiles, false, false);
-							//Add the starttile
-							UTileData* StartTile = getGamemode()->getTile((int32)StartDragTile.X, (int32)StartDragTile.Y);
-							PathTile.Add(StartTile);
-
-							for(int32 i = 0; i < PathTile.Num(); i++)
+							TArray<UTileData*> Path = getGamemode()->getTable()->FindPath(StartDragTile, DragTileLocation, CurrentBuilding.BlockedTiles, false, false);
+							for(int32 i = 0; i < Path.Num(); i++)
 							{
-								UTileData* Tile = PathTile[i];
-								if(Tile)
+								UTileData* Tile = Path[i];
+								if (Tile) 
 								{
-									DragTiles.Add(FVector2D(Tile->getX(), Tile->getY()));
+									DragTiles.Add(Tile->getPositionAsVector());
 								}
 							}
+
+							DebugWarning("Rebuild Road! " + FString::FromInt(DragTiles.Num()));
 						}
 					}
 				}
@@ -185,7 +181,6 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 	
 	if (Building.ID != NAME_None)
 	{
-
 		TileActor = GetWorld()->SpawnActor<ABuildableTile>(CurrentBuilding.TileClass, FVector::ZeroVector, FRotator::ZeroRotator);
 		if (TileActor)
 		{
@@ -381,6 +376,13 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 						}
 
 						PlacedTile->Place(PlacedOnTiles, Data);
+						if(getGamemode())
+						{
+							if(getGamemode()->getTable())
+							{
+								getGamemode()->getTable()->AddBuilding(PlacedTile);
+							}
+						}
 
 						//Select the same building again
 						SetCurrentBuilding(CurrentBuilding);
@@ -418,6 +420,37 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 {
 	if(HasValidBuildableTile())
 	{
+		//Check if the building is inside a building influence
+		if(CurrentBuilding.bNeedsInfluence)
+		{
+			if(getGamemode())
+			{
+				if(getGamemode()->getTable())
+				{
+					bool bCanBuild = false;
+
+					TArray<ACityCentreTile*> CityCentre = getGamemode()->getTable()->getCityCentres();
+					for(int32 i = 0; i < CityCentre.Num(); i++)
+					{
+						ACityCentreTile* City = CityCentre[i];
+						if(City)
+						{
+							if(City->InInfluenceRange(PlaceTile->getX(),PlaceTile->getY(), BuildingSize))
+							{
+								bCanBuild = true;
+								break;
+							}
+						}
+					}
+
+					if(!bCanBuild)
+					{
+						return false;
+					}
+				}
+			}
+		}
+		
 		if(BuildingSize <= FVector2D(1,1))
 		{
 			if (!CurrentBuilding.BlockedTiles.Contains(PlaceTile->getTileType()))

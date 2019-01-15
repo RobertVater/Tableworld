@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BuildableTile.h"
+#include "InventoryTile.h"
 #include "HarvesterTile.generated.h"
 
 class AHarvesterCreature;
 
 UCLASS()
-class TABLEWORLD_API AHarvesterTile : public ABuildableTile
+class TABLEWORLD_API AHarvesterTile : public AInventoryTile
 {
 	GENERATED_BODY()
 	
@@ -26,10 +26,6 @@ public:
 	//The time it takes for a Harvester to harvest 1 rescource
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	float HarvestTime = 1.0f;
-
-	//The Inventory size of the harvester
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
-	int32 InventorySize = 5;
 
 	//The searcharea of the upper left tile
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
@@ -49,13 +45,19 @@ public:
 	virtual void TryCreateCreature();
 	virtual AHarvesterCreature* SpawnCreature();
 
+	virtual void TransferInventory(AHaulerCreature* Hauler) override;
+
 	virtual void OnWorkerReturn(AHarvesterCreature* Worker);
 
 	//Iterates through all harvestable tiles and removes tiles that have no rescources left
 	void UpdateHarvestableTiles();
+
+	//Get the nearest valid Harvest tile
 	UTileData* getNextHarvestTile();
 
 	virtual int32 getBuildGridRadius() override;
+	virtual EItem getItemType() override;
+
 
 protected:
 
@@ -64,7 +66,4 @@ protected:
 
 	//A Array containing all tiles this harvester can harvest
 	TArray<UTileData*> HarvestAbleTiles;
-
-	//How many items this harvester has stored
-	int32 CurrentInventory = 0;
 };

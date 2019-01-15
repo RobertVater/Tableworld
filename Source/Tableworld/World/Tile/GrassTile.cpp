@@ -9,5 +9,5 @@ ETileType UGrassTile::getTileType()
 
 int32 UGrassTile::getMovementCost()
 {
-	return 3;
+	return 10;
 }

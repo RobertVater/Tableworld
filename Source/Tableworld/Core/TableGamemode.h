@@ -15,6 +15,7 @@ class UTileData;
 class ATableChunk;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHudFloatingItem, EItem, Item, int32, Amount, FVector, WorldLocation);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStoredItemsUpdated);
 
 UCLASS()
 class TABLEWORLD_API ATableGamemode : public AGameModeBase
@@ -32,6 +33,8 @@ public:
 	virtual void BeginPlay() override;
 
 	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
+
+	void ModifyRescource(EItem Item, int32 AddAmount);
 
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	virtual void SetCurrentAge(ETableAge mCurrentAge);
@@ -66,10 +69,22 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FTableBuilding getSelectedBuilding();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	bool OwnNeededItems(TArray<FNeededItems> Items);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	TMap<EItem, int32> getStoredItems();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	int32 getStoredItemAmount(EItem Item, bool& bFound);
+
 	//Events
 
 	UPROPERTY()
 	FHudFloatingItem Event_FloatingItem;
+
+	UPROPERTY()
+	FStoredItemsUpdated Event_StoredItemsUpdated;
 
 protected:
 
@@ -84,4 +99,6 @@ protected:
 
 	ETableAge CurrentAge = ETableAge::StoneAge;
 	int32 CurrentFunds = StartFunds;
+
+	TMap<EItem, int32> StoredRescources;
 };

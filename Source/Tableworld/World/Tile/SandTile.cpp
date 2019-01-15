@@ -9,5 +9,5 @@ ETileType USandTile::getTileType()
 
 int32 USandTile::getMovementCost()
 {
-	return 5;
+	return 15;
 }

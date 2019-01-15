@@ -9,5 +9,5 @@ ETileType URockTile::getTileType()
 
 int32 URockTile::getMovementCost()
 {
-	return 7;
+	return 40;
 }

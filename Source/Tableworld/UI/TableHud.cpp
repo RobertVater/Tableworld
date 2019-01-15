@@ -44,7 +44,7 @@ void ATableHud::DrawHUD()
 			FVector2D ScreenLoc;
 			Con->ProjectWorldLocationToScreen(Item.WorldLoc, ScreenLoc, false);
 
-			if(Item.Icon)
+			if(Item.Icon != nullptr)
 			{
 				float Scale = 1.5f;
 				float IconSize = 32 * Scale;
@@ -65,13 +65,16 @@ void ATableHud::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
 	{
 		FTableItem Item = getGameInstance()->getItem(item);
 
-		FFloatingItem FloatItem;
-		FloatItem.Icon = Item.ItemIcon;
-		FloatItem.Amount = Amount;
+		if (Item.ItemIcon != nullptr) 
+		{
+			FFloatingItem FloatItem;
+			FloatItem.Icon = Item.ItemIcon;
+			FloatItem.Amount = Amount;
 
-		FloatItem.WorldLoc = WorldLoc;
+			FloatItem.WorldLoc = WorldLoc;
 
-		FloatingItems.Add(FloatItem);
+			FloatingItems.Add(FloatItem);
+		}
 	}
 }
 

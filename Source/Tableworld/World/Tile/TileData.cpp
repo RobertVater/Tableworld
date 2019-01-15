@@ -127,6 +127,11 @@ int32 UTileData::getY()
 	return Y;
 }
 
+FVector2D UTileData::getPositionAsVector()
+{
+	return FVector2D(getX(), getY());
+}
+
 int32 UTileData::getLocalX()
 {
 	return LocalX;

@@ -40,6 +40,7 @@ public:
 	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData);
 
 	virtual void SetIsBlocked(bool bBlocked);
+	virtual void SetHaulLocked(bool bHaulLocked);
 
 	virtual void StartWork();
 	virtual void StopWork();
@@ -53,13 +54,18 @@ public:
 
 	int32 getTileX();
 	int32 getTileY();
+	FVector2D getBuildingSize();
 	FVector getWorldCenter();
 
 	virtual int32 getBuildGridRadius();
 
-	TArray<UTileData*> getTilesAroundUs();
+	UFUNCTION()
+	TArray<UTileData*> getTilesAroundUs(bool bForceRegenerate = false);
+	bool isHaulerComming();
 
 protected:
+
+	bool bHaulerIsComming = false;
 
 	ATableGamemode* GM = nullptr;
 	ATableWorldTable* ParentTable = nullptr;
@@ -68,6 +74,7 @@ protected:
 	TArray<FVector2D> PlacedOnTiles;
 
 	//The tiles around this building
+	UPROPERTY()
 	TArray<UTileData*> TilesAroundUs;
 
 	UMaterialInstanceDynamic* DynMaterial = nullptr;

@@ -12,6 +12,20 @@ class ATableChunk;
 class UFastNoise;
 class UInstancedStaticMeshComponent;
 
+class ABuildableTile;
+class ACityCentreTile;
+
+struct FRescourceWobble
+{
+	ETileRescources Rescource = ETileRescources::None;
+	int32 InstanceIndex = 0;
+
+	float WobbleRenewLife = 0.25f;
+
+	float MaxLife = 1.0f;
+	float Life = 1.0f;
+};
+
 UCLASS()
 class TABLEWORLD_API ATableWorldTable : public AActor
 {
@@ -66,6 +80,9 @@ public:
 
 	ATableWorldTable();
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	void AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life);
 
 	//Generated a new map
 	virtual void GenerateMap();
@@ -84,6 +101,8 @@ public:
 	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 
+	void AddBuilding(ABuildableTile* nBuilding);
+
 	TArray<FColor> getTilePixels(ETileType TileType);
 	UFastNoise* getNoise();
 
@@ -97,12 +116,25 @@ public:
 	Arg3 = True if the path can go diagonal
 	Arg4 = True if we should consider the Movement Penalty of tiles
 	*/
-	TArray<UTileData*> FindPath(FVector2D StartTile, FVector2D EndTile, TArray<ETileType> ForbidenTiles, bool bAllowDiag = false, bool bIgnoreWeigths = false);
+	TArray<UTileData*> FindPath(FVector2D StartTile, FVector2D EndTile, TArray<ETileType> ForbidenTiles = TArray<ETileType>(), bool bAllowDiag = false, bool bIgnoreWeigths = false, TArray<ETileType> AllowedTiles = TArray<ETileType>());
 	TArray<UTileData*> RetracePath(UTileData* Start, UTileData* End);
 	TArray<UTileData*> GetNeighbours(UTileData* Tile, bool bAllowDiag);
-	int32 getDistance(UTileData* TileA, UTileData* TileB);
+
+	//Road Pathfinding
+	TArray<UTileData*> FindPathRoad(UTileData* StartTile, UTileData* EndTile, bool bAllowDiag = false);
+
+	int32 getTileDistance(UTileData* TileA, UTileData* TileB);
+	int32 getDistance(int32 X, int32 Y, int32 EX, int32 EY);
+
+	TArray<ABuildableTile*> getBuildings();
+	TArray<ACityCentreTile*> getCityCentres();
 
 protected:
+
+	TArray<FRescourceWobble> RescourceWobble;
+
+	UPROPERTY()
+	TArray<ABuildableTile*> Buildings;
 
 	UPROPERTY()
 	TMap<ETileRescources, UInstancedStaticMeshComponent*> InstancedRescourcesMesh;

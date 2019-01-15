@@ -64,32 +64,9 @@ void ABuildableTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBui
 	bIsGhost = false;
 
 	//Grab the tiles around us
-	TilesAroundUs.Empty();
-	for (int32 SX = 0; SX < (int32)nBuildingData.BuildingSize.X; SX++)
-	{
-		for (int32 SY = 0; SY < (int32)nBuildingData.BuildingSize.Y; SY++)
-		{
-			for (int32 x = -1; x <= 1; x++)
-			{
-				for (int32 y = -1; y <= 1; y++)
-				{
-					int32 CheckX = (TileX + SX) + x;
-					int32 CheckY = (TileY + SY) + y;
+	getTilesAroundUs(true);
 
-					UTileData* Tile = getTable()->getTile(CheckX, CheckY);
-					if (Tile)
-					{
-						if (!Tile->HasTileObject())
-						{
-							Tile->DebugHighlightTile(1.0f);
-							TilesAroundUs.Add(Tile);
-						}
-					}
-				}
-			}
-		}
-	}
-
+	StartWork();
 }
 
 void ABuildableTile::SetIsBlocked(bool bBlocked)
@@ -99,6 +76,11 @@ void ABuildableTile::SetIsBlocked(bool bBlocked)
 		float v = bBlocked ? 0.0f : 1.0f;
 		DynMaterial->SetScalarParameterValue("bBlocked", v);
 	}
+}
+
+void ABuildableTile::SetHaulLocked(bool bHaulLocked)
+{
+	bHaulerIsComming = bHaulLocked;
 }
 
 void ABuildableTile::StartWork()
@@ -190,14 +172,19 @@ int32 ABuildableTile::getTileY()
 	return TileY;
 }
 
+FVector2D ABuildableTile::getBuildingSize()
+{
+	return BuildingData.BuildingSize;
+}
+
 FVector ABuildableTile::getWorldCenter()
 {
 	FVector Loc = GetActorLocation();
 
 	if(BuildingData.ID != NAME_None)
 	{
-		Loc.X = ((getTileX() + BuildingData.BuildingSize.X) * 100) + 50;
-		Loc.Y = ((getTileY() + BuildingData.BuildingSize.Y) * 100) + 50;
+		Loc.X = getTileX() * 100;
+		Loc.Y = getTileY() * 100;
 	}
 
 	return Loc;
@@ -208,7 +195,41 @@ int32 ABuildableTile::getBuildGridRadius()
 	return 0;
 }
 
-TArray<UTileData*> ABuildableTile::getTilesAroundUs()
+TArray<UTileData*> ABuildableTile::getTilesAroundUs(bool bForceRegenerate)
 {
+	if(bForceRegenerate)
+	{
+		TilesAroundUs.Empty();
+		for (int32 SX = 0; SX < (int32)BuildingData.BuildingSize.X; SX++)
+		{
+			for (int32 SY = 0; SY < (int32)BuildingData.BuildingSize.Y; SY++)
+			{
+				for (int32 x = -1; x <= 1; x++)
+				{
+					for (int32 y = -1; y <= 1; y++)
+					{
+						int32 CheckX = (TileX + SX) + x;
+						int32 CheckY = (TileY + SY) + y;
+
+						UTileData* Tile = getTable()->getTile(CheckX, CheckY);
+						if (Tile)
+						{
+							if (!Tile->HasTileObject())
+							{
+								Tile->DebugHighlightTile(1.0f);
+								TilesAroundUs.Add(Tile);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	return TilesAroundUs;
+}
+
+bool ABuildableTile::isHaulerComming()
+{
+	return bHaulerIsComming;
 }

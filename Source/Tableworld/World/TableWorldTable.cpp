@@ -8,10 +8,13 @@
 #include "Misc/Math/FastNoise.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include <time.h>
+#include "Tile/Building/CityCentreTile.h"
+#include "Tile/Building/BuildableTile.h"
+#include "HeapSort.h"
 
 ATableWorldTable::ATableWorldTable()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = Root;
@@ -35,6 +38,71 @@ void ATableWorldTable::BeginPlay()
 	SetupTilePixels(TileTypes);
 	
 	GenerateMap();
+}
+
+void ATableWorldTable::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if(RescourceWobble.Num() > 0)
+	{
+		for(int32 i = 0; i < RescourceWobble.Num(); i++)
+		{
+			FRescourceWobble Wobble = RescourceWobble[i];
+
+			UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Wobble.Rescource);
+			if (Mesh)
+			{
+				if (Wobble.Life <= 0)
+				{
+					//Reset instance
+					FTransform Trans;
+					Mesh->GetInstanceTransform(Wobble.InstanceIndex, Trans);
+
+					Trans.SetRotation(FQuat(FRotator(0, 0, 0)));
+
+					Mesh->UpdateInstanceTransform(Wobble.InstanceIndex, Trans, false, true);
+
+					RescourceWobble.RemoveAt(i);
+					continue;
+				}
+				FTransform Trans;
+				Mesh->GetInstanceTransform(Wobble.InstanceIndex, Trans, true);
+
+				if(Wobble.Life >= Wobble.MaxLife)
+				{
+					float w = FMath::RandRange(-15.0f, 15.0f);
+					Trans.SetRotation(FQuat(FRotator(w, 0.0f, w)));
+				}
+
+
+				float Pitch = Trans.GetRotation().Rotator().Pitch;
+				float Roll = Trans.GetRotation().Rotator().Roll;
+
+				float Speed = 20.0f;
+				float PitchLerp = FMath::Lerp(Pitch, 0.0f, Speed * DeltaSeconds);
+				float RollLerp = FMath::Lerp(Roll, 0.0f, Speed * DeltaSeconds);
+
+				Trans.SetRotation(FQuat(FRotator(PitchLerp, 0.0f, RollLerp)));
+
+				Wobble.Life -= 1 * DeltaSeconds;
+
+				Mesh->UpdateInstanceTransform(Wobble.InstanceIndex, Trans, true, true);
+				RescourceWobble[i] = Wobble;
+			}
+		}
+	}
+}
+
+void ATableWorldTable::AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life)
+{
+	FRescourceWobble NewWobble;
+	NewWobble.Rescource = Rescource;
+	NewWobble.InstanceIndex = Index;
+	NewWobble.Life = Life;
+	NewWobble.MaxLife = Life;
+
+	RescourceWobble.Add(NewWobble);
 }
 
 void ATableWorldTable::GenerateMap()
@@ -388,6 +456,11 @@ void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileT
 	}
 }
 
+void ATableWorldTable::AddBuilding(ABuildableTile* nBuilding)
+{
+	Buildings.Add(nBuilding);
+}
+
 TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)
 {
 	for(int32 i = 0; i < TilePixels.Num(); i++)
@@ -414,9 +487,8 @@ UFastNoise* ATableWorldTable::getNoise()
 	return Noise;
 }
 
-TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D EndTileCord, TArray<ETileType> ForbidenTiles, bool bAllowDiag, bool bIgnoreWeigths)
+TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D EndTileCord, TArray<ETileType> ForbidenTiles, bool bAllowDiag, bool bIgnoreWeigths, TArray<ETileType> AllowedTiles)
 {
-	DebugWarning("Starting Search!");
 	clock_t t = clock();
 	
 	UTileData* StartTile = getTile((int32)StartTileCord.X, (int32)StartTileCord.Y);
@@ -436,6 +508,15 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 			{
 				//We tried to build a path on forbidden tiles!
 				return TArray<UTileData*>();
+			}
+
+			if(AllowedTiles.Num() > 0)
+			{
+				if (!AllowedTiles.Contains(StartTile->getTileType()) || !AllowedTiles.Contains(EndTile->getTileType())) 
+				{
+					//The start or end tile are not valid
+					return TArray<UTileData*>();
+				}
 			}
 		}
 	}
@@ -468,6 +549,7 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 				DebugWarning("Found! It took " + FString::SanitizeFloat((float)t / CLOCKS_PER_SEC ) + " secconds!");
 				TArray<UTileData*> Path  = RetracePath(StartTile,EndTile);
 
+				Algo::Reverse(Path);
 				return Path;
 			}
 
@@ -483,7 +565,12 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 						continue;
 					}
 
-					int32 newMovementCost = CurrentTile->getGCost() + getDistance(CurrentTile, Neighbour);
+					if(AllowedTiles.Num() > 0 && !AllowedTiles.Contains(Neighbour->getTileType()))
+					{
+						continue;
+					}
+
+					int32 newMovementCost = CurrentTile->getGCost() + getTileDistance(CurrentTile, Neighbour);
 					if(!bIgnoreWeigths)
 					{
 						newMovementCost += Neighbour->getMovementCost();
@@ -492,7 +579,7 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 					if(newMovementCost < Neighbour->getGCost() || !OpenSet.Contains(Neighbour))
 					{
 						Neighbour->GCost = newMovementCost;
-						Neighbour->HCost = getDistance(Neighbour, EndTile);
+						Neighbour->HCost = getTileDistance(Neighbour, EndTile);
 
 						Neighbour->PathParent = CurrentTile;
 
@@ -502,7 +589,7 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 				
 			}
 
-			//MaxTries++;
+			MaxTries++;
 			if(MaxTries >= 500)
 			{
 				DebugError("Path took too long to find. Abort!");
@@ -527,8 +614,9 @@ TArray<UTileData*> ATableWorldTable::RetracePath(UTileData* Start, UTileData* En
 			Current = Current->PathParent;
 		}
 	}
-	
 
+	Path.Add(Start);
+	
 	return Path;
 }
 
@@ -570,7 +658,23 @@ TArray<UTileData*> ATableWorldTable::GetNeighbours(UTileData* Node, bool bAllowD
 	return Neighbours;
 }
 
-int32 ATableWorldTable::getDistance(UTileData* TileA, UTileData* TileB)
+TArray<UTileData*> ATableWorldTable::FindPathRoad(UTileData* StartTile, UTileData* EndTile, bool bAllowDiag /*= false*/)
+{
+	//Find the path
+	if (StartTile && EndTile) 
+	{
+		FVector2D Start = StartTile->getPositionAsVector();
+		FVector2D End = EndTile->getPositionAsVector();
+
+		TArray<ETileType> AllowedTiles;
+		AllowedTiles.Add(ETileType::DirtRoad);
+		return FindPath(Start, End, TArray<ETileType>(), bAllowDiag, true, AllowedTiles);
+	}
+
+	return TArray<UTileData*>();
+}
+
+int32 ATableWorldTable::getTileDistance(UTileData* TileA, UTileData* TileB)
 {
 	if (TileA && TileB) 
 	{
@@ -587,4 +691,36 @@ int32 ATableWorldTable::getDistance(UTileData* TileA, UTileData* TileB)
 	}
 
 	return 0;
+}
+
+int32 ATableWorldTable::getDistance(int32 X, int32 Y, int32 EX, int32 EY)
+{
+	return (FVector(X,Y,0) - FVector(EX,EY,0)).Size2D();
+}
+
+TArray<ABuildableTile*> ATableWorldTable::getBuildings()
+{
+	return Buildings;
+}
+
+TArray<ACityCentreTile*> ATableWorldTable::getCityCentres()
+{
+	TArray<ACityCentreTile*> CityCentres;
+	for(int32 i = 0; i < Buildings.Num(); i++)
+	{
+		ABuildableTile* Building = Buildings[i];
+		if(Building)
+		{
+			if(Building->IsA(ACityCentreTile::StaticClass()))
+			{
+				ACityCentreTile* CityCentre = Cast<ACityCentreTile>(Building);
+				if(CityCentre)
+				{
+					CityCentres.Add(CityCentre);
+				}
+			}
+		}
+	}
+
+	return CityCentres;
 }

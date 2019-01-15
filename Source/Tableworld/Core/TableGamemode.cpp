@@ -17,6 +17,8 @@ void ATableGamemode::BeginPlay()
 	SetCurrentAge(StartAge);
 	CurrentFunds = StartFunds;
 
+	ModifyRescource(EItem::WoodLog, 25);
+
 	TArray<AActor*> OutActors;
 	UGameplayStatics::GetAllActorsOfClass(this, ATableWorldTable::StaticClass(), OutActors);
 	if(OutActors.IsValidIndex(0))
@@ -28,6 +30,44 @@ void ATableGamemode::BeginPlay()
 void ATableGamemode::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
 {
 	Event_FloatingItem.Broadcast(item, Amount, WorldLoc);
+}
+
+void ATableGamemode::ModifyRescource(EItem Item, int32 AddAmount)
+{
+	DebugWarning("Modify Rescource " + FString::FromInt(AddAmount));
+
+	if (Item == EItem::None && Item == EItem::Max)return;
+	
+	if(StoredRescources.Contains(Item))
+	{
+		int32 Stored = StoredRescources.FindRef(Item);
+		Stored += AddAmount;
+
+		//Check if we should remove the Item
+		if(Stored <= 0)
+		{
+			StoredRescources.Remove(Item);
+			Event_StoredItemsUpdated.Broadcast();
+			DebugWarning("Remove Rescource");
+
+			return;
+		}
+
+		//Otherwise update
+		StoredRescources.Emplace(Item, Stored);
+		Event_StoredItemsUpdated.Broadcast();
+		DebugWarning("Update Rescource");
+
+		return;
+	}
+	
+	if(AddAmount > 0)
+	{
+		//Add the item
+		StoredRescources.Add(Item, AddAmount);
+		Event_StoredItemsUpdated.Broadcast();
+		DebugWarning("Add Rescource");
+	}
 }
 
 void ATableGamemode::SetCurrentAge(ETableAge nCurrentAge)
@@ -127,4 +167,48 @@ UTileData* ATableGamemode::getTile(int32 X, int32 Y)
 FTableBuilding ATableGamemode::getSelectedBuilding()
 {
 	return SelectedBuilding;
+}
+
+bool ATableGamemode::OwnNeededItems(TArray<FNeededItems> Items)
+{
+	for(int32 i = 0; i < Items.Num(); i++)
+	{
+		FNeededItems Item = Items[i];
+		if(Item.NeededItem != EItem::None && Item.NeededItem != EItem::Max)
+		{
+			bool bFound = false;
+			int32 Amount = getStoredItemAmount(Item.NeededItem, bFound);
+
+			if(!bFound)
+			{
+				return false;
+			}
+
+			if(Amount < Item.NeededAmount)
+			{
+				return false;
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+TMap<EItem, int32> ATableGamemode::getStoredItems()
+{
+	return StoredRescources;
+}
+
+int32 ATableGamemode::getStoredItemAmount(EItem Item, bool& bFound)
+{
+	if(StoredRescources.Contains(Item))
+	{
+		bFound = true;
+		return StoredRescources.FindRef(Item);
+	}
+
+	bFound = false;
+	return 0;
 }

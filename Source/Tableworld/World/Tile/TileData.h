@@ -42,6 +42,7 @@ public:
 
 	int32 getX();
 	int32 getY();
+	FVector2D getPositionAsVector();
 
 	int32 getLocalX();
 	int32 getLocalY();

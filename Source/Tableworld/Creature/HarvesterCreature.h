@@ -16,6 +16,12 @@ class TABLEWORLD_API AHarvesterCreature : public ABaseCreature
 	
 public:
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	USoundBase* HarvestSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	UParticleSystem* HarvestParticles = nullptr;
+
 	virtual void Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding);
 
 	void GiveHarvestJob(UTileData* nHarvestTile);
@@ -26,6 +32,9 @@ public:
 
 	//Harvesting
 	void StartHarvesting();
+	void OnHarvestEffect();
+
+	UFUNCTION()
 	void OnHarvest();
 
 	AHarvesterTile* getHarvesterTile();
@@ -36,10 +45,10 @@ public:
 protected:
 
 	FTimerHandle HarvestTimer;
+	FTimerHandle HarvestEffectsTimer;
 
 	bool bHasHarvested = false;
 	AHarvesterTile* HarvesterBuilding = nullptr;
 
 	UTileData* HarvestTile = nullptr;
-	UTileData* ReturnTile = nullptr;
 };

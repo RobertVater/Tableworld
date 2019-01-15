@@ -14,7 +14,7 @@ struct FFloatingItem
 	UTexture2D* Icon = nullptr;
 	int32 Amount = 1;
 
-	FVector WorldLoc;
+	FVector WorldLoc = FVector::ZeroVector;
 
 	float YOffset = 0.0f;
 	float Alpha = 1.0f;

@@ -89,6 +89,18 @@ enum class ETableBuildingBuildType : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FNeededItems
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	EItem NeededItem = EItem::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	int32 NeededAmount = 0;
+};
+
+USTRUCT(BlueprintType)
 struct FTilePixels
 {
 	GENERATED_BODY()
@@ -140,9 +152,15 @@ struct FTableBuilding : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	TSubclassOf<ABuildableTile> TileClass = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+	TArray<FNeededItems> NeededItems;
+
 	//True if we can drag build this building. 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	bool bDragBuilding = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+	bool bNeedsInfluence = true;
 
 	//Actor "places" down all ghost actors and makes the building ready. Tile modifies the tile beneath the ghost actor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")

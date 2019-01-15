@@ -5,6 +5,7 @@
 #include "World/Tile/Building/HarvesterTile.h"
 #include "Core/TableGamemode.h"
 #include "World/TableWorldTable.h"
+#include "Kismet/GameplayStatics.h"
 
 void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding)
 {
@@ -31,51 +32,14 @@ void AHarvesterCreature::GiveReturnJob()
 {
 	if(getHarvesterTile())
 	{
-		if (getHarvesterTile()->getTable()) 
-		{
-			UTileData* BestTile = nullptr;
-			TArray<UTileData*> TilesAroundBuilding = getHarvesterTile()->getTilesAroundUs();
-			for (int32 i = 0; i < TilesAroundBuilding.Num(); i++)
-			{
-				UTileData* Tile = TilesAroundBuilding[i];
-				if (Tile != nullptr)
-				{
-					if (!Tile->IsBlocked())
-					{
-						if(!BestTile)
-						{
-							BestTile = Tile;
-							continue;
-						}
-						
-						int32 Distance = getHarvesterTile()->getTable()->getDistance(getStandingTile(), BestTile);
-						int32 NewDistance = getHarvesterTile()->getTable()->getDistance(getStandingTile(), Tile);
-						
-						if(Distance > NewDistance)
-						{
-							BestTile = Tile;
-						}
-					}
-				}
-			}
+		FVector Loc;
+		Loc.X = getHarvesterTile()->getTileX() * 100 + 50;
+		Loc.Y = getHarvesterTile()->getTileY() * 100 + 50;
 
-			if(!BestTile)
-			{
-				HomeTile.X = getHarvesterTile()->getTileX();
-				HomeTile.Y = getHarvesterTile()->getTileY();
+		HomeTile.X = getHarvesterTile()->getTileX();
+		HomeTile.Y = getHarvesterTile()->getTileY();
 
-				//We cannot find a way home. Just return to the home tile
-				SimpleMoveTo(FVector(getHarvesterTile()->getTileX() * 100 + 50, getHarvesterTile()->getTileY() * 100 + 50, 0));
-			}else
-			{
-				//Update our home tile
-				HomeTile.X = BestTile->getX();
-				HomeTile.Y = BestTile->getY();
-
-				BestTile->DebugHighlightTile(1.0f);
-				SimpleMoveTo(BestTile->getWorldCenter());
-			}
-		}
+		SimpleMoveTo(Loc);
 	}
 	else
 	{
@@ -148,18 +112,37 @@ void AHarvesterCreature::StartHarvesting()
 	
 	if (!GetWorldTimerManager().IsTimerActive(HarvestTimer))
 	{
-		DebugWarning("Start Harvesting");
-
-		if(getHarvesterTile())
+		if (getHarvesterTile())
 		{
 			float HarvestTime = FMath::RandRange(getHarvesterTile()->HarvestTime / 2.0f, getHarvesterTile()->HarvestTime);
 			GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, HarvestTime, false);
+			GetWorldTimerManager().SetTimer(HarvestEffectsTimer, this, &AHarvesterCreature::OnHarvestEffect, (HarvestTime / 8.0f), true);
+		}
+	}
+}
+
+void AHarvesterCreature::OnHarvestEffect()
+{
+	if (HarvestSound) 
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HarvestSound, GetActorLocation());
+	}
+
+	//Play the wobble animation
+	if (getGamemode())
+	{
+		if (getGamemode()->getTable())
+		{
+			getGamemode()->getTable()->AddRescourceWobble(HarvestTile->getTileRescources(), HarvestTile->getTileRescourceIndex(), 1.0f);
 		}
 	}
 }
 
 void AHarvesterCreature::OnHarvest()
 {
+	DebugWarning("Harvest");
+	GetWorldTimerManager().ClearTimer(HarvestEffectsTimer);
+	
 	if(getHarvestTile())
 	{
 		if(getGamemode())
