@@ -25,3 +25,41 @@ void UMainHud::NativeConstruct()
 		UpdateRescourceUI();
 	}
 }
+
+void UMainHud::MoveMinimapPlayerView_Implementation(float AlphaX, float AlphaY, float ZoomAlpha)
+{
+
+}
+
+void UMainHud::UpdateMinimap_Implementation(UTexture2D* NewMinimap)
+{
+
+}
+
+void UMainHud::ShowBuildMenu_Implementation(bool bShow)
+{
+
+}
+
+void UMainHud::SelectTool(EToolbarTools NewTool)
+{
+	ShowBuildMenu(false);
+
+	if(SelectedTool == NewTool || NewTool == EToolbarTools::None)
+	{
+		SelectedTool = EToolbarTools::None;
+		return;
+	}
+
+	SelectedTool = NewTool;
+
+	switch(SelectedTool)
+	{
+		case EToolbarTools::Build: ShowBuildMenu(true); break;
+	}
+}
+
+EToolbarTools UMainHud::getSelectedTool()
+{
+	return SelectedTool;
+}

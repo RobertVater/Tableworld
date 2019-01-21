@@ -30,6 +30,7 @@ public:
 	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
 	virtual void StartWork() override;
+	virtual void StopWork() override;
 
 	virtual int32 getBuildGridRadius() override;
 	virtual bool InInfluenceRange(int32 X, int32 Y, FVector2D Size);
@@ -38,11 +39,20 @@ public:
 
 	void OnHaulCompleted(AHaulerCreature* nHauler);
 
+	UFUNCTION(meta = (BlueprintThreadSafe))
+	void ModifyInventory(EItem Item, int32 Amount);
+
 	AInventoryTile* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
+
+	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
+	TMap<EItem, int32> getStoredItems();
 
 protected:
 
 	TArray<AHaulerCreature*> Workers;
+
+	//The items this city Centre has stored
+	TMap<EItem, int32> StoredItems;
 
 	FTimerHandle RescourceCheckTimer;
 };

@@ -40,10 +40,15 @@ public:
 	TSubclassOf<AHarvesterCreature> WorkerClass = nullptr;
 
 	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData) override;
-	virtual void StartWork() override;
 
+	virtual void StartWork() override;
+	virtual void StopWork() override;
+
+	virtual void TrySpawnNeededCreatures();
 	virtual void TryCreateCreature();
 	virtual AHarvesterCreature* SpawnCreature();
+
+	virtual bool StoreItem();
 
 	virtual void TransferInventory(AHaulerCreature* Hauler) override;
 
@@ -58,6 +63,8 @@ public:
 	virtual int32 getBuildGridRadius() override;
 	virtual EItem getItemType() override;
 
+	virtual TArray<FProductionItem> getInputItems() override;
+	virtual TArray<FProductionItem> getOutputItems() override;
 
 protected:
 
@@ -66,4 +73,7 @@ protected:
 
 	//A Array containing all tiles this harvester can harvest
 	TArray<UTileData*> HarvestAbleTiles;
+
+	TArray<FProductionItem> InputItemsData;
+	TArray<FProductionItem> OutputItemsData;
 };

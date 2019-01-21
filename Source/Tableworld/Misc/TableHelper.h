@@ -31,6 +31,8 @@ enum class EItem : uint8
 	None,
 	WoodLog,
 	WoodPlank,
+	Stone,
+	StoneBricks,
 	Fish,
 	Charcoal,
 	Clay,
@@ -88,6 +90,23 @@ enum class ETableBuildingBuildType : uint8
 	Tile
 };
 
+UENUM(BlueprintType)
+enum class EBuildingInfoType : uint8
+{
+	Production,
+	Storage,
+	House
+};
+
+UENUM(BlueprintType)
+enum class EToolbarTools : uint8
+{
+	None,
+	Build,
+	Demolish,
+	Duplicate
+};
+
 USTRUCT(BlueprintType)
 struct FNeededItems
 {
@@ -98,6 +117,21 @@ struct FNeededItems
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
 	int32 NeededAmount = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FProductionItem
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	UTexture2D* Icon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	uint8 Amount = 1;
 };
 
 USTRUCT(BlueprintType)
@@ -113,6 +147,21 @@ struct FTilePixels
 };
 
 USTRUCT(BlueprintType)
+struct FTableRescource : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
+	ETileRescources RescourceEnum = ETileRescources::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
+	FText RescourceName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
+	UTexture2D* RescourceIcon = nullptr;
+};
+
+USTRUCT(BlueprintType)
 struct FTableItem : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -121,7 +170,7 @@ struct FTableItem : public FTableRowBase
 	EItem ItemEnum = EItem::None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
-	FText ItemName = FText::AsCultureInvariant("NAME IS MISSING");
+	FText ItemName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
 	UTexture2D* ItemIcon;
@@ -142,11 +191,11 @@ struct FTableBuilding : public FTableRowBase
 
 	//The name of the building
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
-	FText Name = FText::AsCultureInvariant("Name is missing!");
+	FText Name;
 
 	//A short description of the building and what it does
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
-	FText Tooltip = FText::AsCultureInvariant("Tooltip is missing!");
+	FText Tooltip;
 
 	//The Actor class that spawns / represents the building.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")

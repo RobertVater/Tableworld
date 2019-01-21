@@ -24,10 +24,20 @@ bool AInventoryTile::canBeHauled()
 {
 	float v = (float)getStoredItemCount() / (float)InventorySize;
 
-	return (v >= 0.55f);
+	return (v >= getHaulTreshold());
 }
 
 int32 AInventoryTile::getStoredItemCount()
 {
 	return CurrentInventory;
+}
+
+int32 AInventoryTile::getCurrentStorage()
+{
+	return getStoredItemCount();
+}
+
+int32 AInventoryTile::getMaxStorage()
+{
+	return InventorySize;
 }

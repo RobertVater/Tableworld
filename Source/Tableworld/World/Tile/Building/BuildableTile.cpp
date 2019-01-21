@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "World/TableWorldTable.h"
 #include "../TileData.h"
+#include "Core/TableGameInstance.h"
 
 ABuildableTile::ABuildableTile()
 {
@@ -149,6 +150,16 @@ ATableGamemode* ABuildableTile::getGamemode()
 	return GM;
 }
 
+UTableGameInstance* ABuildableTile::getGameInstance()
+{
+	if(!GI)
+	{
+		GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
+	}
+
+	return GI;
+}
+
 ATableWorldTable* ABuildableTile::getTable()
 {
 	if(!ParentTable)
@@ -160,6 +171,11 @@ ATableWorldTable* ABuildableTile::getTable()
 	}
 
 	return ParentTable;
+}
+
+bool ABuildableTile::isWorking()
+{
+	return bIsWorking;
 }
 
 int32 ABuildableTile::getTileX()
@@ -190,9 +206,44 @@ FVector ABuildableTile::getWorldCenter()
 	return Loc;
 }
 
+FTableBuilding ABuildableTile::getBuildingData()
+{
+	return BuildingData;
+}
+
 int32 ABuildableTile::getBuildGridRadius()
 {
 	return 0;
+}
+
+int32 ABuildableTile::getCurrentStorage()
+{
+	return 0;
+}
+
+int32 ABuildableTile::getMaxStorage()
+{
+	return 0;
+}
+
+float ABuildableTile::getHaulTreshold()
+{
+	return 0.55f;
+}
+
+TArray<FProductionItem> ABuildableTile::getInputItems()
+{
+	return TArray<FProductionItem>();
+}
+
+TArray<FProductionItem> ABuildableTile::getOutputItems()
+{
+	return TArray<FProductionItem>();
+}
+
+FColor ABuildableTile::getMinimapColor()
+{
+	return FColor::Red;
 }
 
 TArray<UTileData*> ABuildableTile::getTilesAroundUs(bool bForceRegenerate)

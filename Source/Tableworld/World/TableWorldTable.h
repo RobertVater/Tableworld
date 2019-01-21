@@ -11,6 +11,7 @@ class UTileData;
 class ATableChunk;
 class UFastNoise;
 class UInstancedStaticMeshComponent;
+class ATablePlayerController;
 
 class ABuildableTile;
 class ACityCentreTile;
@@ -88,6 +89,11 @@ public:
 	virtual void GenerateMap();
 	virtual void GenerateChunks();
 
+	virtual UTexture2D* GenerateMinimap();
+
+	UFUNCTION(meta = (BlueprintThreadSafe))
+	virtual void UpdateMinimap(TArray<UTileData*> ModifiedTiles);
+
 	//Breaks down the tile sheet and stores the pixels into a array
 	virtual void SetupTilePixels(TArray<ETileType> TileTypes);
 
@@ -104,6 +110,8 @@ public:
 	void AddBuilding(ABuildableTile* nBuilding);
 
 	TArray<FColor> getTilePixels(ETileType TileType);
+
+	ATablePlayerController* getPlayerController();
 	UFastNoise* getNoise();
 
 	//Pathfinding
@@ -129,9 +137,16 @@ public:
 	TArray<ABuildableTile*> getBuildings();
 	TArray<ACityCentreTile*> getCityCentres();
 
+	UTexture2D* getMinimapTexture();
+
 protected:
 
+	ATablePlayerController* PC = nullptr;
+
 	TArray<FRescourceWobble> RescourceWobble;
+
+	UPROPERTY()
+	UTexture2D* MinimapTexture = nullptr;
 
 	UPROPERTY()
 	TArray<ABuildableTile*> Buildings;

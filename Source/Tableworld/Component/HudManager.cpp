@@ -4,6 +4,7 @@
 #include "Player/TablePlayerController.h"
 #include "UI/MainHud.h"
 #include "Tableworld.h"
+#include "UI/BuildingInfoPanel.h"
 
 UHudManager::UHudManager()
 {
@@ -18,8 +19,9 @@ void UHudManager::BeginPlay()
 
 void UHudManager::BuildUI()
 {
-	DebugWarning("BuildUI");
+	DebugLog("BuildUI");
 	
+	//MainHud
 	if(Mainhud_Class)
 	{
 		MainHud_Ref = CreateWidget<UMainHud>(getPlayerController(), Mainhud_Class);
@@ -27,6 +29,25 @@ void UHudManager::BuildUI()
 		{
 			MainHud_Ref->AddToPlayerScreen(0);
 		}
+	}
+
+	//BuildingInfoPanel
+	if(BuildingInfoPanel_Class)
+	{
+		BuildingInfoPanel_Ref = CreateWidget<UBuildingInfoPanel>(getPlayerController(), BuildingInfoPanel_Class);
+		if(BuildingInfoPanel_Ref)
+		{
+			BuildingInfoPanel_Ref->AddToPlayerScreen(0);
+			BuildingInfoPanel_Ref->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void UHudManager::ShowBuildingInfoPanel(ABuildableTile* SelectedBuilding)
+{
+	if(getBuildingInfoPanel())
+	{
+		getBuildingInfoPanel()->OpenBuildingInfo(SelectedBuilding);
 	}
 }
 
@@ -43,4 +64,9 @@ ATablePlayerController* UHudManager::getPlayerController()
 UMainHud* UHudManager::getMainHud()
 {
 	return MainHud_Ref;
+}
+
+UBuildingInfoPanel* UHudManager::getBuildingInfoPanel()
+{
+	return BuildingInfoPanel_Ref;
 }

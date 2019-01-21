@@ -11,3 +11,13 @@ int32 USandTile::getMovementCost()
 {
 	return 15;
 }
+
+FColor USandTile::getMinimapColor()
+{
+	if (HasRescource() || HasTileObject())
+	{
+		return Super::getMinimapColor();
+	}
+
+	return FColor::FromHex("#c2b280");
+}

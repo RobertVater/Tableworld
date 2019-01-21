@@ -11,6 +11,9 @@
 #include "Tile/Building/CityCentreTile.h"
 #include "Tile/Building/BuildableTile.h"
 #include "HeapSort.h"
+#include "Component/HudManager.h"
+#include "Player/TablePlayerController.h"
+#include "UI/MainHud.h"
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -213,6 +216,9 @@ void ATableWorldTable::GenerateMap()
 			Chunk->UpdateChunkTexture();
 		}
 	}
+
+	//Generate Minimap
+	GenerateMinimap();
 }
 
 void ATableWorldTable::GenerateChunks()
@@ -232,6 +238,90 @@ void ATableWorldTable::GenerateChunks()
 				Chunks.Add(Chunk);
 			}
 		}
+	}
+}
+
+UTexture2D* ATableWorldTable::GenerateMinimap()
+{
+	int32 TextureSize = ChunkSize * MaxSizeX;
+	DebugError("Texturesize " + FString::FromInt(TextureSize));
+
+	MinimapTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
+	MinimapTexture->AddToRoot();
+	MinimapTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+	MinimapTexture->SRGB = false;
+	MinimapTexture->Filter = TextureFilter::TF_Nearest;
+	MinimapTexture->UpdateResource();
+
+	//Go through each tile
+	TArray<FColor> Pixels;
+	Pixels.AddUninitialized(TextureSize*TextureSize);
+
+	for (int32 tx = 0; tx < (ChunkSize * MaxSizeX); tx++)
+	{
+		for (int32 ty = 0; ty < (ChunkSize * MaxSizeY); ty++)
+		{
+			UTileData* Tile = getTile(tx, ty);
+			if (Tile)
+			{
+				FColor Color = Tile->getMinimapColor();
+				Pixels[ty * (ChunkSize * MaxSizeX) + tx] = Color;
+			}
+		}
+	}
+
+	FTexture2DMipMap& Mip = MinimapTexture->PlatformData->Mips[0];
+	Mip.BulkData.Lock(LOCK_READ_WRITE);
+
+	uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
+	FMemory::Memcpy(TextureData, Pixels.GetData(), sizeof(uint8) * (TextureSize * TextureSize * 4));
+	Mip.BulkData.Unlock();
+	MinimapTexture->UpdateResource();
+
+	Pixels.Empty();
+
+	return MinimapTexture;
+}
+
+void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
+{
+	if(!MinimapTexture)
+	{
+		DebugError("Minimap Texture was null! Generated a new one");
+		GenerateMinimap();
+	}
+
+	int32 TextureSize = ChunkSize * MaxSizeX;
+
+	FTexture2DMipMap& Mip = MinimapTexture->PlatformData->Mips[0];
+
+	FColor* FormatedImageData = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
+	for(int32 i = 0; i < ModifiedTiles.Num(); i++)
+	{
+		UTileData* Tile = ModifiedTiles[i];
+		if(Tile)
+		{
+			Tile->DebugHighlightTile(999.0f);
+			int32 X = Tile->getX();
+			int32 Y = Tile->getY();
+
+			FormatedImageData[Y * (TextureSize) + X] = Tile->getMinimapColor();
+		}
+	}
+
+	//Update the minimap data
+
+	uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
+	FMemory::Memcpy(TextureData, FormatedImageData, sizeof(uint8) * (TextureSize * TextureSize * 4));
+	Mip.BulkData.Unlock();
+	MinimapTexture->UpdateResource();
+
+	//delete FormatedImageData;
+
+	if (getPlayerController()) 
+	{
+		DebugError("Updated Minimap");
+		getPlayerController()->UpdateMinimap();
 	}
 }
 
@@ -482,6 +572,16 @@ TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)
 	return NullArray;
 }
 
+ATablePlayerController* ATableWorldTable::getPlayerController()
+{
+	if(!PC)
+	{
+		PC = Cast<ATablePlayerController>(GetWorld()->GetFirstPlayerController());
+	}
+
+	return PC;
+}
+
 UFastNoise* ATableWorldTable::getNoise()
 {
 	return Noise;
@@ -723,4 +823,9 @@ TArray<ACityCentreTile*> ATableWorldTable::getCityCentres()
 	}
 
 	return CityCentres;
+}
+
+UTexture2D* ATableWorldTable::getMinimapTexture()
+{
+	return MinimapTexture;
 }

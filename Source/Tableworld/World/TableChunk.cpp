@@ -131,7 +131,6 @@ void ATableChunk::UpdateChunkTexture()
 			int32 Resolution = 1;
 			int32 TextureSize = ((ChunkSize * TilesInPixels));
 
-
 			TArray<FColor> Pixels;
 			Pixels.AddUninitialized(TextureSize*TextureSize);
 			for (int32 ty = 0; ty < ChunkSize; ty++)
@@ -193,6 +192,18 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 				{
 					NewTile->CopyTileData(Tile);
 					Tiles[Tile->getLocalY() * ChunkSize + Tile->getLocalX()] = NewTile;
+
+					if (bUpdateMaterial)
+					{
+						//Update minimap
+						if (ParentTable)
+						{
+							TArray<UTileData*> ModifiedTiles;
+							ModifiedTiles.Add(NewTile);
+
+							ParentTable->UpdateMinimap(ModifiedTiles);
+						}
+					}
 				}
 			}
 

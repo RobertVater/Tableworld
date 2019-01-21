@@ -37,6 +37,8 @@ void AHaulerCreature::AddHaulItems(EItem nItem, int32 nAmount)
 
 void AHaulerCreature::OnMoveCompleted()
 {
+	Super::OnMoveCompleted();
+	
 	UTileData* OurTile = getStandingTile();
 	if(OurTile)
 	{
@@ -86,4 +88,14 @@ EItem AHaulerCreature::getHaulItem()
 int32 AHaulerCreature::getHaulAmount()
 {
 	return HaulAmount;
+}
+
+UAnimationAsset* AHaulerCreature::getWalkAnimation()
+{
+	if(getHaulItem() != EItem::None && getHaulItem() != EItem::Max)
+	{
+		return WalkLoaded;
+	}
+
+	return Walk;
 }

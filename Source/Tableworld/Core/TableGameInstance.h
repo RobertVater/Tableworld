@@ -18,12 +18,15 @@ class TABLEWORLD_API UTableGameInstance : public UGameInstance
 public:
 
 	UFUNCTION(BlueprintCallable,BlueprintNativeEvent,Category = "Data")
-	FTableBuilding getBuilding(const FName& ID);
+	FTableBuilding getBuilding(const FName& ID, bool& bFound);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
-	FTableItem getItem(EItem Item);
+	FTableItem getItem(EItem Item, bool& bFound);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
-	TArray<FTableBuilding> getBuildingsForAgeAndCategory(ETableAge Age, ETableTileCategory Category);
+	FTableRescource getRescource(ETileRescources Rescource, bool& bFound);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
+	TArray<FTableBuilding> getBuildingsForAgeAndCategory(ETableAge Age, ETableTileCategory Category, bool& bFound);
 
 };

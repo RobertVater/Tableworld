@@ -8,6 +8,7 @@
 
 class ATableGamemode;
 class UTileData;
+class UAnimationAsset;
 
 UCLASS()
 class TABLEWORLD_API ABaseCreature : public AActor
@@ -16,18 +17,32 @@ class TABLEWORLD_API ABaseCreature : public AActor
 	
 public:	
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	USkeletalMeshComponent* Mesh = nullptr;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
 	float MovementSpeed = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
+	float RotationSpeed = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
+	UAnimationAsset* Idle = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
+	UAnimationAsset* Walk = nullptr;
 
 	ABaseCreature();
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
+	void SetAnimation(UAnimationAsset* Anim);
+
 	virtual void SimpleMoveTo(FVector TargetLocation, float nMinDistance = 50.0f);
 
-	virtual void PathMoveTo(UTileData* TargetTile, float nMinDistance = 50.0f);
-	virtual void RoadMoveTo(UTileData* TargetTile, float nMinDistance = 50.0f);
+	virtual void PathMoveTo(UTileData* TargetTile, float nMinDistance = 25.0f);
+	virtual void RoadMoveTo(UTileData* TargetTile, float nMinDistance = 25.0f);
 	virtual void RetracePath();
 
 
@@ -35,6 +50,9 @@ public:
 
 	ATableGamemode* getGamemode();
 	UTileData* getStandingTile();
+
+	virtual UAnimationAsset* getIdleAnimation();
+	virtual UAnimationAsset* getWalkAnimation();
 
 protected:
 

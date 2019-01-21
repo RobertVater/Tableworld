@@ -7,17 +7,21 @@
 #include "World/Tile/TileData.h"
 #include "DrawDebugHelpers.h"
 #include "HeapSort.h"
+#include "Kismet/KismetMathLibrary.h"
 
 ABaseCreature::ABaseCreature()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
+	RootComponent = Mesh;
 }
 
 void ABaseCreature::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	SetAnimation(getIdleAnimation());
 }
 
 void ABaseCreature::Tick(float DeltaTime)
@@ -49,6 +53,10 @@ void ABaseCreature::Tick(float DeltaTime)
 		DrawDebugPoint(GetWorld(), CurrentMoveTarget, 10.0f, FColor::Red, false, 0, 0);
 		DrawDebugString(GetWorld(), CurrentMoveTarget, FString::FromInt(CurrentPathIndex), NULL, FColor::White, 0, true);
 
+		//Rotate to pathpoint
+		float YawLerp = UKismetMathLibrary::RLerp(GetActorRotation(), FRotator(0.0f, Dir.Rotation().Yaw - 90.0f, 0.0f), RotationSpeed * DeltaTime, true).Yaw;
+		SetActorRotation(FRotator(0.0f, YawLerp, 0.0f));
+
 		FVector CurrentLoc = GetActorLocation();
 		CurrentLoc += Dir * (MovementSpeed * DeltaTime);
 
@@ -64,6 +72,17 @@ void ABaseCreature::Tick(float DeltaTime)
 	}
 }
 
+void ABaseCreature::SetAnimation(UAnimationAsset* Anim)
+{
+	if(Mesh)
+	{
+		if(Anim)
+		{
+			Mesh->PlayAnimation(Anim,true);
+		}
+	}
+}
+
 void ABaseCreature::SimpleMoveTo(FVector TargetLocation, float nMinDistance /*= 50.0f*/)
 {
 	CurrentPathIndex = 0;
@@ -72,6 +91,8 @@ void ABaseCreature::SimpleMoveTo(FVector TargetLocation, float nMinDistance /*= 
 	PathPoints.Add(TargetLocation);
 
 	MinDistance = nMinDistance;
+
+	SetAnimation(getWalkAnimation());
 }
 
 void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.0f*/)
@@ -85,6 +106,7 @@ void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 				CurrentPathIndex = 0;
 				MinDistance = nMinDistance;
 				PathPoints.Empty();
+				SetAnimation(getWalkAnimation());
 
 				LastCalculatedPath = getGamemode()->getTable()->FindPath(FVector2D(getStandingTile()->getX(), getStandingTile()->getY()), FVector2D(TargetTile->getX(), TargetTile->getY()), TArray<ETileType>());
 				for(int32 i = LastCalculatedPath.Num()-1; i > 0; i--)
@@ -111,6 +133,7 @@ void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 				CurrentPathIndex = 0;
 				MinDistance = nMinDistance;
 				PathPoints.Empty();
+				SetAnimation(getWalkAnimation());
 
 				LastCalculatedPath = getGamemode()->getTable()->FindPathRoad(getStandingTile(), TargetTile, false);
 				for (int32 i = 0; i < LastCalculatedPath.Num(); i++)
@@ -131,6 +154,7 @@ void ABaseCreature::RetracePath()
 	CurrentPathIndex = 0;
 	MinDistance = 50.0f;
 	PathPoints.Empty();
+	SetAnimation(getWalkAnimation());
 
 	TArray<UTileData*> ReversePath = LastCalculatedPath;
 	Algo::Reverse(ReversePath);
@@ -147,7 +171,7 @@ void ABaseCreature::RetracePath()
 
 void ABaseCreature::OnMoveCompleted()
 {
-
+	SetAnimation(getIdleAnimation());
 }
 
 ATableGamemode* ABaseCreature::getGamemode()
@@ -171,5 +195,15 @@ UTileData* ABaseCreature::getStandingTile()
 	}
 
 	return nullptr;
+}
+
+UAnimationAsset* ABaseCreature::getIdleAnimation()
+{
+	return Idle;
+}
+
+UAnimationAsset* ABaseCreature::getWalkAnimation()
+{
+	return Walk;
 }
 

@@ -18,6 +18,9 @@ class TABLEWORLD_API AHaulerCreature : public ABaseCreature
 	
 public:
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
+	UAnimationAsset* WalkLoaded = nullptr;
+
 	void GiveHaulJob(AInventoryTile* nTargetInventory, ACityCentreTile* nHomeCityCentre, UTileData* nTargetTile, UTileData* nHomeTile);
 	void GiveReturnJob();
 
@@ -27,6 +30,8 @@ public:
 
 	EItem getHaulItem();
 	int32 getHaulAmount();
+
+	virtual UAnimationAsset* getWalkAnimation() override;
 
 protected:
 

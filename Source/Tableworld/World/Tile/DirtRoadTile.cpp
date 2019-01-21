@@ -11,3 +11,8 @@ int32 UDirtRoadTile::getMovementCost()
 {
 	return 0;
 }
+
+FColor UDirtRoadTile::getMinimapColor()
+{
+	return FColor::Red;
+}

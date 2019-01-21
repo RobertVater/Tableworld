@@ -26,6 +26,10 @@ public:
 	virtual bool canBeHauled();
 	int32 getStoredItemCount();
 
+	virtual int32 getCurrentStorage() override;
+	virtual int32 getMaxStorage() override;
+
+
 protected:
 
 	//How many items this building has stored

@@ -38,6 +38,7 @@ public:
 
 	virtual ETileType getTileType();
 	virtual float getBaseHeigth();
+	virtual FColor getMinimapColor();
 	float getHeigth();
 
 	int32 getX();
@@ -63,6 +64,7 @@ public:
 	bool HasRescource();
 	bool HasHarvester();
 	bool HasTileObject();
+	ABuildableTile* getTileObject();
 
 	//Pathfinding
 	int32 GCost = 0;

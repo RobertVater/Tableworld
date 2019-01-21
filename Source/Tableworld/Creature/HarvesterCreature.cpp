@@ -6,6 +6,7 @@
 #include "Core/TableGamemode.h"
 #include "World/TableWorldTable.h"
 #include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h"
 
 void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding)
 {
@@ -30,14 +31,20 @@ void AHarvesterCreature::GiveHarvestJob(UTileData* nHarvestTile)
 
 void AHarvesterCreature::GiveReturnJob()
 {
+	//Clear all times we might have
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+	
 	if(getHarvesterTile())
 	{
 		FVector Loc;
 		Loc.X = getHarvesterTile()->getTileX() * 100 + 50;
 		Loc.Y = getHarvesterTile()->getTileY() * 100 + 50;
+		Loc.Z = 0.0f;
 
 		HomeTile.X = getHarvesterTile()->getTileX();
 		HomeTile.Y = getHarvesterTile()->getTileY();
+
+		DrawDebugPoint(GetWorld(), Loc, 10, FColor::Orange, false, 999, 0);
 
 		SimpleMoveTo(Loc);
 	}
@@ -50,6 +57,8 @@ void AHarvesterCreature::GiveReturnJob()
 
 void AHarvesterCreature::OnMoveCompleted()
 {
+	Super::OnMoveCompleted();
+
 	//Check if we reached the rescource of the home tile
 	UTileData* OurTile = getStandingTile();
 
@@ -114,9 +123,12 @@ void AHarvesterCreature::StartHarvesting()
 	{
 		if (getHarvesterTile())
 		{
+			SetAnimation(Work);
+			
 			float HarvestTime = FMath::RandRange(getHarvesterTile()->HarvestTime / 2.0f, getHarvesterTile()->HarvestTime);
 			GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, HarvestTime, false);
-			GetWorldTimerManager().SetTimer(HarvestEffectsTimer, this, &AHarvesterCreature::OnHarvestEffect, (HarvestTime / 8.0f), true);
+
+			GetWorldTimerManager().SetTimer(HarvestEffectsTimer, this, &AHarvesterCreature::OnHarvestEffect, MaxWorkTime, true, WorkTime);
 		}
 	}
 }
@@ -186,4 +198,24 @@ bool AHarvesterCreature::HasTileStillRescources()
 bool AHarvesterCreature::hasHarvested()
 {
 	return bHasHarvested;
+}
+
+UAnimationAsset* AHarvesterCreature::getIdleAnimation()
+{
+	if(hasHarvested())
+	{
+		return IdleWood;
+	}
+
+	return Idle;
+}
+
+UAnimationAsset* AHarvesterCreature::getWalkAnimation()
+{
+	if(hasHarvested())
+	{
+		return WalkWood;
+	}
+
+	return Walk;
 }

@@ -9,6 +9,7 @@
 #include "World/TableChunk.h"
 #include "TableGameInstance.h"
 #include "Player/TablePlayerPawn.h"
+#include "World/Tile/Building/CityCentreTile.h"
 
 void ATableGamemode::BeginPlay()
 {
@@ -18,6 +19,7 @@ void ATableGamemode::BeginPlay()
 	CurrentFunds = StartFunds;
 
 	ModifyRescource(EItem::WoodLog, 25);
+	ModifyRescource(EItem::Stone, 6);
 
 	TArray<AActor*> OutActors;
 	UGameplayStatics::GetAllActorsOfClass(this, ATableWorldTable::StaticClass(), OutActors);
@@ -46,11 +48,7 @@ void ATableGamemode::ModifyRescource(EItem Item, int32 AddAmount)
 		//Check if we should remove the Item
 		if(Stored <= 0)
 		{
-			StoredRescources.Remove(Item);
-			Event_StoredItemsUpdated.Broadcast();
-			DebugWarning("Remove Rescource");
-
-			return;
+			Stored = 0;
 		}
 
 		//Otherwise update
@@ -70,6 +68,66 @@ void ATableGamemode::ModifyRescource(EItem Item, int32 AddAmount)
 	}
 }
 
+bool ATableGamemode::ConsumeRescource(TArray<FNeededItems> Rescources)
+{
+	DebugWarning("Consume-----------------");
+	if(getTable())
+	{
+		//A list of storage buildings that own the required items
+		TArray<ACityCentreTile*> FoundStorage;
+		
+		TArray<ACityCentreTile*> Storage = getTable()->getCityCentres();
+		for (int32 j = 0; j < Rescources.Num(); j++)
+		{
+			FNeededItems Needed = Rescources[j];
+			int32 NeededAmount = Needed.NeededAmount;
+
+			ModifyRescource(Needed.NeededItem, -Needed.NeededAmount);
+			for (int32 i = 0; i < Storage.Num(); i++)
+			{
+				ACityCentreTile* Building = Storage[i];
+				if (Building)
+				{
+					DebugWarning("New Building-----------------");
+					TMap<EItem, int32> Stored = Building->getStoredItems();
+					for (auto Elem : Stored)
+					{
+						EItem Item = Elem.Key;
+						int32 Stored = Elem.Value;
+
+						if(Item == Needed.NeededItem)
+						{
+							DebugWarning("Store " + FString::FromInt(Stored));
+							
+							if(Stored >= NeededAmount)
+							{
+								Building->ModifyInventory(Item, -NeededAmount);
+								NeededAmount = 0;
+							}else
+							{
+								if(Stored < NeededAmount)
+								{
+									int32 Dif = NeededAmount - Stored;
+									Building->ModifyInventory(Item, -Dif);
+
+									NeededAmount -= Stored;
+								}
+							}
+
+							if(NeededAmount <= 0)
+							{
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 void ATableGamemode::SetCurrentAge(ETableAge nCurrentAge)
 {
 	CurrentAge = nCurrentAge;
@@ -81,12 +139,17 @@ void ATableGamemode::SelectBuilding(FName SelectedBuildingID)
 	{
 		if(getGameInstance())
 		{
-			SelectedBuilding = getGameInstance()->getBuilding(SelectedBuildingID);
-			if(SelectedBuilding.ID != NAME_None)
+			bool bFound = false;
+			SelectedBuilding = getGameInstance()->getBuilding(SelectedBuildingID, bFound);
+
+			if (bFound) 
 			{
-				if(getPlayerPawn())
+				if (SelectedBuilding.ID != NAME_None)
 				{
-					getPlayerPawn()->SetCurrentBuilding(SelectedBuilding);
+					if (getPlayerPawn())
+					{
+						getPlayerPawn()->SetCurrentBuilding(SelectedBuilding);
+					}
 				}
 			}
 		}

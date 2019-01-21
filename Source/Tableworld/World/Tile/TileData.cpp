@@ -6,6 +6,7 @@
 #include "Misc/TableHelper.h"
 #include "../TableChunk.h"
 #include "DrawDebugHelpers.h"
+#include "Building/BuildableTile.h"
 
 void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ATableChunk* nTable)
 {
@@ -112,6 +113,26 @@ float UTileData::getBaseHeigth()
 	return 0.0f;
 }
 
+FColor UTileData::getMinimapColor()
+{
+	if(HasRescource())
+	{
+		switch(getTileRescources())
+		{
+		case ETileRescources::Tree: return FColor::FromHex("#006400");
+		case ETileRescources::IronOre: return FColor::Orange;
+		}
+	}
+
+	if(HasTileObject())
+	{
+		DebugError("TileObject");
+		return TileObject->getMinimapColor();
+	}
+	
+	return FColor::Purple;
+}
+
 float UTileData::getHeigth()
 {
 	return Heigth;
@@ -206,6 +227,11 @@ bool UTileData::HasHarvester()
 }
 
 bool UTileData::HasTileObject()
+{
+	return TileObject;
+}
+
+ABuildableTile* UTileData::getTileObject()
 {
 	return TileObject;
 }

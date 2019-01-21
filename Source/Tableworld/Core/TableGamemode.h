@@ -34,7 +34,11 @@ public:
 
 	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
 
+	UFUNCTION(meta = (BlueprintThreadSafe))
 	void ModifyRescource(EItem Item, int32 AddAmount);
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintThreadSafe))
+	bool ConsumeRescource(TArray<FNeededItems> Rescources);
 
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	virtual void SetCurrentAge(ETableAge mCurrentAge);

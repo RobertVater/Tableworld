@@ -18,6 +18,13 @@ void ACityCentreTile::StartWork()
 	GetWorldTimerManager().SetTimer(RescourceCheckTimer, this, &ACityCentreTile::OnRescourceCheck, RescourceCheckTime, true);
 }
 
+void ACityCentreTile::StopWork()
+{
+	Super::StopWork();
+
+	GetWorldTimerManager().ClearTimer(RescourceCheckTimer);
+}
+
 int32 ACityCentreTile::getBuildGridRadius()
 {
 	if (BuildingData.ID != NAME_None)
@@ -102,12 +109,38 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 			DebugWarning("Haul completed " + FString::FromInt(HaulAmount));
 
 			getGamemode()->AddFloatingItem(HaulItem, nHauler->getHaulAmount(), getWorldCenter());
+
+			//Add to local inventory
+			ModifyInventory(HaulItem, nHauler->getHaulAmount());
+
+			//Add the item to the global inventory
 			getGamemode()->ModifyRescource(HaulItem, nHauler->getHaulAmount());
 		}
 
 		Workers.Remove(nHauler);
 		nHauler->Destroy();
 	}
+}
+
+void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
+{
+	if (Item == EItem::None && Item == EItem::Max)return;
+	
+	if(!StoredItems.Contains(Item))
+	{
+		StoredItems.Add(Item, Amount);
+		return;
+	}
+
+	int32 OldAmount = StoredItems.FindRef(Item) + Amount;
+
+	if(OldAmount <= 0)
+	{
+		StoredItems.Remove(Item);
+		return;
+	}
+
+	StoredItems.Emplace(Item, OldAmount);
 }
 
 AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile)
@@ -210,4 +243,9 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 	}
 
 	return nullptr;
+}
+
+TMap<EItem, int32> ACityCentreTile::getStoredItems()
+{
+	return StoredItems;
 }

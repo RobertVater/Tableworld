@@ -52,7 +52,11 @@ void ATableHud::DrawHUD()
 				float X = (ScreenLoc.X - (IconSize / Scale) / 2);
 				float Y = (ScreenLoc.Y - (IconSize / Scale)) + Item.YOffset;
 
-				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::White, X-(IconSize / 2), Y + (IconSize / 4), NULL, Scale, false);
+				//BlackBackground
+				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::Black, X - (IconSize / 2)+2, Y + (IconSize / 4)+2, NULL, Scale, false);
+
+				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::White, X - (IconSize / 2), Y + (IconSize / 4), NULL, Scale, false);
+
 				DrawTexture(Item.Icon, X, Y, IconSize /  Scale, IconSize / Scale, IconSize / Scale, IconSize / Scale, 1.0f, 1.0f, FLinearColor::White, EBlendMode::BLEND_Translucent, Scale, false);
 			}
 		}
@@ -63,17 +67,21 @@ void ATableHud::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
 {
 	if(getGameInstance())
 	{
-		FTableItem Item = getGameInstance()->getItem(item);
+		bool bFoundItem = false;
+		FTableItem Item = getGameInstance()->getItem(item,bFoundItem);
 
-		if (Item.ItemIcon != nullptr) 
+		if (bFoundItem) 
 		{
-			FFloatingItem FloatItem;
-			FloatItem.Icon = Item.ItemIcon;
-			FloatItem.Amount = Amount;
+			if (Item.ItemIcon != nullptr)
+			{
+				FFloatingItem FloatItem;
+				FloatItem.Icon = Item.ItemIcon;
+				FloatItem.Amount = Amount;
 
-			FloatItem.WorldLoc = WorldLoc;
+				FloatItem.WorldLoc = WorldLoc;
 
-			FloatingItems.Add(FloatItem);
+				FloatingItems.Add(FloatItem);
+			}
 		}
 	}
 }

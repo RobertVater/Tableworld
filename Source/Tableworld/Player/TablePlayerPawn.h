@@ -56,6 +56,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	void MoveSelectedBuilding();
+
 	virtual void SetCurrentBuilding(FTableBuilding Building);
 
 	virtual void Input_LeftMouse_Pressed();
@@ -76,6 +78,11 @@ public:
 	virtual void PlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
 
 	virtual void AdjustZoom();
+
+	UFUNCTION(BlueprintCallable,Category = "Teleport")
+	virtual void TeleportPlayer(FVector NewLocation);
+
+	virtual void UpdateMinimapPlayerView();
 
 	bool HasValidBuildableTile();
 	bool CanBuild(FVector2D BuildingSize, UTileData* PlaceTile);
