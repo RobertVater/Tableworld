@@ -66,8 +66,6 @@ void ABuildableTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBui
 
 	//Grab the tiles around us
 	getTilesAroundUs(true);
-
-	StartWork();
 }
 
 void ABuildableTile::SetIsBlocked(bool bBlocked)

@@ -66,6 +66,11 @@ void UTileData::GiveHarvester()
 	bHasHarvester = true;
 }
 
+void UTileData::ClearHarvester()
+{
+	bHasHarvester = false;
+}
+
 void UTileData::UpdateRescource(int32 Amount)
 {
 	if(TileRescource != ETileRescources::None)

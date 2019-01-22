@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Misc/TableHelper.h"
 #include "BaseCreature.generated.h"
 
 class ATableGamemode;
@@ -37,6 +38,10 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void DeactivateCreature();
+	virtual void ActivateCreature();
+
+
 	void SetAnimation(UAnimationAsset* Anim);
 
 	virtual void SimpleMoveTo(FVector TargetLocation, float nMinDistance = 50.0f);
@@ -53,8 +58,11 @@ public:
 
 	virtual UAnimationAsset* getIdleAnimation();
 	virtual UAnimationAsset* getWalkAnimation();
+	ECreatureStatus getStatus();
 
 protected:
+
+	ECreatureStatus CreatureStatus = ECreatureStatus::Idle;
 
 	ATableGamemode* GM = nullptr;
 

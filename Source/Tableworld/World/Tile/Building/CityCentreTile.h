@@ -29,6 +29,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
 	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
+	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData) override;
 	virtual void StartWork() override;
 	virtual void StopWork() override;
 

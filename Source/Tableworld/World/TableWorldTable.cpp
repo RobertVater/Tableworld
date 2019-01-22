@@ -411,7 +411,7 @@ UTileData* ATableWorldTable::getTile(int32 X, int32 Y)
 	return nullptr;
 }
 
-TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Radius)
+TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Radius, ETileType TileType, bool bBlockRescources)
 {
 	TArray<UTileData*> Tiles;
 
@@ -424,7 +424,18 @@ TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Ra
 				UTileData* Tile = getTile(X + x, Y + y);
 				if(Tile)
 				{
-					Tiles.Add(Tile);
+					if (Tile->getTileType() == TileType) 
+					{
+						if(bBlockRescources)
+						{
+							if(Tile->HasRescource())
+							{
+								continue;
+							}
+						}
+						
+						Tiles.Add(Tile);
+					}
 				}
 			}
 		}
@@ -448,7 +459,6 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 				{
 					if (Tile->getTileRescources() == Rescource) 
 					{
-						Tile->DebugHighlightTile(1.0f);
 						Tiles.Add(Tile);
 					}
 				}
@@ -670,7 +680,7 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 						continue;
 					}
 
-					int32 newMovementCost = CurrentTile->getGCost() + getTileDistance(CurrentTile, Neighbour);
+					int32 newMovementCost = CurrentTile->getGCost() + UTableHelper::getTileDistance(CurrentTile, Neighbour);
 					if(!bIgnoreWeigths)
 					{
 						newMovementCost += Neighbour->getMovementCost();
@@ -679,7 +689,7 @@ TArray<UTileData*> ATableWorldTable::FindPath(FVector2D StartTileCord, FVector2D
 					if(newMovementCost < Neighbour->getGCost() || !OpenSet.Contains(Neighbour))
 					{
 						Neighbour->GCost = newMovementCost;
-						Neighbour->HCost = getTileDistance(Neighbour, EndTile);
+						Neighbour->HCost = UTableHelper::getTileDistance(Neighbour, EndTile);
 
 						Neighbour->PathParent = CurrentTile;
 
@@ -772,30 +782,6 @@ TArray<UTileData*> ATableWorldTable::FindPathRoad(UTileData* StartTile, UTileDat
 	}
 
 	return TArray<UTileData*>();
-}
-
-int32 ATableWorldTable::getTileDistance(UTileData* TileA, UTileData* TileB)
-{
-	if (TileA && TileB) 
-	{
-		int32 DistX = FMath::Abs(TileA->getX() - TileB->getX());
-		int32 DistY = FMath::Abs(TileA->getY() - TileB->getY());
-
-		if(DistX > DistY)
-		{
-			return 14 * DistY + 10 * (DistX - DistY);
-		}else
-		{
-			return 14 * DistX + 10 * (DistY - DistX);
-		}
-	}
-
-	return 0;
-}
-
-int32 ATableWorldTable::getDistance(int32 X, int32 Y, int32 EX, int32 EY)
-{
-	return (FVector(X,Y,0) - FVector(EX,EY,0)).Size2D();
 }
 
 TArray<ABuildableTile*> ATableWorldTable::getBuildings()

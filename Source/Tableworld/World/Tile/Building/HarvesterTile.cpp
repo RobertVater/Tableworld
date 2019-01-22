@@ -11,131 +11,144 @@ void AHarvesterTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBui
 {
 	Super::Place(nPlacedOnTiles, nBuildingData);
 
-	StartWork();
+	if (getTable())
+	{
+		//Get the tiles we are allowed  to harvest
+		switch (HarvesterType)
+		{
+		case EHarvesterType::Rescource:
+			HarvestAbleTiles = getTable()->getRescourcesInRadius(getTileX(), getTileY(), getBuildGridRadius(), HarvestRescource);
+			break;
+
+		case EHarvesterType::Tile:
+			HarvestAbleTiles = getTable()->getTilesInRadius(getTileX(), getTileY(), getBuildGridRadius(), HarvestTile, true);
+			break;
+		}
+
+		StartWork();
+	}
 }
 
 void AHarvesterTile::StartWork()
 {
 	Super::StartWork();
 
-	//Try to find valid rescource tiles
-	if (getTable())
-	{
-		HarvestAbleTiles = getTable()->getRescourcesInRadius(getTileX(),getTileY(), SearchRangeInTiles + (int32)(BuildingData.BuildingSize.X + BuildingData.BuildingSize.Y), HarvestRescource );
-
-		TrySpawnNeededCreatures();
-
-		if(getGameInstance())
-		{
-			InputItemsData.Empty();
-			OutputItemsData.Empty();
-			
-			//Input
-			bool bFoundInput = false;
-			FTableRescource Input = getGameInstance()->getRescource(HarvestRescource,bFoundInput);
-			if (bFoundInput)
-			{
-				FProductionItem InputItem1;
-				InputItem1.Icon = Input.RescourceIcon;
-				InputItem1.Name = Input.RescourceName;
-				InputItem1.Amount = HarvestAbleTiles.Num();
-
-				InputItemsData.Add(InputItem1);
-			}
-
-			//Output
-			bool bFoundOutput = false;
-			FTableItem Output = getGameInstance()->getItem(ProducedItems, bFoundOutput);
-			if (bFoundOutput)
-			{
-
-				FProductionItem OutputItem1;
-				OutputItem1.Icon = Output.ItemIcon;
-				OutputItem1.Name = Output.ItemName;
-				OutputItem1.Amount = 1;
-
-				OutputItemsData.Add(OutputItem1);
-			}
-		}
-	}
+	InitWorkers();
 }
 
 void AHarvesterTile::StopWork()
 {
 	Super::StopWork();
 
-	//Tell all workers to return home and get killed
+	//Move all workers back home. No matter what they do
 	for(int32 i = 0; i < Workers.Num(); i++)
 	{
 		AHarvesterCreature* Worker = Workers[i];
 		if(Worker)
 		{
-			Worker->GiveReturnJob();
+			if(Worker->getStatus() != ECreatureStatus::Deactivated)
+			{
+				//Clear the worker tile
+				if(Worker->getHarvestTile())
+				{
+					Worker->getHarvestTile()->ClearHarvester();
+				}
+				
+				//Return all workers
+				Worker->GiveReturnJob();
+			}
 		}
 	}
 }
 
-void AHarvesterTile::TrySpawnNeededCreatures()
+void AHarvesterTile::InitWorkers()
 {
-	//Dont spawn workers if the building isnt working
-	if (!isWorking())return;
-	
-	//Check if we need to spawn workers
-	if(getStoredItemCount() < InventorySize)
+	//Check if we need to spawn new workers.
+	if(Workers.Num() < MaxWorkerCount)
 	{
-		//Check how many workers we need to spawn
-		int32 WorkersNeeded = (InventorySize - getStoredItemCount());
-		for(int32 i = 0; i < WorkersNeeded; i++)
+		int32 NeededWorkers = MaxWorkerCount - Workers.Num();
+		DebugWarning("Spawning " + FString::FromInt(NeededWorkers) + " workers!");
+		for(int32 i = 0; i < NeededWorkers; i++)
 		{
-			TryCreateCreature();
-		}
-	}
-}
-
-void AHarvesterTile::TryCreateCreature()
-{
-	//Check if we have a creature slot avaiable
-	if(Workers.Num() < MaxHarvesterCreatureCount)
-	{
-		DebugError("Created New Creature! (" + FString::FromInt(Workers.Num()) + " / " + FString::FromInt(MaxHarvesterCreatureCount) + ")");
-		if (HarvestAbleTiles.Num() > 0) 
-		{
-			AHarvesterCreature* NewWorker = SpawnCreature();
-			if (NewWorker)
+			AHarvesterCreature* NewWorker = SpawnWorker();
+			if(NewWorker)
 			{
 				Workers.Add(NewWorker);
 			}
 		}
 	}
+
+	//Send all workers to work
+	for(int32 i = 0; i < Workers.Num(); i++)
+	{
+		AHarvesterCreature* Worker = Workers[i];
+		if(Worker)
+		{
+			//Get a suitable tile for the worker
+			UTileData* NewHarvestTile = getNextHarvestTile();
+			if(NewHarvestTile == nullptr)
+			{
+				//Deactivate this worker.
+				DeactivateWorker(Worker);
+				continue;
+			}
+
+			//Activate deactivated workers
+			if(Worker->getStatus() == ECreatureStatus::Deactivated)
+			{
+				ActivateWorker(Worker);
+			}
+
+			NewHarvestTile->GiveHarvester();
+			Worker->GiveHarvestJob(NewHarvestTile);
+		}
+	}
 }
 
-AHarvesterCreature* AHarvesterTile::SpawnCreature()
+AHarvesterCreature* AHarvesterTile::SpawnWorker()
 {
-	UTileData* SpawnTile = getValidTile();
-	if(SpawnTile)
+	if (WorkerClass)
 	{
-		UTileData* HarvestTile = getNextHarvestTile();
-		if (HarvestTile)
-		{
-			AHarvesterCreature* Harvester = GetWorld()->SpawnActor<AHarvesterCreature>(WorkerClass, SpawnTile->getWorldCenter(), FRotator::ZeroRotator);
-			if (Harvester)
-			{
-				HarvestTile->GiveHarvester();
-				
-				Harvester->Create(FVector2D(SpawnTile->getX(), SpawnTile->getY()), this);
-				Harvester->GiveHarvestJob(HarvestTile);
+		FVector Center = getWorldCenter();
+		Center.Z = 0.0f;
 
-				return Harvester;
-			}
+		AHarvesterCreature* NewWorker = GetWorld()->SpawnActor<AHarvesterCreature>(WorkerClass, Center, FRotator::ZeroRotator);
+		if (NewWorker)
+		{
+			NewWorker->Create(FVector2D(getTileX(), getTileY()), this);
+			return NewWorker;
 		}
 	}
 
 	return nullptr;
 }
 
+void AHarvesterTile::DeactivateWorker(AHarvesterCreature* Worker)
+{
+	if(Worker)
+	{
+		if(Worker->getHarvestTile())
+		{
+			Worker->getHarvestTile()->ClearHarvester();
+		}
+		
+		Worker->DeactivateCreature();
+		Worker->SetActorLocation(getWorldCenter() - FVector(0, 0, 1000));
+	}
+}
+
+void AHarvesterTile::ActivateWorker(AHarvesterCreature* Worker)
+{
+	if(Worker)
+	{
+		Worker->ActivateCreature();
+		Worker->SetActorLocation(getWorldCenter());
+	}
+}
+
 bool AHarvesterTile::StoreItem()
 {
-	if (CurrentInventory < InventorySize)
+	if (HasInventorySpace())
 	{
 		//Add a item to the inventory
 		CurrentInventory++;
@@ -155,84 +168,119 @@ void AHarvesterTile::TransferInventory(AHaulerCreature* Hauler)
 {
 	Super::TransferInventory(Hauler);
 
-	//Resume work
-	StartWork();
+	//Send all workers back to work
+	for(int32 i = 0; i < Workers.Num(); i++)
+	{
+		AHarvesterCreature* Worker = Workers[i];
+		if(Worker)
+		{
+			if(Worker->getStatus() == ECreatureStatus::Deactivated)
+			{
+				UTileData* Tile = getNextHarvestTile();
+				if(!Tile)
+				{
+					//No valid tile was found. Return
+					return;
+				}
+
+				ActivateWorker(Worker);
+
+				Tile->GiveHarvester();
+				Worker->GiveHarvestJob(Tile);
+			}
+		}
+	}
 }
 
-void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* Creature)
+void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* ReturningWorker)
 {
-	if(Creature)
+	if(ReturningWorker)
 	{
-		UpdateHarvestableTiles();
-
-		if(!bIsWorking)
+		if(ReturningWorker->hasHarvested())
 		{
-			//If the worker has some rescources for us store the item
-			if(Creature->hasHarvested())
-			{
-				StoreItem();
-			}
+			ReturningWorker->ResetHasHarvested();
 			
-			//This building isnt active. Destroy the worker
-			Workers.Remove(Creature);
-			Creature->Destroy();
-			return;
-		}
-
-		if(Creature->hasHarvested())
-		{
-			if(!StoreItem())
+			if(StoreItem())
 			{
-				Workers.Remove(Creature);
-				Creature->Destroy();
-				
-				//If the inventory is full stop working
-				StopWork();
-				return;
-			}
+				//Stored the item sucessfully
+				if(HasInventorySpace())
+				{
+					//Get the remaining amount that we can still store
+					int32 Remaining = InventorySize - CurrentInventory;
 
-			Creature->ResetHasHarvested();
-		}
+					int32 WorkersGathering = 0;
+					for(int32 i = 0; i < Workers.Num(); i++)
+					{
+						AHarvesterCreature* Worker = Workers[i];
+						if(Worker)
+						{
+							if (Worker != ReturningWorker)
+							{
+								if (Worker->getStatus() == ECreatureStatus::Harvesting || Worker->getStatus() == ECreatureStatus::ReturningGoods)
+								{
+									WorkersGathering++;
+								}
+							}
+						}
+					}
 
-		//If the worker has no valid tile anymore try to give it a new one
-		if(!Creature->HasTileStillRescources())
-		{
-			UTileData* NextTile = getNextHarvestTile();
-			if(NextTile)
-			{
-				//Mark the tile as taken
-				NextTile->GiveHarvester();
+					DebugWarning("Remaining Space " + FString::FromInt(Remaining));
+					DebugWarning("Workers working " + FString::FromInt(WorkersGathering));
+					if(Remaining > WorkersGathering)
+					{
+						//This worker is good to go.
 
-				//Give the worker the harvest job
-				Creature->GiveHarvestJob(NextTile);
-				return;
+						//Check if the workertile is still good
+						if (HarvesterType == EHarvesterType::Rescource) 
+						{
+							if (ReturningWorker->getHarvestTile())
+							{
+								if(!ReturningWorker->getHarvestTile()->HasRescource())
+								{
+									//Check if we can give this harvester a new tile
+									UTileData* NewTile = getNextHarvestTile();
+									if(NewTile)
+									{
+										NewTile->GiveHarvester();
+										ReturningWorker->getHarvestTile()->ClearHarvester();
+										ReturningWorker->GiveHarvestJob(NewTile);
+										return;
+									}else
+									{
+										//Deactivate the worker
+										DeactivateWorker(ReturningWorker);
+									}
+								}
+							}
+						}
+						ReturningWorker->GiveHarvestJob(ReturningWorker->getHarvestTile());
+					}else
+					{
+						//We dont need to send him out again
+						DeactivateWorker(ReturningWorker);
+					}
+
+				}else
+				{
+					//We have no more space left. Deactivate this worker
+					DeactivateWorker(ReturningWorker);
+				}
 			}else
 			{
-				//We have no tiles left. Destroy the worker
-				Workers.Remove(Creature);
-				Creature->Destroy();
-				return;
+				//We failed to store a item. Deactivate the worker
+				DeactivateWorker(ReturningWorker);
 			}
+		}else
+		{
+			//This worker somehow returned without getting anything usefull. Deactivate him
+			DeactivateWorker(ReturningWorker);
 		}
-
-		//Just let the creature return to his rescource
-		Creature->GiveHarvestJob(Creature->getHarvestTile());
 	}
 }
 
 void AHarvesterTile::UpdateHarvestableTiles()
 {
-	for (int32 i = 0; i < HarvestAbleTiles.Num(); i++)
-	{
-		UTileData* Tile = HarvestAbleTiles[i];
-		if (Tile)
-		{
-			if(!Tile->HasRescource() || Tile->HasHarvester())
-			{
-				HarvestAbleTiles.RemoveAt(i);
-			}
-		}
-	}
+	
 }
 
 UTileData* AHarvesterTile::getNextHarvestTile()
@@ -243,26 +291,44 @@ UTileData* AHarvesterTile::getNextHarvestTile()
 		UTileData* Tile = HarvestAbleTiles[i];
 		if(Tile)
 		{
-			if(!Tile->HasHarvester())
+			//If there is already someone working on this tile
+			if(Tile->HasHarvester())
 			{
-				if(!BestTile)
+				continue;
+			}
+
+			//If we are a rescource harvester and the tile has not a rescource
+			if(HarvesterType == EHarvesterType::Rescource)
+			{
+				if(!Tile->HasRescource())
 				{
-					BestTile = Tile;
 					continue;
 				}
-				
-				int32 OldDistance = getGamemode()->getTable()->getDistance(getTileX(), getTileY(), BestTile->getX(), BestTile->getY());
-				int32 Distance = getGamemode()->getTable()->getDistance(getTileX(), getTileY(), Tile->getX(), Tile->getY());
+			}
 
-				if(Distance < OldDistance)
-				{
-					BestTile = Tile;
-				}
+			//Initial BestTile
+			if(!BestTile)
+			{
+				BestTile = Tile;
+				continue;
+			}
+
+			int32 OldDist = UTableHelper::getDistance(getTileX(), getTileY(), BestTile->getX(), BestTile->getY());
+			int32 NewDist = UTableHelper::getDistance(getTileX(), getTileY(), Tile->getX(), Tile->getY());
+
+			if(NewDist < OldDist)
+			{
+				BestTile = Tile;
 			}
 		}
 	}
 
 	return BestTile;
+}
+
+bool AHarvesterTile::HasInventorySpace()
+{
+	return (CurrentInventory < InventorySize);
 }
 
 int32 AHarvesterTile::getBuildGridRadius()

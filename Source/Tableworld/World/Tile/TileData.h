@@ -27,6 +27,7 @@ public:
 	void SetRescource(int32 Index, ETileRescources Type, int32 Amount);
 
 	void GiveHarvester();
+	void ClearHarvester();
 	void UpdateRescource(int32 Amount);
 	void ClearRescource();
 

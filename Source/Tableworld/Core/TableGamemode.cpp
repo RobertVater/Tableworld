@@ -29,6 +29,25 @@ void ATableGamemode::BeginPlay()
 	}
 }
 
+void ATableGamemode::ModifyTime(int32 NewTime)
+{
+	UGameplayStatics::SetGlobalTimeDilation(this, NewTime);
+}
+
+void ATableGamemode::StopTime()
+{
+	bGamePaused = !bGamePaused;
+	
+	UGameplayStatics::SetGamePaused(this, bGamePaused);
+	//if(!bGamePaused)
+	//{
+	//	ModifyTime(0.0f);
+	//	return;
+	//}
+
+	//ModifyTime(1.0f);
+}
+
 void ATableGamemode::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
 {
 	Event_FloatingItem.Broadcast(item, Amount, WorldLoc);

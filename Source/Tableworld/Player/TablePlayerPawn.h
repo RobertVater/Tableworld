@@ -75,6 +75,10 @@ public:
 	virtual void Input_Forward(float v);
 	virtual void Input_Right(float v);
 
+	virtual void Input_IncreaseSpeed();
+	virtual void Input_DecreaseSpeed();
+	virtual void Input_StopTime();
+
 	virtual void PlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
 
 	virtual void AdjustZoom();

@@ -8,6 +8,13 @@
 
 class AHarvesterCreature;
 
+UENUM(BlueprintType)
+enum class EHarvesterType : uint8
+{
+	Rescource,
+	Tile
+};
+
 UCLASS()
 class TABLEWORLD_API AHarvesterTile : public AInventoryTile
 {
@@ -15,9 +22,17 @@ class TABLEWORLD_API AHarvesterTile : public AInventoryTile
 	
 public:
 
+	//The type of object this harvester is harvesting
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
+	EHarvesterType HarvesterType = EHarvesterType::Rescource;
+
 	//The Rescource this harvester will harvest
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	ETileRescources HarvestRescource = ETileRescources::None;
+
+	//What tile to harvest
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
+	ETileType HarvestTile = ETileType::Rock;
 
 	//The item this harvester produces
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
@@ -33,25 +48,41 @@ public:
 
 	//The maximum number of creatures that can work for this building
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
-	int32 MaxHarvesterCreatureCount = 1;
+	int32 MaxWorkerCount = 1;
 
 	//The class of the harvester
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	TSubclassOf<AHarvesterCreature> WorkerClass = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
+	TArray<FProductionItem> InputItemsData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
+	TArray<FProductionItem> OutputItemsData;
+
+	//Called when we place down the building
 	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData) override;
 
+	//Resumes work for this building
 	virtual void StartWork() override;
+
+	//Pauses work for this building
 	virtual void StopWork() override;
 
-	virtual void TrySpawnNeededCreatures();
-	virtual void TryCreateCreature();
-	virtual AHarvesterCreature* SpawnCreature();
+	//Try to spawn only so many worker as our storage allows
+	virtual void InitWorkers();
 
+	virtual AHarvesterCreature* SpawnWorker();
+	virtual void DeactivateWorker(AHarvesterCreature* Worker);
+	virtual void ActivateWorker(AHarvesterCreature* Worker);
+
+	//Increases the stored item count by 1
 	virtual bool StoreItem();
 
+	//Called once a hauler has arrived at this building
 	virtual void TransferInventory(AHaulerCreature* Hauler) override;
 
+	//Called once a worker has returned from work (To drop off rescources etc)
 	virtual void OnWorkerReturn(AHarvesterCreature* Worker);
 
 	//Iterates through all harvestable tiles and removes tiles that have no rescources left
@@ -60,6 +91,7 @@ public:
 	//Get the nearest valid Harvest tile
 	UTileData* getNextHarvestTile();
 
+	bool HasInventorySpace();
 	virtual int32 getBuildGridRadius() override;
 	virtual EItem getItemType() override;
 
@@ -73,7 +105,4 @@ protected:
 
 	//A Array containing all tiles this harvester can harvest
 	TArray<UTileData*> HarvestAbleTiles;
-
-	TArray<FProductionItem> InputItemsData;
-	TArray<FProductionItem> OutputItemsData;
 };

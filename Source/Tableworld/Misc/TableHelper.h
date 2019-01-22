@@ -11,6 +11,18 @@ class ABuildableTile;
 class UTileData;
 
 UENUM(BlueprintType)
+enum class ECreatureStatus: uint8
+{
+	Deactivated,
+	Idle,
+	Wandering,
+	Working,
+	ReturningGoods,
+	Harvesting,
+	GoingToWork
+};
+
+UENUM(BlueprintType)
 enum class ETileType : uint8
 {
 	Grass,
@@ -49,6 +61,7 @@ enum class EItem : uint8
 	Apples,
 	DeerMeat,
 	DeerCorpse,
+	Water,
 	Max
 };
 
@@ -242,4 +255,6 @@ class TABLEWORLD_API UTableHelper : public UBlueprintFunctionLibrary
 public:
 
 	static TSubclassOf<UTileData> getTileClass(ETileType Type);
+	static int32 getTileDistance(UTileData* TileA, UTileData* TileB);
+	static int32 getDistance(int32 X, int32 Y, int32 EX, int32 EY);
 };

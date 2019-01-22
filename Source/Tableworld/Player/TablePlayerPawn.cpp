@@ -85,21 +85,26 @@ void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAxis("Forward", this, &ATablePlayerPawn::Input_Forward);
-	PlayerInputComponent->BindAxis("Right", this, &ATablePlayerPawn::Input_Right);
+	PlayerInputComponent->BindAxis("Forward", this, &ATablePlayerPawn::Input_Forward).bExecuteWhenPaused=true;
+	PlayerInputComponent->BindAxis("Right", this, &ATablePlayerPawn::Input_Right).bExecuteWhenPaused = true;
 
-	PlayerInputComponent->BindAction("ZoomIn", IE_Pressed, this, &ATablePlayerPawn::Input_ZoomIn);
-	PlayerInputComponent->BindAction("ZoomOut", IE_Pressed, this, &ATablePlayerPawn::Input_ZoomOut);
+	PlayerInputComponent->BindAction("ZoomIn", IE_Pressed, this, &ATablePlayerPawn::Input_ZoomIn).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("ZoomOut", IE_Pressed, this, &ATablePlayerPawn::Input_ZoomOut).bExecuteWhenPaused = true;
 
 
-	PlayerInputComponent->BindAction("LeftMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_LeftMouse_Pressed);
-	PlayerInputComponent->BindAction("LeftMouseClick", IE_Released, this, &ATablePlayerPawn::Input_LeftMouse_Released);
+	PlayerInputComponent->BindAction("LeftMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_LeftMouse_Pressed).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("LeftMouseClick", IE_Released, this, &ATablePlayerPawn::Input_LeftMouse_Released).bExecuteWhenPaused = true;
 
-	PlayerInputComponent->BindAction("RightMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_RightMouse_Pressed);
-	PlayerInputComponent->BindAction("RightMouseClick", IE_Released, this, &ATablePlayerPawn::Input_RightMouse_Released);
+	PlayerInputComponent->BindAction("RightMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_RightMouse_Pressed).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("RightMouseClick", IE_Released, this, &ATablePlayerPawn::Input_RightMouse_Released).bExecuteWhenPaused = true;
 
-	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_MiddleMouse_Pressed);
-	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Released, this, &ATablePlayerPawn::Input_MiddleMouse_Released);
+	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_MiddleMouse_Pressed).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Released, this, &ATablePlayerPawn::Input_MiddleMouse_Released).bExecuteWhenPaused = true;
+
+	PlayerInputComponent->BindAction("SpeedIncrease", IE_Pressed, this, &ATablePlayerPawn::Input_IncreaseSpeed).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("SpeedDecrease", IE_Pressed, this, &ATablePlayerPawn::Input_DecreaseSpeed).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("StopTime", IE_Pressed, this, &ATablePlayerPawn::Input_StopTime).bExecuteWhenPaused = true;
+
 }
 
 void ATablePlayerPawn::MoveSelectedBuilding()
@@ -340,6 +345,31 @@ void ATablePlayerPawn::Input_Right(float v)
 		AddMovementInput(GetActorRightVector(), v);
 
 		UpdateMinimapPlayerView();
+	}
+}
+
+void ATablePlayerPawn::Input_IncreaseSpeed()
+{
+	if(getGamemode())
+	{
+	
+	}
+}
+
+void ATablePlayerPawn::Input_DecreaseSpeed()
+{
+	if(getGamemode())
+	{
+	
+	}
+}
+
+void ATablePlayerPawn::Input_StopTime()
+{
+	if(getGamemode())
+	{
+		//getGamemode()->StopTime();
+		
 	}
 }
 

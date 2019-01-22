@@ -32,6 +32,9 @@ public:
 
 	virtual void BeginPlay() override;
 
+	void ModifyTime(int32 NewTime);
+	void StopTime();
+
 	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
 
 	UFUNCTION(meta = (BlueprintThreadSafe))
@@ -91,6 +94,9 @@ public:
 	FStoredItemsUpdated Event_StoredItemsUpdated;
 
 protected:
+
+	int32 GameSpeed = 1;
+	bool bGamePaused = false;
 
 	FTableBuilding SelectedBuilding;
 

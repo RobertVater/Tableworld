@@ -7,6 +7,7 @@
 #include "World/TableWorldTable.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
+#include "Misc/TableHelper.h"
 
 void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding)
 {
@@ -22,8 +23,6 @@ void AHarvesterCreature::GiveHarvestJob(UTileData* nHarvestTile)
 
 	if(HarvestTile)
 	{
-		HarvestTile->DebugHighlightTile(1.0f);
-
 		//Move to the tile
 		SimpleMoveTo(HarvestTile->getWorldCenter());
 	}
@@ -61,7 +60,6 @@ void AHarvesterCreature::OnMoveCompleted()
 
 	//Check if we reached the rescource of the home tile
 	UTileData* OurTile = getStandingTile();
-
 	if (OurTile) 
 	{
 		//Rescourse
@@ -98,31 +96,12 @@ void AHarvesterCreature::ResetHasHarvested()
 }
 
 void AHarvesterCreature::StartHarvesting()
-{
-	if(!HasTileStillRescources())
-	{
-		if(getHarvesterTile())
-		{
-			HarvestTile = getHarvesterTile()->getNextHarvestTile();
-			if(!HarvestTile)
-			{
-				DebugWarning("No tiles left. Return home and get killed");
-
-				//If the tile is STILL null that mean that the harvester has no tiles anymore. Move back and destroy the worker
-				GiveReturnJob();
-				return;
-			}else
-			{
-				//Mark the tile as taken
-				HarvestTile->GiveHarvester();
-			}
-		}
-	}
-	
+{	
 	if (!GetWorldTimerManager().IsTimerActive(HarvestTimer))
 	{
 		if (getHarvesterTile())
 		{
+			CreatureStatus = ECreatureStatus::Harvesting;
 			SetAnimation(Work);
 			
 			float HarvestTime = FMath::RandRange(getHarvesterTile()->HarvestTime / 2.0f, getHarvesterTile()->HarvestTime);
@@ -140,6 +119,14 @@ void AHarvesterCreature::OnHarvestEffect()
 		UGameplayStatics::PlaySoundAtLocation(this, HarvestSound, GetActorLocation());
 	}
 
+	if(HarvestParticles)
+	{
+		FVector Start = GetActorLocation();
+		FVector Dir = GetActorForwardVector() * 50.0f;
+		FVector End = Dir + Start;
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HarvestParticles, End, FRotator::ZeroRotator, true);
+	}
+
 	//Play the wobble animation
 	if (getGamemode())
 	{
@@ -152,7 +139,6 @@ void AHarvesterCreature::OnHarvestEffect()
 
 void AHarvesterCreature::OnHarvest()
 {
-	DebugWarning("Harvest");
 	GetWorldTimerManager().ClearTimer(HarvestEffectsTimer);
 	
 	if(getHarvestTile())
@@ -166,6 +152,8 @@ void AHarvesterCreature::OnHarvest()
 				bHasHarvested = true;
 			}
 		}
+
+		CreatureStatus = ECreatureStatus::ReturningGoods;
 
 		//Return home
 		GiveReturnJob();

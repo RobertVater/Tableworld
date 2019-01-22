@@ -99,7 +99,7 @@ public:
 
 	ATableChunk* getChunkForTile(int32 X, int32 Y);
 	UTileData* getTile(int32 X, int32 Y);
-	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius);
+	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius, ETileType Tile, bool bBlockRescources);
 	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource);
 
 	bool HarvestRescource(UTileData* Tile, int32 Amount);
@@ -130,9 +130,6 @@ public:
 
 	//Road Pathfinding
 	TArray<UTileData*> FindPathRoad(UTileData* StartTile, UTileData* EndTile, bool bAllowDiag = false);
-
-	int32 getTileDistance(UTileData* TileA, UTileData* TileB);
-	int32 getDistance(int32 X, int32 Y, int32 EX, int32 EY);
 
 	TArray<ABuildableTile*> getBuildings();
 	TArray<ACityCentreTile*> getCityCentres();

@@ -72,6 +72,22 @@ void ABaseCreature::Tick(float DeltaTime)
 	}
 }
 
+void ABaseCreature::DeactivateCreature()
+{
+	CreatureStatus = ECreatureStatus::Deactivated;
+	
+	Mesh->SetVisibility(false);
+	PathPoints.Empty();
+	MinDistance = 0.0f;
+	CurrentPathIndex = 0;
+}
+
+void ABaseCreature::ActivateCreature()
+{
+	Mesh->SetVisibility(true);
+	CreatureStatus = ECreatureStatus::Idle;
+}
+
 void ABaseCreature::SetAnimation(UAnimationAsset* Anim)
 {
 	if(Mesh)
@@ -205,5 +221,10 @@ UAnimationAsset* ABaseCreature::getIdleAnimation()
 UAnimationAsset* ABaseCreature::getWalkAnimation()
 {
 	return Walk;
+}
+
+ECreatureStatus ABaseCreature::getStatus()
+{
+	return CreatureStatus;
 }
 

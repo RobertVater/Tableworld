@@ -11,6 +11,13 @@
 #include "InventoryTile.h"
 #include "../DirtRoadTile.h"
 
+void ACityCentreTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData)
+{
+	Super::Place(nPlacedOnTiles, nBuildingData);
+
+	StartWork();
+}
+
 void ACityCentreTile::StartWork()
 {
 	Super::StartWork();
@@ -47,7 +54,7 @@ bool ACityCentreTile::InInfluenceRange(int32 X, int32 Y, FVector2D Size)
 				int32 CheckX = X + x;
 				int32 CheckY = Y + y;
 
-				int32 Distance = getTable()->getDistance(getTileX(), getTileY(), CheckX, CheckY);
+				int32 Distance = UTableHelper::getDistance(getTileX(), getTileY(), CheckX, CheckY);
 				if(Distance > InfluenceRadius)
 				{
 					bInRange = false;
