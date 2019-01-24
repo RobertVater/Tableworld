@@ -93,11 +93,8 @@ void AHarvesterTile::InitWorkers()
 				continue;
 			}
 
-			//Activate deactivated workers
-			if(Worker->getStatus() == ECreatureStatus::Deactivated)
-			{
-				ActivateWorker(Worker);
-			}
+			//Activate workers
+			ActivateWorker(Worker);
 
 			NewHarvestTile->GiveHarvester();
 			Worker->GiveHarvestJob(NewHarvestTile);
@@ -335,7 +332,7 @@ int32 AHarvesterTile::getBuildGridRadius()
 {
 	if(BuildingData.ID != NAME_None)
 	{
-		return SearchRangeInTiles + (int32)(BuildingData.BuildingSize.X + BuildingData.BuildingSize.Y);
+		return SearchRangeInTiles;
 	}
 
 	return Super::getBuildGridRadius();

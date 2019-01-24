@@ -72,6 +72,7 @@ enum class ETileRescources : uint8
 	Tree,
 	IronOre,
 	Fish,
+	Berries,
 	Max
 };
 

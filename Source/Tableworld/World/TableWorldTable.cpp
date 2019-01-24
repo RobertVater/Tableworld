@@ -62,7 +62,7 @@ void ATableWorldTable::Tick(float DeltaSeconds)
 					FTransform Trans;
 					Mesh->GetInstanceTransform(Wobble.InstanceIndex, Trans);
 
-					Trans.SetRotation(FQuat(FRotator(0, 0, 0)));
+					Trans.SetRotation(FQuat(FRotator(0, Trans.GetRotation().Rotator().Yaw, 0)));
 
 					Mesh->UpdateInstanceTransform(Wobble.InstanceIndex, Trans, false, true);
 
@@ -86,7 +86,7 @@ void ATableWorldTable::Tick(float DeltaSeconds)
 				float PitchLerp = FMath::Lerp(Pitch, 0.0f, Speed * DeltaSeconds);
 				float RollLerp = FMath::Lerp(Roll, 0.0f, Speed * DeltaSeconds);
 
-				Trans.SetRotation(FQuat(FRotator(PitchLerp, 0.0f, RollLerp)));
+				Trans.SetRotation(FQuat(FRotator(PitchLerp, Trans.GetRotation().Rotator().Yaw, RollLerp)));
 
 				Wobble.Life -= 1 * DeltaSeconds;
 
@@ -186,19 +186,36 @@ void ATableWorldTable::GenerateMap()
 		{
 			float PerlinValue = Noise->GetNoise2D(x, y);
 
-			float TreeTile = 0.3f;
+			float TreeTile = 0.15f;
 			float RockChance = 0.15f;
 
 			//Place a tree
-			if (PerlinValue > TreeTile)
+			if (PerlinValue >= TreeTile)
 			{
-				SetRescource(x, y, ETileRescources::Tree, 100, ETileType::Grass);
+				SetRescource(x, y, ETileRescources::Tree, 75, ETileType::Grass);
 			}
 
 			//Place iron ore!
 			if(FMath::RandRange(0.0f,1.0f) <= RockChance)
 			{
-				SetRescource(x, y, ETileRescources::IronOre, 50, ETileType::Rock);
+				SetRescource(x, y, ETileRescources::IronOre, 150, ETileType::Rock);
+			}
+		}
+	}
+
+	Noise->SetSeed(FMath::Rand());
+	for (int32 x = 0; x < MaxXTiles; x++)
+	{
+		for (int32 y = 0; y < MaxYTiles; y++)
+		{
+			float PerlinValue = Noise->GetNoise2D(x, y);
+
+			float BerrieChance = 0.6f;
+
+			//Place berries!
+			if (PerlinValue >= BerrieChance)
+			{
+				SetRescource(x, y, ETileRescources::Berries, 125, ETileType::Grass);
 			}
 		}
 	}
@@ -487,6 +504,13 @@ bool ATableWorldTable::HarvestRescource(UTileData* Tile, int32 Amount)
 				}
 
 				Tile->ClearRescource();
+
+				TArray<UTileData*> ModifiedTile;
+				ModifiedTile.Add(Tile);
+
+				UpdateMinimap(ModifiedTile);
+
+
 				return true;
 			}else
 			{

@@ -103,6 +103,8 @@ void AHarvesterCreature::StartHarvesting()
 		{
 			CreatureStatus = ECreatureStatus::Harvesting;
 			SetAnimation(Work);
+
+			SetRotationGoal( (GetActorLocation() - getHarvestTile()->getWorldCenter()).Rotation().Yaw + 90.0f );
 			
 			float HarvestTime = FMath::RandRange(getHarvesterTile()->HarvestTime / 2.0f, getHarvesterTile()->HarvestTime);
 			GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, HarvestTime, false);

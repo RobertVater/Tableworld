@@ -126,6 +126,7 @@ FColor UTileData::getMinimapColor()
 		{
 		case ETileRescources::Tree: return FColor::FromHex("#006400");
 		case ETileRescources::IronOre: return FColor::Orange;
+		case ETileRescources::Berries: return FColor::Purple;
 		}
 	}
 

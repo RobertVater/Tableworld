@@ -7,6 +7,7 @@
 #include "Misc/TableHelper.h"
 #include "BuildableTile.generated.h"
 
+class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 
@@ -30,6 +31,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UBoxComponent* CollisionBox = nullptr;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInstancedStaticMeshComponent* GridHighlight = nullptr;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	UMaterial* GhostMaterial = nullptr;
 
@@ -39,6 +43,9 @@ public:
 	ABuildableTile();
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void ShowGridRadius();
+	virtual void ClearGridRadius();
 
 	virtual void SetIsGhost(FTableBuilding nBuildingData);
 	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData);

@@ -8,6 +8,7 @@
 #include "World/TableWorldTable.h"
 #include "../TileData.h"
 #include "Core/TableGameInstance.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 ABuildableTile::ABuildableTile()
 {
@@ -19,6 +20,12 @@ ABuildableTile::ABuildableTile()
 	TileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TileMesh"));
 	TileMesh->SetCollisionProfileName("NoCollision");
 	TileMesh->SetupAttachment(Root);
+
+	GridHighlight = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GridHighlight"));
+	GridHighlight->SetCastShadow(false);
+	GridHighlight->SetCollisionProfileName("NoCollision");
+	GridHighlight->SetGenerateOverlapEvents(false);
+	GridHighlight->SetupAttachment(GetRootComponent());
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	CollisionBox->SetRelativeLocation(FVector(0, 0, 50));
@@ -36,7 +43,49 @@ void ABuildableTile::BeginPlay()
 void ABuildableTile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
 
+void ABuildableTile::ShowGridRadius()
+{
+	ClearGridRadius();
+
+	int32 Radius = getBuildGridRadius();
+
+	if (Radius > 0)
+	{
+		if (getTable())
+		{
+			for (int32 x = -Radius; x <= Radius; x++)
+			{
+				for (int32 y = -Radius; y <= Radius; y++)
+				{
+					if ((x * x) + (y * y) <= (Radius * Radius))
+					{
+						int32 XX = (GetActorLocation().X / 100 + x);
+						int32 YY = (GetActorLocation().Y / 100 + y);
+
+						UTileData* Tile = getTable()->getTile(XX, YY);
+						if (Tile)
+						{
+							FTransform trans;
+							FVector Location = FVector(Tile->getX() * 100.0f + 50.0f, Tile->getY() * 100.0f + 50.0f, 1.0f);
+
+							trans.SetLocation(Location);
+							GridHighlight->AddInstanceWorldSpace(trans);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void ABuildableTile::ClearGridRadius()
+{
+	if(GridHighlight)
+	{
+		GridHighlight->ClearInstances();
+	}
 }
 
 void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
@@ -45,9 +94,12 @@ void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
 
 	bIsGhost = true;
 
+	TileMesh->SetRenderCustomDepth(true);
 	TileMesh->SetMaterial(0, GhostMaterial);
 
 	DynMaterial = TileMesh->CreateDynamicMaterialInstance(0);
+
+	ShowGridRadius();
 }
 
 void ABuildableTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData)
@@ -61,6 +113,7 @@ void ABuildableTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBui
 		TileY = (int32)nPlacedOnTiles[0].Y;
 	}
 
+	TileMesh->SetRenderCustomDepth(false);
 	TileMesh->SetMaterial(0, DefaultMaterial);
 	bIsGhost = false;
 

@@ -41,6 +41,8 @@ public:
 	virtual void DeactivateCreature();
 	virtual void ActivateCreature();
 
+	virtual void SetRotationGoal(float NewGoal);
+
 
 	void SetAnimation(UAnimationAsset* Anim);
 
@@ -65,6 +67,8 @@ protected:
 	ECreatureStatus CreatureStatus = ECreatureStatus::Idle;
 
 	ATableGamemode* GM = nullptr;
+
+	float RotationGoal = 0.0f;
 
 	float MinDistance = 0.0f;
 	int32 CurrentPathIndex = 0;

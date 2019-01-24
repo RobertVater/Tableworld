@@ -116,15 +116,10 @@ void ATablePlayerPawn::MoveSelectedBuilding()
 		{
 			//Move the building ghost  to the mouse tile location
 			TileActor->SetActorLocation(getBuildingBuildLocation(SelectedTile));
+			TileActor->ShowGridRadius();
 
 			//Show the player if we can place the building or now
 			TileActor->SetIsBlocked(CanBuild(CurrentBuilding.BuildingSize, SelectedTile));
-
-			if (GlobalMaterialVariables)
-			{
-				//Move the building grid around the building
-				UKismetMaterialLibrary::SetVectorParameterValue(this, GlobalMaterialVariables, "GridOrigin", TileActor->GetActorLocation());
-			}
 
 			//If we are dragging a building
 			if (bIsDragBuilding)
@@ -187,11 +182,6 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 			if(GlobalMaterialVariables)
 			{
 				UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "bShowGrid", (TileActor->getBuildGridRadius() <= 0) ? 0 : 1 );
-			}
-
-			if (GlobalMaterialVariables)
-			{
-				UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "Tiles", TileActor->getBuildGridRadius());
 			}
 		}
 	}
@@ -483,19 +473,13 @@ void ATablePlayerPawn::UpdateMinimapPlayerView()
 		{
 			if(getGamemode()->getTable())
 			{
-				float MaxX = getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeX;
-				float MaxY = getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeY;
+				float MaxX = (getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeX);
+				float MaxY = (getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeY);
 
 				float OurX = GetActorLocation().X;
 				float OurY = GetActorLocation().Y;
 
-				float AlphaX = (OurX / MaxX);
-				AlphaX = FMath::Clamp(AlphaX, 0.0f, 1.0f);
-
-				float AlphaY = (OurY / MaxY);
-				AlphaY = FMath::Clamp(AlphaY, 0.0f, 1.0f);
-
-				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomAlpha);
+				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal);
 			}
 		}
 	}

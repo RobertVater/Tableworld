@@ -21,12 +21,18 @@ void ABaseCreature::BeginPlay()
 {
 	Super::BeginPlay();
 
+	RotationGoal = GetActorRotation().Yaw;
 	SetAnimation(getIdleAnimation());
 }
 
 void ABaseCreature::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if(getStatus() == ECreatureStatus::Deactivated)
+	{
+		DrawDebugString(GetWorld(), GetActorLocation() + FVector(0,0,150), "Deactivated", NULL, FColor::Cyan, 0, true);
+	}
 
 	if(PathPoints.Num() > 0)
 	{
@@ -54,8 +60,7 @@ void ABaseCreature::Tick(float DeltaTime)
 		DrawDebugString(GetWorld(), CurrentMoveTarget, FString::FromInt(CurrentPathIndex), NULL, FColor::White, 0, true);
 
 		//Rotate to pathpoint
-		float YawLerp = UKismetMathLibrary::RLerp(GetActorRotation(), FRotator(0.0f, Dir.Rotation().Yaw - 90.0f, 0.0f), RotationSpeed * DeltaTime, true).Yaw;
-		SetActorRotation(FRotator(0.0f, YawLerp, 0.0f));
+		SetRotationGoal(Dir.Rotation().Yaw - 90.0f);
 
 		FVector CurrentLoc = GetActorLocation();
 		CurrentLoc += Dir * (MovementSpeed * DeltaTime);
@@ -70,6 +75,9 @@ void ABaseCreature::Tick(float DeltaTime)
 			return;
 		}
 	}
+
+	float YawLerp = UKismetMathLibrary::RLerp(GetActorRotation(), FRotator(0.0f, RotationGoal, 0.0f), RotationSpeed * DeltaTime, true).Yaw;
+	SetActorRotation(FRotator(0.0f, YawLerp, 0.0f));
 }
 
 void ABaseCreature::DeactivateCreature()
@@ -86,6 +94,11 @@ void ABaseCreature::ActivateCreature()
 {
 	Mesh->SetVisibility(true);
 	CreatureStatus = ECreatureStatus::Idle;
+}
+
+void ABaseCreature::SetRotationGoal(float NewGoal)
+{
+	RotationGoal = NewGoal;
 }
 
 void ABaseCreature::SetAnimation(UAnimationAsset* Anim)
