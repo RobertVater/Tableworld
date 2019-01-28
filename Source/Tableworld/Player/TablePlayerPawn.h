@@ -75,9 +75,15 @@ public:
 	virtual void Input_Forward(float v);
 	virtual void Input_Right(float v);
 
-	virtual void Input_IncreaseSpeed();
-	virtual void Input_DecreaseSpeed();
-	virtual void Input_StopTime();
+	virtual void Input_Rotate();
+
+	//Time
+	virtual void Input_GameSpeed_0();
+	virtual void Input_GameSpeed_1();
+	virtual void Input_GameSpeed_2();
+	virtual void Input_GameSpeed_3();
+	virtual void Input_GameSpeed_4();
+	virtual void ModifyGameSpeed(int32 SpeedLevel);
 
 	virtual void PlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
 
@@ -98,12 +104,15 @@ public:
 	FVector getMouseWorldLocation();
 	FVector getMouseWorldLocationGrid();
 
+	FVector2D getBuildingSize();
 	FVector getBuildingBuildLocation(UTileData* Tile);
+	FVector2D getBuildingBuildLocationTile(UTileData* Tile);
 
 protected:
 
 	//Building
 	UTileData* SelectedTile = nullptr;
+	bool bRotated = false;
 
 	FTableBuilding CurrentBuilding;
 

@@ -21,6 +21,7 @@ void ATablePlayerController::BeginPlay()
 	if(getHudManager())
 	{
 		getHudManager()->BuildUI();
+		bShouldPerformFullTickWhenPaused = true;
 	}
 
 	UpdateMinimap();

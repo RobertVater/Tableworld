@@ -11,6 +11,7 @@ class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 
+class UTileData;
 class ATableWorldTable;
 class ATableGamemode;
 class UTableGameInstance;
@@ -34,8 +35,11 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UInstancedStaticMeshComponent* GridHighlight = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
-	UMaterial* GhostMaterial = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+	bool bChangeFoundationTiles = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+	ETileType FoundationTile = ETileType::Dirt;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
 	EBuildingInfoType InfoPanelType = EBuildingInfoType::Production;
@@ -48,7 +52,9 @@ public:
 	virtual void ClearGridRadius();
 
 	virtual void SetIsGhost(FTableBuilding nBuildingData);
-	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData);
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated);
+
+	virtual void MoveBuildingToLocation(FVector NewLoc);
 
 	virtual void SetIsBlocked(bool bBlocked);
 	virtual void SetHaulLocked(bool bHaulLocked);
@@ -82,6 +88,12 @@ public:
 	int32 getTileY();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	int32 getCenterX();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	int32 getCenterY();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FVector2D getBuildingSize();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
@@ -93,6 +105,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual int32 getBuildGridRadius();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual FColor getGridColor();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual float getGridHeigth();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual bool requiresInfluence();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual int32 getCurrentStorage();
@@ -118,7 +139,13 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool isHaulerComming();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	bool isConnectedToRoad();
+
 protected:
+
+	bool bRotated = false;
+	float GhostOffsetZ = 0.0f;
 
 	bool bHaulerIsComming = false;
 
@@ -129,10 +156,14 @@ protected:
 	//A array with the global tile locations that this building is placed on!
 	TArray<FVector2D> PlacedOnTiles;
 
+	//True if this building is connected to a road
+	bool bIsConnectedToRoad = false;
+
 	//The tiles around this building
 	UPROPERTY()
 	TArray<UTileData*> TilesAroundUs;
 
+	UMaterialInstanceDynamic* DynGridMaterial = nullptr;
 	UMaterialInstanceDynamic* DynMaterial = nullptr;
 	UMaterialInterface* DefaultMaterial = nullptr;
 

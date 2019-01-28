@@ -18,11 +18,13 @@ void UMainHud::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	ATableGamemode* GM = Cast<ATableGamemode>(UGameplayStatics::GetGameMode(this));
-	if(GM)
+	if(getGamemode())
 	{
-		GM->Event_StoredItemsUpdated.AddDynamic(this, &UMainHud::UpdateRescourceUI);
+		getGamemode()->Event_StoredItemsUpdated.AddDynamic(this, &UMainHud::UpdateRescourceUI);
+		getGamemode()->Event_GameSpeedUpdated.AddDynamic(this, &UMainHud::UpdateGameTime);
+
 		UpdateRescourceUI();
+		UpdateGameTime(1);
 	}
 }
 
@@ -37,6 +39,11 @@ void UMainHud::UpdateMinimap_Implementation(UTexture2D* NewMinimap)
 }
 
 void UMainHud::ShowBuildMenu_Implementation(bool bShow)
+{
+
+}
+
+void UMainHud::UpdateGameTime_Implementation(int32 NewGameTime)
 {
 
 }
@@ -62,4 +69,9 @@ void UMainHud::SelectTool(EToolbarTools NewTool)
 EToolbarTools UMainHud::getSelectedTool()
 {
 	return SelectedTool;
+}
+
+ATableGamemode* UMainHud::getGamemode()
+{
+	return GM ? GM : GM = Cast<ATableGamemode>(UGameplayStatics::GetGameMode(GetOwningPlayer()));
 }

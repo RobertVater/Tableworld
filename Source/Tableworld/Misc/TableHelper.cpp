@@ -6,11 +6,18 @@
 #include "World/Tile/SandTile.h"
 #include "World/Tile/RockTile.h"
 #include "World/Tile/DirtRoadTile.h"
+#include "World/Tile/DirtTile.h"
+
+bool UTableHelper::isDebug()
+{
+	return true;
+}
 
 TSubclassOf<UTileData> UTableHelper::getTileClass(ETileType Type)
 {
 	switch(Type)
 	{
+	case ETileType::Dirt: return UDirtTile::StaticClass();
 	case ETileType::Grass: return UGrassTile::StaticClass();
 	case ETileType::Water: return UWaterTile::StaticClass();
 	case ETileType::Sand: return USandTile::StaticClass();

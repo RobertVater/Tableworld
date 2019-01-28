@@ -29,6 +29,10 @@ public:
 	virtual void GenerateTileData();
 	virtual void GenerateChunkMesh();
 
+	//Mesh
+	virtual void AddPlane(float X, float Y, int32 VertIndex, TArray<FVector>& Verts, TArray<FVector2D>& UVs);
+	virtual void AddCube(float X, float Y, float Heigth, int32 VertIndex, TArray<FVector>& Verts, TArray<FVector2D>& UVs);
+
 	virtual void UpdateChunkTexture();
 
 	void SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial = true);
@@ -44,6 +48,7 @@ public:
 	int32 getY();
 
 	UTileData* getTile(int32 X, int32 Y);
+	UTileData* getLocalTile(int32 X, int32 Y);
 
 protected:
 

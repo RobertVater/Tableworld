@@ -122,6 +122,21 @@ enum class EToolbarTools : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FReservedItem
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	EItem Item = EItem::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	int32 Amount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	ABuildableTile* ReservingBuilding = nullptr;
+};
+
+USTRUCT(BlueprintType)
 struct FNeededItems
 {
 	GENERATED_BODY()
@@ -254,6 +269,8 @@ class TABLEWORLD_API UTableHelper : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
+
+	static bool isDebug();
 
 	static TSubclassOf<UTileData> getTileClass(ETileType Type);
 	static int32 getTileDistance(UTileData* TileA, UTileData* TileB);

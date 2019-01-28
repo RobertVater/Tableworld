@@ -7,9 +7,14 @@
 #include "Core/TableGamemode.h"
 #include "Core/TableGameInstance.h"
 
-void AHarvesterTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData)
+AHarvesterTile::AHarvesterTile()
 {
-	Super::Place(nPlacedOnTiles, nBuildingData);
+	Tags.Add("HarvesterBuilding");
+}
+
+void AHarvesterTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+{
+	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated);
 
 	if (getTable())
 	{
@@ -17,11 +22,11 @@ void AHarvesterTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBui
 		switch (HarvesterType)
 		{
 		case EHarvesterType::Rescource:
-			HarvestAbleTiles = getTable()->getRescourcesInRadius(getTileX(), getTileY(), getBuildGridRadius(), HarvestRescource);
+			HarvestAbleTiles = getTable()->getRescourcesInRadius(getCenterX(), getCenterY(), getBuildGridRadius(), HarvestRescource);
 			break;
 
 		case EHarvesterType::Tile:
-			HarvestAbleTiles = getTable()->getTilesInRadius(getTileX(), getTileY(), getBuildGridRadius(), HarvestTile, true);
+			HarvestAbleTiles = getTable()->getTilesInRadius(getCenterX(), getCenterY(), getBuildGridRadius(), HarvestTile, true);
 			break;
 		}
 
@@ -330,12 +335,17 @@ bool AHarvesterTile::HasInventorySpace()
 
 int32 AHarvesterTile::getBuildGridRadius()
 {
-	if(BuildingData.ID != NAME_None)
-	{
-		return SearchRangeInTiles;
-	}
+	return SearchRangeInTiles - 1;
+}
 
-	return Super::getBuildGridRadius();
+FColor AHarvesterTile::getGridColor()
+{
+	return FColor::Green;
+}
+
+float AHarvesterTile::getGridHeigth()
+{
+	return 5.0f;
 }
 
 EItem AHarvesterTile::getItemType()

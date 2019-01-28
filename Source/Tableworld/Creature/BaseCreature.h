@@ -10,6 +10,7 @@
 class ATableGamemode;
 class UTileData;
 class UAnimationAsset;
+class UHumanAnimBlueprint;
 
 UCLASS()
 class TABLEWORLD_API ABaseCreature : public AActor
@@ -42,10 +43,9 @@ public:
 	virtual void ActivateCreature();
 
 	virtual void SetRotationGoal(float NewGoal);
+	void SetCreatureStatus(ECreatureStatus NewStatus);
 
-
-	void SetAnimation(UAnimationAsset* Anim);
-
+	virtual void StopMovement();
 	virtual void SimpleMoveTo(FVector TargetLocation, float nMinDistance = 50.0f);
 
 	virtual void PathMoveTo(UTileData* TargetTile, float nMinDistance = 25.0f);
@@ -56,6 +56,8 @@ public:
 	virtual void OnMoveCompleted();
 
 	ATableGamemode* getGamemode();
+	UHumanAnimBlueprint* getAnimationBlueprint();
+
 	UTileData* getStandingTile();
 
 	virtual UAnimationAsset* getIdleAnimation();
@@ -67,6 +69,7 @@ protected:
 	ECreatureStatus CreatureStatus = ECreatureStatus::Idle;
 
 	ATableGamemode* GM = nullptr;
+	UHumanAnimBlueprint* AnimationBlueprint = nullptr;
 
 	float RotationGoal = 0.0f;
 

@@ -88,9 +88,12 @@ void UTileData::ClearRescource()
 	bHasHarvester = false;
 }
 
-void UTileData::DebugHighlightTile(float Time /*= 10.0f*/)
+void UTileData::DebugHighlightTile(float Time /*= 10.0f*/, FColor Color)
 {
-	DrawDebugBox(ParentChunk->GetWorld(), getWorldCenter(), FVector(50, 50, 50), FColor::Blue, false, Time, 0, 5.0f);
+	if (UTableHelper::isDebug()) 
+	{
+		DrawDebugBox(ParentChunk->GetWorld(), getWorldCenter(), FVector(50, 50, 50), Color, false, Time, 0, 5.0f);
+	}
 }
 
 int32 UTileData::getTileRescourceIndex()

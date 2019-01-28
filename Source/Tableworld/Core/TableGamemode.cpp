@@ -31,7 +31,11 @@ void ATableGamemode::BeginPlay()
 
 void ATableGamemode::ModifyTime(int32 NewTime)
 {
+	UGameplayStatics::SetGamePaused(this, false);
 	UGameplayStatics::SetGlobalTimeDilation(this, NewTime);
+
+	GameSpeed = NewTime;
+	Event_GameSpeedUpdated.Broadcast(NewTime);
 }
 
 void ATableGamemode::StopTime()
@@ -39,13 +43,14 @@ void ATableGamemode::StopTime()
 	bGamePaused = !bGamePaused;
 	
 	UGameplayStatics::SetGamePaused(this, bGamePaused);
-	//if(!bGamePaused)
-	//{
-	//	ModifyTime(0.0f);
-	//	return;
-	//}
 
-	//ModifyTime(1.0f);
+	if(bGamePaused)
+	{
+		LastGameSpeed = GameSpeed;
+	}
+	
+	GameSpeed = bGamePaused ? 0 : LastGameSpeed;
+	Event_GameSpeedUpdated.Broadcast(GameSpeed);
 }
 
 void ATableGamemode::AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc)
@@ -293,4 +298,9 @@ int32 ATableGamemode::getStoredItemAmount(EItem Item, bool& bFound)
 
 	bFound = false;
 	return 0;
+}
+
+int32 ATableGamemode::getGameTime()
+{
+	return GameSpeed;
 }

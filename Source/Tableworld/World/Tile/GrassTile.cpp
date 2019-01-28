@@ -19,5 +19,5 @@ FColor UGrassTile::getMinimapColor()
 		return Super::getMinimapColor();
 	}
 	
-	return FColor::FromHex("#3B5323");
+	return FColor::FromHex("#263617");
 }

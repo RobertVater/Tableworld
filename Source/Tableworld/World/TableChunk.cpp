@@ -76,19 +76,7 @@ void ATableChunk::GenerateChunkMesh()
 	{
 		for (int32 x = 0; x < ActualChunkSize; x++)
 		{
-			//Generate a mesh section
-			float VertX = (x * TileSize);
-			float VertY = (y * TileSize);
-
-			float CX = VertX + (X * (ChunkSize * TileSize));
-			float CY = VertY + (Y * (ChunkSize * TileSize));
-
-			Vertices[i] = FVector(VertX, VertY, 0.0f);
-
-			float UVX = (float)x / ChunkSize;
-			float UVY = (float)y / ChunkSize;
-
-			UVs.Add(FVector2D(UVX, UVY));
+			AddPlane(x, y, i, Vertices, UVs);
 
 			i++;
 		}
@@ -113,10 +101,34 @@ void ATableChunk::GenerateChunkMesh()
 	ChunkTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
 	ChunkTexture->AddToRoot();
 	ChunkTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
-	//ChunkTexture->MipMap = TextureMipGenSettings::TMGS_NoMipmaps;
 	ChunkTexture->SRGB = false;
 	ChunkTexture->Filter = TextureFilter::TF_Nearest;
 	ChunkTexture->UpdateResource();
+}
+
+void ATableChunk::AddPlane(float X, float Y, int32 i, TArray<FVector>& Verts, TArray<FVector2D>& UVs)
+{
+	//Generate a mesh section
+	float VertX = (X * TileSize);
+	float VertY = (Y * TileSize);
+
+	int32 Next = i + ChunkSize + 1;
+	Vertices[i] = FVector(VertX, VertY, 0.0f);
+
+	if (Vertices.IsValidIndex(Next)) 
+	{
+		Vertices[Next] = FVector(VertX, VertY, 0.0f);
+	}
+
+	float UVX = (float)X / ChunkSize;
+	float UVY = (float)Y / ChunkSize;
+
+	UVs.Add(FVector2D(UVX, UVY));
+}
+
+void ATableChunk::AddCube(float X, float Y, float Heigth, int32 i, TArray<FVector>& Verts, TArray<FVector2D>& UVs)
+{
+	
 }
 
 void ATableChunk::UpdateChunkTexture()
@@ -257,7 +269,7 @@ void ATableChunk::SetTileTexture(int32 X, int32 Y, ETileType Type)
 
 void ATableChunk::ChangeTileHeight(int32 X, int32 Y, float Heigth)
 {
-	UTileData* Tile = getTile(X, Y);
+	UTileData* Tile = getLocalTile(X, Y);
 	if(Tile)
 	{
 		//How many verts are in a chunk along x or y
@@ -310,16 +322,27 @@ int32 ATableChunk::getY()
 
 UTileData* ATableChunk::getTile(int32 WorldX, int32 WorldY)
 {
-	if(Tiles.Num() > 0)
+	if (Tiles.Num() > 0)
 	{
 		int32 LocalX = WorldX - (getX() * ChunkSize);
 		int32 LocalY = WorldY - (getY() * ChunkSize);
-		
+
 		int32 Index = LocalY * ChunkSize + LocalX;
-		if(Tiles.IsValidIndex(Index))
+		if (Tiles.IsValidIndex(Index))
 		{
 			return Tiles[Index];
 		}
+	}
+
+	return nullptr;
+}
+
+UTileData* ATableChunk::getLocalTile(int32 X, int32 Y)
+{
+	int32 Index = X * ChunkSize + Y;
+	if (Tiles.IsValidIndex(Index))
+	{
+		return Tiles[Index];
 	}
 
 	return nullptr;

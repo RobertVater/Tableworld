@@ -11,9 +11,14 @@
 #include "InventoryTile.h"
 #include "../DirtRoadTile.h"
 
-void ACityCentreTile::Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData)
+ACityCentreTile::ACityCentreTile()
 {
-	Super::Place(nPlacedOnTiles, nBuildingData);
+	Tags.Add("StorageBuilding");
+}
+
+void ACityCentreTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+{
+	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated);
 
 	StartWork();
 }
@@ -36,7 +41,7 @@ int32 ACityCentreTile::getBuildGridRadius()
 {
 	if (BuildingData.ID != NAME_None)
 	{
-		return InfluenceRadius + (int32)(BuildingData.BuildingSize.X + BuildingData.BuildingSize.Y);
+		return InfluenceRadius;
 	}
 
 	return Super::getBuildGridRadius();
@@ -47,17 +52,28 @@ bool ACityCentreTile::InInfluenceRange(int32 X, int32 Y, FVector2D Size)
 	if(getTable())
 	{
 		bool bInRange = true;
-		for(int32 x = 0; x < Size.X; x++)
-		{
-			for (int32 y = 0; y < Size.Y; y++)
-			{
-				int32 CheckX = X + x;
-				int32 CheckY = Y + y;
 
-				int32 Distance = UTableHelper::getDistance(getTileX(), getTileY(), CheckX, CheckY);
-				if(Distance > InfluenceRadius)
+		int32 Radius = getBuildGridRadius();
+		for (int32 x = -Radius; x <= Radius; x++)
+		{
+			for (int32 y = -Radius; y <= Radius; y++)
+			{
+				if ((x * x) + (y * y) <= (Radius * Radius))
 				{
-					bInRange = false;
+					int32 XX = (GetActorLocation().X / 100 + x);
+					int32 YY = (GetActorLocation().Y / 100 + y);
+
+					for (int32 bx = 0; bx < Size.X; bx++) 
+					{
+						for (int32 by = 0; by < Size.Y; by++) 
+						{
+							int32 Distance = UTableHelper::getDistance(getCenterX(), getCenterY(), X + bx, Y + by);
+							if (Distance >= Radius)
+							{
+								bInRange = false;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -110,18 +126,21 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 		//TODO Get the items!
 		if(getGamemode())
 		{
-			EItem HaulItem = nHauler->getHaulItem();
-			int32 HaulAmount = nHauler->getHaulAmount();
+			EItem HaulItem = EItem::None;
+			int32 HaulAmount = 0;
 
-			DebugWarning("Haul completed " + FString::FromInt(HaulAmount));
+			if (nHauler->getItemZero(HaulItem, HaulerAmount))
+			{
+				DebugWarning("Haul completed " + FString::FromInt(HaulAmount));
 
-			getGamemode()->AddFloatingItem(HaulItem, nHauler->getHaulAmount(), getWorldCenter());
+				getGamemode()->AddFloatingItem(HaulItem, HaulerAmount, getWorldCenter());
 
-			//Add to local inventory
-			ModifyInventory(HaulItem, nHauler->getHaulAmount());
+				//Add to local inventory
+				ModifyInventory(HaulItem, HaulerAmount);
 
-			//Add the item to the global inventory
-			getGamemode()->ModifyRescource(HaulItem, nHauler->getHaulAmount());
+				//Add the item to the global inventory
+				getGamemode()->ModifyRescource(HaulItem, HaulerAmount);
+			}
 		}
 
 		Workers.Remove(nHauler);
@@ -150,6 +169,45 @@ void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
 	StoredItems.Emplace(Item, OldAmount);
 }
 
+bool ACityCentreTile::ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Building)
+{
+	if(HasItems(Items))
+	{
+		//Reserve the items
+		for(auto Elem : Items)
+		{
+			EItem Item = Elem.Key;
+			int32 Amount = Elem.Value;
+
+			FReservedItem ReservedItem;
+			ReservedItem.Item = Item;
+			ReservedItem.Amount = Amount;
+			ReservedItem.ReservingBuilding = Building;
+
+			ReservedItems.Add(ReservedItem);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+void ACityCentreTile::ClearReserveItems(ABuildableTile* Owner)
+{
+	if (Owner)
+	{
+		for (int32 i = 0; i < ReservedItems.Num(); i++)
+		{
+			FReservedItem Item = ReservedItems[i];
+			if(Item.ReservingBuilding == Owner)
+			{
+				ReservedItems.RemoveAt(i);
+			}
+		}
+	}
+}
+
 AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile)
 {
 	if (getGamemode())
@@ -158,12 +216,20 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 		{
 			TArray<UTileData*> TilesAroundUs = getTilesAroundUs(true);
 
+			//Check if we are connected to a road
+			if(!isConnectedToRoad())
+			{
+				return nullptr;
+			}
+
 			TArray<ABuildableTile*> Buildings = getGamemode()->getTable()->getBuildings();
 			for (int32 i = 0; i < Buildings.Num(); i++)
 			{
 				ABuildableTile* Building = Buildings[i];
 				if (Building)
 				{
+					Building->getTilesAroundUs(true);
+					
 					//Check if the building is a inventory building
 					if (!Building->IsA(AInventoryTile::StaticClass()))
 					{
@@ -182,6 +248,12 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 						continue;
 					}
 
+					//Check if the target building is connected to a road
+					if(!Building->isConnectedToRoad())
+					{
+						continue;
+					}
+
 					AInventoryTile* InventoryTile = Cast<AInventoryTile>(Building);
 					if (InventoryTile)
 					{
@@ -194,6 +266,7 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 
 						//Check if we can reach any of the tiles around the building
 						TArray<UTileData*> Tiles = Building->getTilesAroundUs(true);
+
 						for (int32 j = 0; j < Tiles.Num(); j++)
 						{
 							UTileData* Tile = Tiles[j];
@@ -202,7 +275,7 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 								continue;
 							}
 
-							if (!Tile->IsA(UDirtRoadTile::StaticClass()))
+							if(Tile->getTileType() != ETileType::DirtRoad)
 							{
 								continue;
 							}
@@ -212,14 +285,12 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 								continue;
 							}
 
-							Tile->DebugHighlightTile(1.0f);
-
 							for (int32 k = 0; k < TilesAroundUs.Num(); k++)
 							{
 								UTileData* OurTile = TilesAroundUs[k];
 								if (OurTile)
 								{
-									if (!OurTile->IsA(UDirtRoadTile::StaticClass()))
+									if (OurTile->getTileType() != ETileType::DirtRoad)
 									{
 										continue;
 									}
@@ -229,7 +300,6 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 										continue;
 									}
 
-									OurTile->DebugHighlightTile(1.0f);
 									TArray<UTileData*> Path = getGamemode()->getTable()->FindPathRoad(Tile, OurTile, false);
 									if (Path.Num() > 0)
 									{
@@ -255,4 +325,49 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 TMap<EItem, int32> ACityCentreTile::getStoredItems()
 {
 	return StoredItems;
+}
+
+bool ACityCentreTile::HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved)
+{
+	TMap<EItem, int32> Inventory = StoredItems;
+	if(!bIgnoreReserved)
+	{
+		//Subtract the reserved items from the inventory
+		for(int32 i = 0; i < ReservedItems.Num(); i++)
+		{
+			FReservedItem Reserve = ReservedItems[i];
+			if(Inventory.Contains(Reserve.Item))
+			{
+				int32 Amount = Inventory.FindRef(Reserve.Item);
+				if(Reserve.Amount >= Amount)
+				{
+					Inventory.Remove(Reserve.Item);
+				}else
+				{
+					int32 NewAmount = Amount - Reserve.Amount;
+					Inventory.Emplace(Reserve.Item, NewAmount);
+				}
+			}
+		}
+	}
+	
+	for(auto Elem : Items)
+	{
+		EItem Item = Elem.Key;
+		int32 Amount = Elem.Value;
+
+		if(Inventory.Contains(Item))
+		{
+			int32 FoundAmount = StoredItems.FindRef(Item);
+			if(FoundAmount < Amount)
+			{
+				return false;
+			}
+		}else
+		{
+			return false;
+		}
+	}
+
+	return true;
 }

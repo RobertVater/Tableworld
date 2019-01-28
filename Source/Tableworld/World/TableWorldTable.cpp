@@ -179,6 +179,118 @@ void ATableWorldTable::GenerateMap()
 		}
 	}
 
+	//Generate the rivers
+	int32 NumRivers = FMath::RandRange(1, 5);
+	bool bYRiver = FMath::RandBool();
+
+	int32 MaxX = ChunkSize * MaxSizeX;
+	int32 MaxY = ChunkSize * MaxSizeY;
+
+	for(int32 i = 0; i < NumRivers; i++)
+	{
+		bYRiver = !bYRiver;
+		int32 RiverSize = FMath::RandRange(1, 2);
+
+		int32 SX = 0;
+		int32 SY = 0;
+
+		int32 EX = 0;
+		int32 EY = 0;
+
+		if(!bYRiver)
+		{
+			SX = 0;
+			SY = FMath::RandRange(MaxY / 4, MaxY);
+
+		}else
+		{
+			SX = FMath::RandRange(MaxX / 4, MaxX);
+			SY = 0;
+		}
+
+		EX = FMath::RandRange(0, ChunkSize * MaxSizeX);
+		EY = FMath::RandRange(0, ChunkSize * MaxSizeY);
+
+		TArray<UTileData*> RiverTiles;
+
+		UTileData* StartTile = getTile(SX, SY);
+		UTileData* EndTile = getTile(EX, EY);
+
+		if(StartTile && EndTile)
+		{
+			RiverTiles.Add(StartTile);
+			RiverTiles.Add(EndTile);
+
+			int32 RX = SX;
+			int32 RY = SY;
+
+			int32 Failsafe = 0;
+			while (RX != EX && RY != EY) 
+			{
+				if (RX < EX)
+				{
+					RX++;
+					RiverTiles.Add(getTile(RX, RY));
+				}
+
+				if (RX > EX)
+				{
+					RX--;
+					RiverTiles.Add(getTile(RX, RY));
+				}
+
+				if (RY < EY)
+				{
+					RY++;
+					RiverTiles.Add(getTile(RX, RY));
+				}
+
+				if (RY > EY)
+				{
+					RY--;
+					RiverTiles.Add(getTile(RX, RY));
+				}
+
+				RX += FMath::RandRange(-1, 1);
+				RY += FMath::RandRange(-1, 1);
+
+				for(int32 x = -RiverSize; x <= RiverSize; x++)
+				{
+					for (int32 y = -RiverSize; y <= RiverSize; y++)
+					{
+						UTileData* Tile = getTile(RX + x, RY + y);
+						if(Tile)
+						{
+							if(!RiverTiles.Contains(Tile))
+							{
+								RiverTiles.Add(Tile);
+							}
+						}
+					}
+				}
+
+				Failsafe++;
+				if(Failsafe >= 500)
+				{
+					break;
+				}
+			}
+
+			for(int32 j = 0; j < RiverTiles.Num(); j++)
+			{
+				UTileData* Tile = RiverTiles[j];
+				if(Tile)
+				{
+					SetTile(Tile->getX(), Tile->getY(), ETileType::Water, false);
+				}
+			}
+
+		}
+
+	}
+
+	Noise->SetSeed(FMath::Rand());
+
 	//Generate Rescources
 	for (int32 x = 0; x < MaxXTiles; x++)
 	{
@@ -204,13 +316,14 @@ void ATableWorldTable::GenerateMap()
 	}
 
 	Noise->SetSeed(FMath::Rand());
+
 	for (int32 x = 0; x < MaxXTiles; x++)
 	{
 		for (int32 y = 0; y < MaxYTiles; y++)
 		{
 			float PerlinValue = Noise->GetNoise2D(x, y);
 
-			float BerrieChance = 0.6f;
+			float BerrieChance = 0.65f;
 
 			//Place berries!
 			if (PerlinValue >= BerrieChance)
@@ -432,25 +545,28 @@ TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Ra
 {
 	TArray<UTileData*> Tiles;
 
-	for(int32 x = -Radius; x <= Radius; x++)
+	for (int32 x = -Radius; x <= Radius; x++)
 	{
-		for(int32 y  = -Radius; y <= Radius; y++)
+		for (int32 y = -Radius; y <= Radius; y++)
 		{
-			if((x * x) + (y * y) <= (Radius * Radius))
+			if ((x * x) + (y * y) < (Radius * Radius))
 			{
-				UTileData* Tile = getTile(X + x, Y + y);
-				if(Tile)
+				int32 XX = (X + x);
+				int32 YY = (Y + y);
+
+				UTileData* Tile = getTile(XX, YY);
+				if (Tile)
 				{
-					if (Tile->getTileType() == TileType) 
+					if (Tile->getTileType() == TileType)
 					{
-						if(bBlockRescources)
+						if (bBlockRescources)
 						{
-							if(Tile->HasRescource())
+							if (Tile->HasRescource())
 							{
 								continue;
 							}
 						}
-						
+
 						Tiles.Add(Tile);
 					}
 				}
@@ -469,9 +585,12 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 	{
 		for (int32 y = -Radius; y <= Radius; y++)
 		{
-			if ((x * x) + (y * y) <= (Radius * Radius))
+			if ((x * x) + (y * y) < (Radius * Radius))
 			{
-				UTileData* Tile = getTile(X + x, Y + y);
+				int32 XX = (X + x);
+				int32 YY = (Y + y);
+
+				UTileData* Tile = getTile(XX, YY);
 				if (Tile)
 				{
 					if (Tile->getTileRescources() == Rescource) 
@@ -583,6 +702,32 @@ void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileT
 void ATableWorldTable::AddBuilding(ABuildableTile* nBuilding)
 {
 	Buildings.Add(nBuilding);
+}
+
+void ATableWorldTable::ShowInfluenceGrid()
+{
+	TArray<ACityCentreTile*> Centres = getCityCentres();
+	for(int32 i = 0; i < Centres.Num();  i++)
+	{
+		ACityCentreTile* Centre = Centres[i];
+		if(Centre)
+		{
+			Centre->ShowGridRadius();
+		}
+	}
+}
+
+void ATableWorldTable::HideInfluenceGrid()
+{
+	TArray<ACityCentreTile*> Centres = getCityCentres();
+	for (int32 i = 0; i < Centres.Num(); i++)
+	{
+		ACityCentreTile* Centre = Centres[i];
+		if (Centre)
+		{
+			Centre->ClearGridRadius();
+		}
+	}
 }
 
 TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)

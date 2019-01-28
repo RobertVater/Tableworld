@@ -20,6 +20,7 @@ void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile*
 void AHarvesterCreature::GiveHarvestJob(UTileData* nHarvestTile)
 {
 	HarvestTile = nHarvestTile;
+	SetCreatureStatus(ECreatureStatus::GoingToWork);
 
 	if(HarvestTile)
 	{
@@ -45,6 +46,7 @@ void AHarvesterCreature::GiveReturnJob()
 
 		DrawDebugPoint(GetWorld(), Loc, 10, FColor::Orange, false, 999, 0);
 
+		SetCreatureStatus(ECreatureStatus::ReturningGoods);
 		SimpleMoveTo(Loc);
 	}
 	else
@@ -101,8 +103,7 @@ void AHarvesterCreature::StartHarvesting()
 	{
 		if (getHarvesterTile())
 		{
-			CreatureStatus = ECreatureStatus::Harvesting;
-			SetAnimation(Work);
+			SetCreatureStatus(ECreatureStatus::Harvesting);
 
 			SetRotationGoal( (GetActorLocation() - getHarvestTile()->getWorldCenter()).Rotation().Yaw + 90.0f );
 			
@@ -155,7 +156,7 @@ void AHarvesterCreature::OnHarvest()
 			}
 		}
 
-		CreatureStatus = ECreatureStatus::ReturningGoods;
+		SetCreatureStatus(ECreatureStatus::ReturningGoods);
 
 		//Return home
 		GiveReturnJob();

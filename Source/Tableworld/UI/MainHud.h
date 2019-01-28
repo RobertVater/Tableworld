@@ -7,6 +7,8 @@
 #include "Misc/TableHelper.h"
 #include "MainHud.generated.h"
 
+class ATableGamemode;
+
 UCLASS()
 class TABLEWORLD_API UMainHud : public UUserWidget
 {
@@ -28,16 +30,24 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Building")
 	void UpdateRescourceUI();
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Building")
+	void UpdateGameTime(int32 NewGameTime);
+
 	UFUNCTION(BlueprintCallable, Category = "Building")
 	void SelectTool(EToolbarTools NewTool);
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Building")
-	EToolbarTools getSelectedTool();
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Toolbar")
 	void ShowBuildMenu(bool bShow);
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	EToolbarTools getSelectedTool();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	ATableGamemode* getGamemode();
 
 protected:
+
+	ATableGamemode* GM = nullptr;
 
 	EToolbarTools SelectedTool = EToolbarTools::None;
 };

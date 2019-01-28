@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "HeapSort.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "HumanAnimBlueprint.h"
 
 ABaseCreature::ABaseCreature()
 {
@@ -22,23 +23,29 @@ void ABaseCreature::BeginPlay()
 	Super::BeginPlay();
 
 	RotationGoal = GetActorRotation().Yaw;
-	SetAnimation(getIdleAnimation());
+	SetCreatureStatus(ECreatureStatus::Idle);
 }
 
 void ABaseCreature::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if(getStatus() == ECreatureStatus::Deactivated)
+	if (UTableHelper::isDebug()) 
 	{
-		DrawDebugString(GetWorld(), GetActorLocation() + FVector(0,0,150), "Deactivated", NULL, FColor::Cyan, 0, true);
+		if (getStatus() == ECreatureStatus::Deactivated)
+		{
+			DrawDebugString(GetWorld(), GetActorLocation() + FVector(0, 0, 150), "Deactivated", NULL, FColor::Cyan, 0, true);
+		}
 	}
 
 	if(PathPoints.Num() > 0)
 	{
-		for(int32 i = 0; i < PathPoints.Num(); i++)
+		if (UTableHelper::isDebug()) 
 		{
-			DrawDebugString(GetWorld(), PathPoints[i], FString::FromInt(i), NULL, FColor::Cyan, 0, true);
+			for (int32 i = 0; i < PathPoints.Num(); i++)
+			{
+				DrawDebugString(GetWorld(), PathPoints[i], FString::FromInt(i), NULL, FColor::Cyan, 0, true);
+			}
 		}
 		
 		if(!PathPoints.IsValidIndex(CurrentPathIndex))
@@ -55,9 +62,12 @@ void ABaseCreature::Tick(float DeltaTime)
 		FVector Dir = -(GetActorLocation() - CurrentMoveTarget);
 		Dir.Normalize();
 
-		DrawDebugLine(GetWorld(), GetActorLocation(), CurrentMoveTarget, FColor::Green, false, 0, 0, 2.0f);
-		DrawDebugPoint(GetWorld(), CurrentMoveTarget, 10.0f, FColor::Red, false, 0, 0);
-		DrawDebugString(GetWorld(), CurrentMoveTarget, FString::FromInt(CurrentPathIndex), NULL, FColor::White, 0, true);
+		if (UTableHelper::isDebug()) 
+		{
+			DrawDebugLine(GetWorld(), GetActorLocation(), CurrentMoveTarget, FColor::Green, false, 0, 0, 2.0f);
+			DrawDebugPoint(GetWorld(), CurrentMoveTarget, 10.0f, FColor::Red, false, 0, 0);
+			DrawDebugString(GetWorld(), CurrentMoveTarget, FString::FromInt(CurrentPathIndex), NULL, FColor::White, 0, true);
+		}
 
 		//Rotate to pathpoint
 		SetRotationGoal(Dir.Rotation().Yaw - 90.0f);
@@ -67,7 +77,11 @@ void ABaseCreature::Tick(float DeltaTime)
 
 		SetActorLocation(CurrentLoc);
 		float Dist = (GetActorLocation() - CurrentMoveTarget).Size2D();
-		DrawDebugString(GetWorld(), GetActorLocation(), FString::SanitizeFloat(Dist), NULL, FColor::White, 0, true);
+		
+		if (UTableHelper::isDebug()) 
+		{
+			DrawDebugString(GetWorld(), GetActorLocation(), FString::SanitizeFloat(Dist), NULL, FColor::White, 0, true);
+		}
 
 		if(Dist <= MinDistance)
 		{
@@ -82,8 +96,8 @@ void ABaseCreature::Tick(float DeltaTime)
 
 void ABaseCreature::DeactivateCreature()
 {
-	CreatureStatus = ECreatureStatus::Deactivated;
-	
+	SetCreatureStatus(ECreatureStatus::Deactivated);
+
 	Mesh->SetVisibility(false);
 	PathPoints.Empty();
 	MinDistance = 0.0f;
@@ -93,7 +107,7 @@ void ABaseCreature::DeactivateCreature()
 void ABaseCreature::ActivateCreature()
 {
 	Mesh->SetVisibility(true);
-	CreatureStatus = ECreatureStatus::Idle;
+	SetCreatureStatus(ECreatureStatus::Idle);
 }
 
 void ABaseCreature::SetRotationGoal(float NewGoal)
@@ -101,27 +115,30 @@ void ABaseCreature::SetRotationGoal(float NewGoal)
 	RotationGoal = NewGoal;
 }
 
-void ABaseCreature::SetAnimation(UAnimationAsset* Anim)
+void ABaseCreature::SetCreatureStatus(ECreatureStatus NewStatus)
 {
-	if(Mesh)
+	CreatureStatus = NewStatus;
+
+	if(getAnimationBlueprint())
 	{
-		if(Anim)
-		{
-			Mesh->PlayAnimation(Anim,true);
-		}
+		getAnimationBlueprint()->UpdateStatus(CreatureStatus);
 	}
+}
+
+void ABaseCreature::StopMovement()
+{
+	CurrentPathIndex = 0;
+
+	PathPoints.Empty();
+	MinDistance = 0.0f;
 }
 
 void ABaseCreature::SimpleMoveTo(FVector TargetLocation, float nMinDistance /*= 50.0f*/)
 {
-	CurrentPathIndex = 0;
-	
-	PathPoints.Empty();
+	StopMovement();
+
 	PathPoints.Add(TargetLocation);
-
 	MinDistance = nMinDistance;
-
-	SetAnimation(getWalkAnimation());
 }
 
 void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.0f*/)
@@ -132,10 +149,8 @@ void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 		{
 			if (getGamemode()->getTable()) 
 			{
-				CurrentPathIndex = 0;
+				StopMovement();
 				MinDistance = nMinDistance;
-				PathPoints.Empty();
-				SetAnimation(getWalkAnimation());
 
 				LastCalculatedPath = getGamemode()->getTable()->FindPath(FVector2D(getStandingTile()->getX(), getStandingTile()->getY()), FVector2D(TargetTile->getX(), TargetTile->getY()), TArray<ETileType>());
 				for(int32 i = LastCalculatedPath.Num()-1; i > 0; i--)
@@ -159,10 +174,8 @@ void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 		{
 			if (getGamemode()->getTable())
 			{
-				CurrentPathIndex = 0;
+				StopMovement();
 				MinDistance = nMinDistance;
-				PathPoints.Empty();
-				SetAnimation(getWalkAnimation());
 
 				LastCalculatedPath = getGamemode()->getTable()->FindPathRoad(getStandingTile(), TargetTile, false);
 				for (int32 i = 0; i < LastCalculatedPath.Num(); i++)
@@ -180,10 +193,8 @@ void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 
 void ABaseCreature::RetracePath()
 {
-	CurrentPathIndex = 0;
-	MinDistance = 50.0f;
-	PathPoints.Empty();
-	SetAnimation(getWalkAnimation());
+	StopMovement();
+	MinDistance = 25.0f;
 
 	TArray<UTileData*> ReversePath = LastCalculatedPath;
 	Algo::Reverse(ReversePath);
@@ -200,7 +211,7 @@ void ABaseCreature::RetracePath()
 
 void ABaseCreature::OnMoveCompleted()
 {
-	SetAnimation(getIdleAnimation());
+	
 }
 
 ATableGamemode* ABaseCreature::getGamemode()
@@ -211,6 +222,19 @@ ATableGamemode* ABaseCreature::getGamemode()
 	}
 
 	return GM;
+}
+
+UHumanAnimBlueprint* ABaseCreature::getAnimationBlueprint()
+{
+	if(!AnimationBlueprint)
+	{
+		if(Mesh)
+		{
+			AnimationBlueprint = Cast<UHumanAnimBlueprint>(Mesh->GetAnimInstance());
+		}
+	}
+
+	return AnimationBlueprint;
 }
 
 UTileData* ABaseCreature::getStandingTile()

@@ -108,6 +108,8 @@ public:
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 
 	void AddBuilding(ABuildableTile* nBuilding);
+	void ShowInfluenceGrid();
+	void HideInfluenceGrid();
 
 	TArray<FColor> getTilePixels(ETileType TileType);
 

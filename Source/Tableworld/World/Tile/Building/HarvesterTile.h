@@ -60,8 +60,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Harvester")
 	TArray<FProductionItem> OutputItemsData;
 
+	AHarvesterTile();
+
 	//Called when we place down the building
-	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData) override;
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated) override;
 
 	//Resumes work for this building
 	virtual void StartWork() override;
@@ -93,6 +95,8 @@ public:
 
 	bool HasInventorySpace();
 	virtual int32 getBuildGridRadius() override;
+	virtual FColor getGridColor() override;
+	virtual float getGridHeigth() override;
 	virtual EItem getItemType() override;
 
 	virtual TArray<FProductionItem> getInputItems() override;

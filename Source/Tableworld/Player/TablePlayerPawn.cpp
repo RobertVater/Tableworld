@@ -38,6 +38,11 @@ void ATablePlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if(SpringArm)
+	{
+		SpringArm->PrimaryComponentTick.bTickEvenWhenPaused = true;
+	}
+
 	ZoomLerpGoal = ZoomAlpha;
 	AdjustZoom();
 }
@@ -101,9 +106,14 @@ void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Pressed, this, &ATablePlayerPawn::Input_MiddleMouse_Pressed).bExecuteWhenPaused = true;
 	PlayerInputComponent->BindAction("MiddleMouseClick", IE_Released, this, &ATablePlayerPawn::Input_MiddleMouse_Released).bExecuteWhenPaused = true;
 
-	PlayerInputComponent->BindAction("SpeedIncrease", IE_Pressed, this, &ATablePlayerPawn::Input_IncreaseSpeed).bExecuteWhenPaused = true;
-	PlayerInputComponent->BindAction("SpeedDecrease", IE_Pressed, this, &ATablePlayerPawn::Input_DecreaseSpeed).bExecuteWhenPaused = true;
-	PlayerInputComponent->BindAction("StopTime", IE_Pressed, this, &ATablePlayerPawn::Input_StopTime).bExecuteWhenPaused = true;
+	//Time
+	PlayerInputComponent->BindAction("GameSpeed_0", IE_Pressed, this, &ATablePlayerPawn::Input_GameSpeed_0).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("GameSpeed_1", IE_Pressed, this, &ATablePlayerPawn::Input_GameSpeed_1).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("GameSpeed_2", IE_Pressed, this, &ATablePlayerPawn::Input_GameSpeed_2).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("GameSpeed_3", IE_Pressed, this, &ATablePlayerPawn::Input_GameSpeed_3).bExecuteWhenPaused = true;
+	PlayerInputComponent->BindAction("GameSpeed_4", IE_Pressed, this, &ATablePlayerPawn::Input_GameSpeed_4).bExecuteWhenPaused = true;
+
+	PlayerInputComponent->BindAction("Rotate", IE_Pressed, this, &ATablePlayerPawn::Input_Rotate).bExecuteWhenPaused = true;
 
 }
 
@@ -115,11 +125,11 @@ void ATablePlayerPawn::MoveSelectedBuilding()
 		if (SelectedTile)
 		{
 			//Move the building ghost  to the mouse tile location
-			TileActor->SetActorLocation(getBuildingBuildLocation(SelectedTile));
+			TileActor->MoveBuildingToLocation(getBuildingBuildLocation(SelectedTile));
 			TileActor->ShowGridRadius();
 
 			//Show the player if we can place the building or now
-			TileActor->SetIsBlocked(CanBuild(CurrentBuilding.BuildingSize, SelectedTile));
+			TileActor->SetIsBlocked(CanBuild(getBuildingSize(), SelectedTile));
 
 			//If we are dragging a building
 			if (bIsDragBuilding)
@@ -174,14 +184,37 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 	
 	if (Building.ID != NAME_None)
 	{
-		TileActor = GetWorld()->SpawnActor<ABuildableTile>(CurrentBuilding.TileClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		bRotated = false;
+		TileActor = GetWorld()->SpawnActor<ABuildableTile>(CurrentBuilding.TileClass, getBuildingBuildLocation(SelectedTile), FRotator::ZeroRotator);
 		if (TileActor)
 		{
 			TileActor->SetIsGhost(Building);
 
+			if (Building.bNeedsInfluence) 
+			{
+				if (getGamemode())
+				{
+					if (getGamemode()->getTable())
+					{
+						//Show influence
+						getGamemode()->getTable()->ShowInfluenceGrid();
+					}
+				}
+			}
+
 			if(GlobalMaterialVariables)
 			{
 				UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "bShowGrid", (TileActor->getBuildGridRadius() <= 0) ? 0 : 1 );
+			}
+		}
+	}else
+	{
+		if (getGamemode())
+		{
+			if (getGamemode()->getTable())
+			{
+				//Hide influence
+				getGamemode()->getTable()->HideInfluenceGrid();
 			}
 		}
 	}
@@ -338,28 +371,57 @@ void ATablePlayerPawn::Input_Right(float v)
 	}
 }
 
-void ATablePlayerPawn::Input_IncreaseSpeed()
+void ATablePlayerPawn::Input_Rotate()
 {
-	if(getGamemode())
+	if(TileActor)
 	{
-	
+		bRotated = !bRotated;
+
+		TileActor->AddActorWorldRotation(FRotator(0.0f, 90.0f, 0.0f));
 	}
 }
 
-void ATablePlayerPawn::Input_DecreaseSpeed()
+void ATablePlayerPawn::Input_GameSpeed_0()
 {
-	if(getGamemode())
-	{
-	
-	}
+	ModifyGameSpeed(0);
 }
 
-void ATablePlayerPawn::Input_StopTime()
+void ATablePlayerPawn::Input_GameSpeed_1()
 {
-	if(getGamemode())
+	ModifyGameSpeed(1);
+}
+
+void ATablePlayerPawn::Input_GameSpeed_2()
+{
+	ModifyGameSpeed(2);
+}
+
+void ATablePlayerPawn::Input_GameSpeed_3()
+{
+	ModifyGameSpeed(3);
+}
+
+void ATablePlayerPawn::Input_GameSpeed_4()
+{
+	ModifyGameSpeed(4);
+}
+
+void ATablePlayerPawn::ModifyGameSpeed(int32 SpeedLevel)
+{
+	if (getGamemode())
 	{
-		//getGamemode()->StopTime();
+		if(SpeedLevel <= 0)
+		{
+			getGamemode()->StopTime();
+			return;
+		}
 		
+		getGamemode()->ModifyTime(SpeedLevel);
+
+		float NormalSpeed = 1.0f;
+		float DeltaSpeed = NormalSpeed / SpeedLevel;
+
+		CustomTimeDilation = DeltaSpeed;
 	}
 }
 
@@ -370,7 +432,7 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 		UTileData* PlaceTile = getGamemode()->getTile(X, Y);
 		if (PlaceTile)
 		{
-			if (CanBuild(CurrentBuilding.BuildingSize, PlaceTile))
+			if (CanBuild(getBuildingSize(), PlaceTile))
 			{
 				//Consume the buildcosts
 				getGamemode()->ConsumeRescource(CurrentBuilding.NeededItems);
@@ -378,7 +440,7 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 				//Change a world tile using this building
 				if (CurrentBuilding.BuildType == ETableBuildingBuildType::Tile)
 				{
-					FVector2D BuildingSize = CurrentBuilding.BuildingSize;
+					FVector2D BuildingSize = getBuildingSize();
 					for (int32 x = 0; x < BuildingSize.X; x++)
 					{
 						for (int32 y = 0; y < BuildingSize.Y; y++)
@@ -396,18 +458,21 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 				if (CurrentBuilding.BuildType == ETableBuildingBuildType::Actor)
 				{
 					//Place a normal tile
-					ABuildableTile* PlacedTile = GetWorld()->SpawnActor<ABuildableTile>(TileActor->GetClass(), getBuildingBuildLocation(PlaceTile), FRotator::ZeroRotator);
+					ABuildableTile* PlacedTile = GetWorld()->SpawnActor<ABuildableTile>(TileActor->GetClass(), getBuildingBuildLocation(PlaceTile), TileActor->GetActorRotation());
 					if (PlacedTile)
 					{
 						TArray<FVector2D> PlacedOnTiles;
 						TArray<UTileData*> ModifiedTiles;
 
-						FVector2D BuildingSize = CurrentBuilding.BuildingSize;
+						FVector2D BuildingSize = getBuildingSize();
 						if (BuildingSize > FVector2D(1, 1))
 						{
-							for (int32 x = 0; x < BuildingSize.X; x++)
+							int32 HalfX = (int32)getBuildingSize().X / 2;
+							int32 HalfY = (int32)getBuildingSize().Y / 2;
+							
+							for (int32 x = -HalfX; x <= HalfX; x++)
 							{
-								for (int32 y = 0; y < BuildingSize.Y; y++)
+								for (int32 y = -HalfY; y <= HalfY; y++)
 								{
 									UTileData* TileData = getGamemode()->getTile( X + x, Y + y);
 									if (TileData)
@@ -429,7 +494,7 @@ void ATablePlayerPawn::PlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 							ModifiedTiles.Add(SelectedTile);
 						}
 
-						PlacedTile->Place(PlacedOnTiles, Data);
+						PlacedTile->Place(getBuildingBuildLocation(SelectedTile), PlacedOnTiles, Data, bRotated);
 						if(getGamemode())
 						{
 							if(getGamemode()->getTable())
@@ -504,6 +569,16 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 	{
 		if (getGamemode())
 		{
+			if(!PlaceTile)
+			{
+				return false;
+			}
+
+			if(BuildingSize < FVector2D(1,1))
+			{
+				return false;
+			}
+			
 			//Check if we got the required rescources
 			if(CurrentBuilding.NeededItems.Num() > 0)
 			{
@@ -554,22 +629,29 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 
 			if (PlaceTile)
 			{
-				for (int32 x = 0; x < BuildingSize.X; x++)
+				int32 HalfX = (int32)BuildingSize.X / 2;
+				int32 HalfY = (int32)BuildingSize.Y / 2;
+				
+				for (int32 x = -HalfX; x <= HalfX; x++)
 				{
-					for (int32 y = 0; y < BuildingSize.Y; y++)
+					for (int32 y = -HalfY; y <= HalfY; y++)
 					{
 						UTileData* Tile = getGamemode()->getTile(PlaceTile->getX() + x, PlaceTile->getY() + y);
 						if (Tile)
 						{
 							if (CurrentBuilding.BlockedTiles.Contains(Tile->getTileType()))
 							{
+								Tile->DebugHighlightTile(0.0f, FColor::Red);
 								return false;
 							}
 
 							if (!Tile->CanBuildOnTile())
 							{
+								Tile->DebugHighlightTile(0.0f, FColor::Red);
 								return false;
 							}
+
+							Tile->DebugHighlightTile(0.0f, FColor::Green);
 						}
 						else
 						{
@@ -648,18 +730,39 @@ FVector ATablePlayerPawn::getMouseWorldLocationGrid()
 	return FVector(Loc.X, Loc.Y, 0.0f);
 }
 
+FVector2D ATablePlayerPawn::getBuildingSize()
+{
+	if(bRotated)
+	{
+		return FVector2D(CurrentBuilding.BuildingSize.Y, CurrentBuilding.BuildingSize.X);
+	}
+
+	return CurrentBuilding.BuildingSize;
+}
+
 FVector ATablePlayerPawn::getBuildingBuildLocation(UTileData* Tile)
 {
 	if (Tile)
 	{
-		float X = Tile->getX() * 100;
-		float Y = Tile->getY() * 100;
-		float OffsetX = CurrentBuilding.BuildingSize.X * 50;
-		float OffsetY = CurrentBuilding.BuildingSize.X * 50;
+		float X = Tile->getX() * 100.0f + 50.0f;
+		float Y = Tile->getY() * 100.0f + 50.0f;
 
-		return FVector(X + OffsetX, Y + OffsetY, 0.0f);
+		return FVector(X, Y, 0.0f);
 	}
 
 	return FVector::ZeroVector;
+}
+
+FVector2D ATablePlayerPawn::getBuildingBuildLocationTile(UTileData* Tile)
+{
+	if(Tile)
+	{
+		int32 X = Tile->getX() - 1;
+		int32 Y = Tile->getY() - 1;
+
+		return FVector2D(X, Y);
+	}
+
+	return FVector2D::ZeroVector;
 }
 

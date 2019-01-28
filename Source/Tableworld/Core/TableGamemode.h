@@ -15,6 +15,7 @@ class UTileData;
 class ATableChunk;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHudFloatingItem, EItem, Item, int32, Amount, FVector, WorldLocation);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameSpeedUpdated, int32, GameTime);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStoredItemsUpdated);
 
 UCLASS()
@@ -32,7 +33,10 @@ public:
 
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintCallable)
 	void ModifyTime(int32 NewTime);
+
+	UFUNCTION(BlueprintCallable)
 	void StopTime();
 
 	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
@@ -85,6 +89,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	int32 getStoredItemAmount(EItem Item, bool& bFound);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	int32 getGameTime();
+
 	//Events
 
 	UPROPERTY()
@@ -93,9 +100,18 @@ public:
 	UPROPERTY()
 	FStoredItemsUpdated Event_StoredItemsUpdated;
 
+	UPROPERTY()
+	FGameSpeedUpdated Event_GameSpeedUpdated;
+
 protected:
 
+	//The game speed before the game got paused
+	int32 LastGameSpeed = 0;
+
+	//The current speed level the game is running at
 	int32 GameSpeed = 1;
+
+	//True if the game is paused
 	bool bGamePaused = false;
 
 	FTableBuilding SelectedBuilding;

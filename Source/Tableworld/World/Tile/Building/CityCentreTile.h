@@ -29,7 +29,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
 	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
-	virtual void Place(TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData) override;
+	ACityCentreTile();
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated) override;
 	virtual void StartWork() override;
 	virtual void StopWork() override;
 
@@ -43,10 +44,17 @@ public:
 	UFUNCTION(meta = (BlueprintThreadSafe))
 	void ModifyInventory(EItem Item, int32 Amount);
 
+	//Reserves the items to a building. Those items are invisible to other buildings
+	bool ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Building);
+	void ClearReserveItems(ABuildableTile* Owner);
+
 	AInventoryTile* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
 
 	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
 	TMap<EItem, int32> getStoredItems();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	bool HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved = false);
 
 protected:
 
@@ -54,6 +62,8 @@ protected:
 
 	//The items this city Centre has stored
 	TMap<EItem, int32> StoredItems;
+
+	TArray<FReservedItem> ReservedItems;
 
 	FTimerHandle RescourceCheckTimer;
 };

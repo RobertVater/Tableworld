@@ -31,7 +31,7 @@ public:
 	void UpdateRescource(int32 Amount);
 	void ClearRescource();
 
-	void DebugHighlightTile(float Time = 10.0f);
+	void DebugHighlightTile(float Time = 10.0f, FColor Color = FColor::Blue);
 
 	int32 getTileRescourceIndex();
 	ETileRescources getTileRescources();
