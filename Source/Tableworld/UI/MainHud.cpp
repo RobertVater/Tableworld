@@ -22,10 +22,16 @@ void UMainHud::NativeConstruct()
 	{
 		getGamemode()->Event_StoredItemsUpdated.AddDynamic(this, &UMainHud::UpdateRescourceUI);
 		getGamemode()->Event_GameSpeedUpdated.AddDynamic(this, &UMainHud::UpdateGameTime);
+		getGamemode()->Event_NewNotification.AddDynamic(this, &UMainHud::OnNewNotification);
 
 		UpdateRescourceUI();
 		UpdateGameTime(1);
 	}
+}
+
+void UMainHud::OnNewNotification_Implementation(FTableNotification NewNotify)
+{
+
 }
 
 void UMainHud::MoveMinimapPlayerView_Implementation(float AlphaX, float AlphaY, float ZoomAlpha)

@@ -16,6 +16,7 @@ class ATableChunk;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHudFloatingItem, EItem, Item, int32, Amount, FVector, WorldLocation);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameSpeedUpdated, int32, GameTime);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameNotification, FTableNotification, NewNotification);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStoredItemsUpdated);
 
 UCLASS()
@@ -39,6 +40,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopTime();
 
+	UFUNCTION(BlueprintCallable, Category = "SaveLoad")
+	void SaveGame(FString SaveName);
+
+	UFUNCTION(BlueprintCallable, Category = "SaveLoad")
+	void LoadGame(FString SaveName);
+
+	void AddNotification(FTableNotification NewNotifi);
+
 	void AddFloatingItem(EItem item, int32 Amount, FVector WorldLoc);
 
 	UFUNCTION(meta = (BlueprintThreadSafe))
@@ -54,7 +63,7 @@ public:
 	virtual void SelectBuilding(FName SelectedBuildingID);
 
 	UFUNCTION(BlueprintCallable, Category = "Tile")
-	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
+	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false, bool bModifyTile = false);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	ATablePlayerController* getPlayerController();
@@ -92,6 +101,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	int32 getGameTime();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	int32 getRandomSeed();
+
 	//Events
 
 	UPROPERTY()
@@ -103,7 +115,12 @@ public:
 	UPROPERTY()
 	FGameSpeedUpdated Event_GameSpeedUpdated;
 
+	UPROPERTY()
+	FGameNotification Event_NewNotification;
+
 protected:
+
+	int32 WorldSeed;
 
 	//The game speed before the game got paused
 	int32 LastGameSpeed = 0;

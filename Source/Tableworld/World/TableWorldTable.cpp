@@ -14,6 +14,9 @@
 #include "Component/HudManager.h"
 #include "Player/TablePlayerController.h"
 #include "UI/MainHud.h"
+#include "Core/TableGamemode.h"
+#include "Savegame/TableSavegame.h"
+#include "Misc/TableHelper.h"
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -27,20 +30,7 @@ void ATableWorldTable::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Noise = NewObject<UFastNoise>(this);
-
-	//Preload the pixel data
-	TArray<ETileType> TileTypes;
-	TileTypes.Add(ETileType::Grass);
-	TileTypes.Add(ETileType::Water);
-	TileTypes.Add(ETileType::Dirt);
-	TileTypes.Add(ETileType::Sand);
-	TileTypes.Add(ETileType::Rock);
-	TileTypes.Add(ETileType::DirtRoad);
-
-	SetupTilePixels(TileTypes);
-	
-	GenerateMap();
+	UTableHelper::Init(this);
 }
 
 void ATableWorldTable::Tick(float DeltaSeconds)
@@ -108,6 +98,83 @@ void ATableWorldTable::AddRescourceWobble(ETileRescources Rescource, int32 Index
 	RescourceWobble.Add(NewWobble);
 }
 
+void ATableWorldTable::InitTable()
+{
+	//Reset all buildings
+	for (int32 i = 0; i < Buildings.Num(); i++)
+	{
+		ABuildableTile* Building = Buildings[i];
+		if (Building)
+		{
+			Building->Destroy();
+		}
+	}
+	Buildings.Empty();
+
+	//Reset all chunks
+	for (int32 i = 0; i < Chunks.Num(); i++)
+	{
+		ATableChunk* Chunk = Chunks[i];
+		if (Chunk)
+		{
+			Chunk->CleanupMemory();
+			Chunk->Destroy();
+		}
+	}
+	Chunks.Empty();
+
+	//Reset all rescources
+	for (auto Elem : InstancedRescourcesMesh)
+	{
+		UInstancedStaticMeshComponent* Mesh = Elem.Value;
+		if (Mesh)
+		{
+			Mesh->ClearInstances();
+		}
+	}
+	InstancedRescourcesMesh.Empty();
+
+	//Clear all creatures
+	TArray<AActor*> OutCreatures;
+	UGameplayStatics::GetAllActorsOfClass(this, ABaseCreature::StaticClass(), OutCreatures);
+	for(int32 i = 0; i < OutCreatures.Num(); i++)
+	{
+		AActor* Actor = OutCreatures[i];
+		if(Actor)
+		{
+			Actor->Destroy();
+		}
+	}
+
+	//Clear tile pixels
+	TilePixels.Empty();
+
+	//Clear all wobble
+	RescourceWobble.Empty();
+
+	//Create the noise and asign it a seed
+	Noise = NewObject<UFastNoise>(this);
+	Noise->SetSeed(getRandomSeed());
+
+	//Preload the pixel data
+	TArray<ETileType> TileTypes;
+	TileTypes.Add(ETileType::Grass);
+	TileTypes.Add(ETileType::Water);
+	TileTypes.Add(ETileType::Dirt);
+	TileTypes.Add(ETileType::Sand);
+	TileTypes.Add(ETileType::Rock);
+	TileTypes.Add(ETileType::DirtRoad);
+
+	//Setup tile pixels for the tiletypes
+	SetupTilePixels(TileTypes);
+
+	//Generate the world
+	GenerateMap();
+
+	//Force a garbage collect
+	GetWorld()->ForceGarbageCollection(true);
+}
+
 void ATableWorldTable::GenerateMap()
 {
 	InstancedRescourcesMesh.Empty();
@@ -131,7 +198,6 @@ void ATableWorldTable::GenerateMap()
 	//Setup the noise
 	if(Noise)
 	{
-		Noise->SetSeed(FMath::RandRange(0, 9000));
 		Noise->SetFrequency(0.05f);
 	} 
 
@@ -289,7 +355,7 @@ void ATableWorldTable::GenerateMap()
 
 	}
 
-	Noise->SetSeed(FMath::Rand());
+	Noise->SetSeed(getNewRandomSeed());
 
 	//Generate Rescources
 	for (int32 x = 0; x < MaxXTiles; x++)
@@ -304,18 +370,19 @@ void ATableWorldTable::GenerateMap()
 			//Place a tree
 			if (PerlinValue >= TreeTile)
 			{
-				SetRescource(x, y, ETileRescources::Tree, 75, ETileType::Grass);
+				SetRescource(x, y, ETileRescources::Tree, 1, ETileType::Grass);
 			}
 
-			//Place iron ore!
-			if(FMath::RandRange(0.0f,1.0f) <= RockChance)
+			//Place Copper ore!
+			float CopperOre = FMath::RandRange(0.0f, 1.0f);
+			if(CopperOre <= RockChance)
 			{
-				SetRescource(x, y, ETileRescources::IronOre, 150, ETileType::Rock);
+				SetRescource(x, y, ETileRescources::CopperOre, 150, ETileType::Rock);
 			}
 		}
 	}
 
-	Noise->SetSeed(FMath::Rand());
+	Noise->SetSeed(getNewRandomSeed());
 
 	for (int32 x = 0; x < MaxXTiles; x++)
 	{
@@ -374,18 +441,19 @@ void ATableWorldTable::GenerateChunks()
 UTexture2D* ATableWorldTable::GenerateMinimap()
 {
 	int32 TextureSize = ChunkSize * MaxSizeX;
-	DebugError("Texturesize " + FString::FromInt(TextureSize));
 
-	MinimapTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
-	MinimapTexture->AddToRoot();
-	MinimapTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
-	MinimapTexture->SRGB = false;
-	MinimapTexture->Filter = TextureFilter::TF_Nearest;
-	MinimapTexture->UpdateResource();
+	if (!MinimapTexture)
+	{
+		MinimapTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
+		MinimapTexture->AddToRoot();
+		MinimapTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+		MinimapTexture->SRGB = false;
+		MinimapTexture->Filter = TextureFilter::TF_Nearest;
+		MinimapTexture->UpdateResource();
+	}
 
 	//Go through each tile
-	TArray<FColor> Pixels;
-	Pixels.AddUninitialized(TextureSize*TextureSize);
+	uint8* Pixels = new uint8[TextureSize*TextureSize * 4];
 
 	for (int32 tx = 0; tx < (ChunkSize * MaxSizeX); tx++)
 	{
@@ -395,7 +463,12 @@ UTexture2D* ATableWorldTable::GenerateMinimap()
 			if (Tile)
 			{
 				FColor Color = Tile->getMinimapColor();
-				Pixels[ty * (ChunkSize * MaxSizeX) + tx] = Color;
+
+				int32 PixelIndex = ty * (ChunkSize * MaxSizeX) + tx;
+				Pixels[4 * PixelIndex + 2] = Color.R;
+				Pixels[4 * PixelIndex + 1] = Color.G;
+				Pixels[4 * PixelIndex + 0] = Color.B;
+				Pixels[4 * PixelIndex + 3] = Color.A;
 			}
 		}
 	}
@@ -404,11 +477,11 @@ UTexture2D* ATableWorldTable::GenerateMinimap()
 	Mip.BulkData.Lock(LOCK_READ_WRITE);
 
 	uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
-	FMemory::Memcpy(TextureData, Pixels.GetData(), sizeof(uint8) * (TextureSize * TextureSize * 4));
+	FMemory::Memcpy(TextureData, Pixels, sizeof(uint8) * (TextureSize * TextureSize * 4));
 	Mip.BulkData.Unlock();
 	MinimapTexture->UpdateResource();
 
-	Pixels.Empty();
+	delete[] Pixels;
 
 	return MinimapTexture;
 }
@@ -424,29 +497,29 @@ void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
 	int32 TextureSize = ChunkSize * MaxSizeX;
 
 	FTexture2DMipMap& Mip = MinimapTexture->PlatformData->Mips[0];
+	FColor* FormatedColorData = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
 
-	FColor* FormatedImageData = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
 	for(int32 i = 0; i < ModifiedTiles.Num(); i++)
 	{
 		UTileData* Tile = ModifiedTiles[i];
 		if(Tile)
 		{
-			Tile->DebugHighlightTile(999.0f);
 			int32 X = Tile->getX();
 			int32 Y = Tile->getY();
 
-			FormatedImageData[Y * (TextureSize) + X] = Tile->getMinimapColor();
+			FColor Color = Tile->getMinimapColor();
+
+			int32 PixelIndex = Y * (TextureSize) + X;
+			FormatedColorData[PixelIndex] = Color;
 		}
 	}
 
 	//Update the minimap data
 
 	uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
-	FMemory::Memcpy(TextureData, FormatedImageData, sizeof(uint8) * (TextureSize * TextureSize * 4));
+	FMemory::Memcpy(TextureData, FormatedColorData, sizeof(uint8) * (TextureSize * TextureSize * 4));
 	Mip.BulkData.Unlock();
 	MinimapTexture->UpdateResource();
-
-	//delete FormatedImageData;
 
 	if (getPlayerController()) 
 	{
@@ -501,6 +574,34 @@ void ATableWorldTable::SetupTilePixels(TArray<ETileType> TileTypes)
 
 		//Clear the RawData
 		//delete[] FormatedColorData;
+	}
+}
+
+void ATableWorldTable::SetMultipleTiles(TArray<UTileData*> Tiles)
+{
+	ATableChunk* LastChunk = nullptr;
+	for (int32 i = 0; i < Tiles.Num(); i++)
+	{
+		UTileData* Tile = Tiles[i];
+		if (Tile)
+		{
+			ATableChunk* Chunk = getChunkForTile(Tile->getX(), Tile->getY());
+			if (Chunk)
+			{
+				if (!LastChunk)
+				{
+					LastChunk = Chunk;
+					LastChunk->UpdateChunkTexture();
+					continue;
+				}
+
+				if (Chunk != LastChunk)
+				{
+					LastChunk = Chunk;
+					LastChunk->UpdateChunkTexture();
+				}
+			}
+		}
 	}
 }
 
@@ -605,6 +706,48 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 	return Tiles;
 }
 
+bool ATableWorldTable::InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size)
+{
+	DrawDebugPoint(GetWorld(), FVector(CenterX * 100 + 50, CenterY * 100 + 50, 0), 10, FColor::White, false, 0);
+
+	int32 SizeX = (int32)Size.X / 2;
+	int32 SizeY = (int32)Size.Y / 2;
+
+	int32 TopLeftX = X - SizeX;
+	int32 TopLeftY = Y - SizeY;
+
+	DebugError(FString::FromInt(SizeX) + " / " + FString::FromInt(SizeY));
+
+	int32 Dist = UTableHelper::getDistance(CenterX, CenterY, X, Y);
+	DrawDebugLine(GetWorld(), FVector(CenterX * 100 + 50, CenterY * 100 + 50, 10), FVector(X * 100 + 50, Y * 100 + 50, 10), FColor::Blue, false, 0, 0, 5.0f);
+	DrawDebugString(GetWorld(), FVector(X * 100 + 50, Y * 100 + 50, 0), FString::FromInt(Dist), NULL, FColor::White, 0, false);
+
+	for (int32 x = -Radius-1; x <= Radius; x++)
+	{
+		for (int32 y = -Radius-1; y <= Radius; y++)
+		{
+			if ((x * x) + (y * y) <= (Radius * Radius))
+			{
+				for (int32 bx = 0; bx < Size.X; bx++)
+				{
+					for (int32 by = 0; by < Size.Y; by++)
+					{
+						int32 XX = TopLeftX + bx;
+						int32 YY = TopLeftY + by;
+						int32 Distance = UTableHelper::getDistance(CenterX, CenterY, XX, YY);
+						if (Distance >= Radius)
+						{
+							return false;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool ATableWorldTable::HarvestRescource(UTileData* Tile, int32 Amount)
 {
 	if(Tile)
@@ -681,12 +824,12 @@ void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32
 	}
 }
 
-void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture)
+void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture, bool bModifyTile)
 {
 	ATableChunk* Chunk = getChunkForTile(X, Y);
 	if (Chunk)
 	{
-		return Chunk->SetTile(X, Y, type, bUpdateTexture);
+		return Chunk->SetTile(X, Y, type, bUpdateTexture, bModifyTile);
 	}
 }
 
@@ -759,6 +902,16 @@ ATablePlayerController* ATableWorldTable::getPlayerController()
 	}
 
 	return PC;
+}
+
+ATableGamemode* ATableWorldTable::getGamemode()
+{
+	if(!GM)
+	{
+		GM = Cast<ATableGamemode>(UGameplayStatics::GetGameMode(this));
+	}
+
+	return GM;
 }
 
 UFastNoise* ATableWorldTable::getNoise()
@@ -953,6 +1106,25 @@ TArray<UTileData*> ATableWorldTable::FindPathRoad(UTileData* StartTile, UTileDat
 	return TArray<UTileData*>();
 }
 
+ABuildableTile* ATableWorldTable::getBuildingWithID(FName UID)
+{
+	if (UID == NAME_None)return nullptr;
+	
+	for(int32 i = 0; i < getBuildings().Num(); i++)
+	{
+		ABuildableTile* Tile = getBuildings()[i];
+		if(Tile)
+		{
+			if(Tile->getUID() == UID)
+			{
+				return Tile;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 TArray<ABuildableTile*> ATableWorldTable::getBuildings()
 {
 	return Buildings;
@@ -983,4 +1155,96 @@ TArray<ACityCentreTile*> ATableWorldTable::getCityCentres()
 UTexture2D* ATableWorldTable::getMinimapTexture()
 {
 	return MinimapTexture;
+}
+
+int32 ATableWorldTable::getNewRandomSeed()
+{
+	return FMath::Rand();
+}
+
+int32 ATableWorldTable::getRandomSeed()
+{
+	if(getGamemode())
+	{
+		return getGamemode()->getRandomSeed();
+	}
+
+	return 0;
+}
+
+void ATableWorldTable::LoadData(TArray<FTableSaveTile> Tiles)
+{
+	TArray<UTileData*> ModTiles;
+	for(int32 i = 0; i < Tiles.Num(); i++)
+	{
+		FTableSaveTile Tile = Tiles[i];
+		SetTile(Tile.X, Tile.Y, Tile.Type, false, true);
+		
+		UTileData* TileRef = getTile(Tile.X, Tile.Y);
+		if(TileRef)
+		{
+			if(Tile.bHasHarvester)
+			{
+				TileRef->GiveHarvester();
+			}
+
+			if(Tile.RescourceInstanceID >= 0)
+			{
+				if (Tile.RescourceType != ETileRescources::None) 
+				{
+					//Update the rescource on the tile
+					TileRef->SetRescource(Tile.RescourceInstanceID, Tile.RescourceType, Tile.RescourceHealth);
+				}else
+				{
+					//Clear the rescource mesh
+					UInstancedStaticMeshComponent* ResMesh = InstancedRescourcesMesh.FindRef(TileRef->getTileRescources());
+					if(ResMesh)
+					{
+						ResMesh->UpdateInstanceTransform(Tile.RescourceInstanceID, FTransform(FRotator::ZeroRotator, FVector(0, 0, -1000)));
+					}
+
+					//Clear the tile rescource
+					TileRef->ClearRescource();
+
+				}
+			}
+
+			ModTiles.Add(TileRef);
+		}
+	}
+
+	SetMultipleTiles(ModTiles);
+	UpdateMinimap(ModTiles);
+
+	DebugLog("-Loaded " + FString::FromInt(Tiles.Num()) + " Tiles!");
+}
+
+void ATableWorldTable::SaveData_Implementation(UTableSavegame* Savegame)
+{
+	//Save Modified tiles
+	for(int32 x = 0; x < ChunkSize*MaxSizeX; x++)
+	{
+		for (int32 y = 0; y < ChunkSize*MaxSizeY; y++)
+		{
+			UTileData* Tile = getTile(x, y);
+			if (Tile)
+			{
+				if(Tile->isModified())
+				{
+					FTableSaveTile SaveTile;
+					SaveTile.X = x;
+					SaveTile.Y = y;
+					SaveTile.Type = Tile->getTileType();
+					SaveTile.RescourceType = Tile->getTileRescources();
+					SaveTile.RescourceHealth = Tile->getTileRescourceAmount();
+					SaveTile.RescourceInstanceID = Tile->getLastRescourceIndex();
+					SaveTile.bHasHarvester = Tile->HasHarvester();
+
+					Savegame->SavedTiles.Add(SaveTile);
+				}
+			}
+		}
+	}
+
+	DebugLog("-Saved " + FString::FromInt(Savegame->SavedTiles.Num()) + " Modified tiles!");
 }

@@ -6,17 +6,26 @@
 #include "Creature/HaulerCreature.h"
 #include "../TileData.h"
 #include "Core/TableGamemode.h"
+#include "Misc/TableHelper.h"
 
 AProductionBuilding::AProductionBuilding()
 {
 	Tags.Add("ProductionBuilding");
 }
 
+void AProductionBuilding::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated, bool bLoadBuilding)
+{
+	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bRotated, bLoadBuilding);
+
+	if (!bLoadBuilding) 
+	{
+		StartWork();
+	}
+}
+
 void AProductionBuilding::StartWork()
 {
 	Super::StartWork();
-	DebugLog("Start Work");
-
 
 	//Check if we have enough items to produce our output
 	GetWorldTimerManager().SetTimer(RescourceCheckTimer, this, &AProductionBuilding::TryProduceOutput, RescourceCheckTime);
@@ -25,7 +34,6 @@ void AProductionBuilding::StartWork()
 void AProductionBuilding::StopWork()
 {
 	Super::StopWork();
-	DebugLog("Stop Work");
 
 	GetWorldTimerManager().ClearTimer(ProductionTimer);
 	GetWorldTimerManager().ClearTimer(RescourceCheckTimer);
@@ -36,7 +44,6 @@ void AProductionBuilding::StopWork()
 		AHaulerCreature* Hauler = Haulers[i];
 		if(Hauler)
 		{
-			Hauler->StopMovement();
 			Hauler->ForceReturnJob();
 		}
 	}
@@ -98,6 +105,19 @@ void AProductionBuilding::TryProduceOutput()
 	GetWorldTimerManager().SetTimer(RescourceCheckTimer, this, &AProductionBuilding::TryProduceOutput, RescourceCheckTime);
 }
 
+AHaulerCreature* AProductionBuilding::SpawnHauler(FVector Location)
+{
+	AHaulerCreature* Hauler = GetWorld()->SpawnActor<AHaulerCreature>(HaulerClass, Location, FRotator::ZeroRotator);
+	if(Hauler)
+	{
+		//Bind Events
+		Hauler->Event_HaulerReachedTarget.AddDynamic(this, &AProductionBuilding::OnHaulerReachTarget);
+		Hauler->Event_HaulerReturnedHome.AddDynamic(this, &AProductionBuilding::OnHaulerReturnHome);
+	}
+
+	return Hauler;
+}
+
 void AProductionBuilding::ModifyInventory(EItem Item, int32 Amount, TMap<EItem, int32>& Storage)
 {
 	if (Item == EItem::None && Item == EItem::Max)return;
@@ -131,7 +151,7 @@ bool AProductionBuilding::CheckIfValidInventory(ACityCentreTile* InInventory, UT
 			return false;
 		}
 
-		if(!InInventory->ReserveItems(InputItems, this))
+		if(!InInventory->ReserveItems(InputItems, UID))
 		{
 			return false;
 		}
@@ -177,17 +197,42 @@ void AProductionBuilding::SendHaulerToInventory(ACityCentreTile* InInventory, UT
 		//Create a hauler
 		if (HaulerClass)
 		{
-			AHaulerCreature* Hauler = GetWorld()->SpawnActor<AHaulerCreature>(HaulerClass, StartTile->getWorldCenter(), FRotator::ZeroRotator);
-			if (Hauler)
+			AHaulerCreature* Hauler = nullptr;
+
+			//Check if we got some deactivated haulers
+			for (int32 i = 0; i < Haulers.Num(); i++)
 			{
-				Hauler->GiveProductionHaulJob(InInventory, this, EndTile, StartTile);
+				AHaulerCreature* FoundHauler = Haulers[i];
+				if(FoundHauler)
+				{
+					if(FoundHauler->getStatus() == ECreatureStatus::Deactivated)
+					{
+						FoundHauler->ActivateCreature();
+						Hauler = FoundHauler;
+					}
+				}
+			}
 
-				//Bind Events
-				Hauler->Event_HaulerReachedTarget.AddDynamic(this, &AProductionBuilding::OnHaulerReachTarget);
-				Hauler->Event_HaulerReturnedHome.AddDynamic(this, &AProductionBuilding::OnHaulerReturnHome);
+			if (!Hauler) 
+			{
+				if (Haulers.Num() < MaxHaulers)
+				{
+					Hauler = SpawnHauler(StartTile->getWorldCenter());
+					if (Hauler)
+					{
+						//Bind Events
+						Hauler->Event_HaulerReachedTarget.AddDynamic(this, &AProductionBuilding::OnHaulerReachTarget);
+						Hauler->Event_HaulerReturnedHome.AddDynamic(this, &AProductionBuilding::OnHaulerReturnHome);
 
-				Haulers.Add(Hauler);
-				return;
+						Haulers.Add(Hauler);
+					}
+				}
+			}
+
+			if(Hauler)
+			{
+				Hauler->SetActorLocation(StartTile->getWorldCenter());
+				Hauler->GiveHaulJob(InInventory->getUID(), getUID(), EndTile, StartTile);
 			}
 		}
 	}
@@ -197,18 +242,12 @@ void AProductionBuilding::SendHaulerToInventory(ACityCentreTile* InInventory, UT
 
 void AProductionBuilding::OnHaulerReachTarget(AHaulerCreature* Hauler)
 {
-	DebugError("reach target");
-	
 	//We reached the target
 	if(Hauler)
 	{
-		DebugError("hauler");
-
-		ACityCentreTile* Inventory = Hauler->getInventoryBuilding();
+		ACityCentreTile* Inventory = Cast<ACityCentreTile>(getTable()->getBuildingWithID(Hauler->getTargetBuildingUID()));
 		if(Inventory)
 		{
-			DebugError("inv");
-
 			//Check if the building still has the items we want
 			if(Inventory->HasItems(InputItems, true))
 			{
@@ -226,21 +265,27 @@ void AProductionBuilding::OnHaulerReachTarget(AHaulerCreature* Hauler)
 					}
 
 					//Clear the reserve items we might have
-					Inventory->ClearReserveItems(this);
+					Inventory->ClearReserveItems(getUID());
 
 					//Add the item to the hauler inventory
 					Hauler->AddHaulItems(Item, Amount);
 				}
 
-				DebugError("return");
 				Hauler->GiveReturnJob();
 			}
 			else
 			{
 				//The building is missing the items we need.
-
-				//TODO THROW A NOTIFICATION
-				DebugError("A Productionhauler was unable to get the items he needs!");
+				if(getGamemode())
+				{
+					FTableNotification NewNotify;
+					NewNotify.NotificationType = ETableNotificationType::Problem;
+					NewNotify.NotificationTitle = FText::AsCultureInvariant("Problem");
+					NewNotify.NotificationText = FText::AsCultureInvariant("A Productionhauler was unable to get the items he needs!");
+					NewNotify.bForcePause = false;
+					NewNotify.NotificationLocation = Hauler->GetActorLocation();
+					getGamemode()->AddNotification(NewNotify);
+				}
 
 				Hauler->GiveReturnJob();
 			}
@@ -270,8 +315,7 @@ void AProductionBuilding::OnHaulerReturnHome(AHaulerCreature* Hauler)
 			ProduceItems();
 		}
 
-		Haulers.Remove(Hauler);
-		Hauler->Destroy();
+		Hauler->DeactivateCreature();
 	}
 }
 
@@ -285,12 +329,29 @@ void AProductionBuilding::ProduceItems()
 
 void AProductionBuilding::OnItemProduce()
 {
+	LoadProgress = 0.0f;
+	
 	//Add the output items to our storage and mark this building as haulable.
 	ModifyInventory(OutputItem, OutputItemAmount, OutputStorage);
 
 	CurrentInventory += OutputItemAmount;
-	DebugError("Produced Item");
 
+	if (getGamemode())
+	{
+		getGamemode()->AddFloatingItem(OutputItem, OutputItemAmount, getWorldCenter());
+
+		if(CurrentInventory >= InventorySize)
+		{
+			FTableNotification NewNotify;
+			NewNotify.NotificationType = ETableNotificationType::Problem;
+			NewNotify.NotificationTitle = FText::AsCultureInvariant("Full Storage");
+			NewNotify.NotificationText = FText::AsCultureInvariant("A Production building has stopped working because its storage is full!");
+			NewNotify.bForcePause = false;
+			NewNotify.NotificationLocation = getWorldCenter();
+
+			getGamemode()->AddNotification(NewNotify);
+		}
+	}
 	GetWorldTimerManager().SetTimer(RescourceCheckTimer, this, &AProductionBuilding::TryProduceOutput, RescourceCheckTime);
 }
 
@@ -313,8 +374,81 @@ float AProductionBuilding::getProductionProgress()
 {
 	if(GetWorldTimerManager().IsTimerActive(ProductionTimer))
 	{
-		return GetWorldTimerManager().GetTimerElapsed(ProductionTimer) / ProductionTime;
+		return (GetWorldTimerManager().GetTimerElapsed(ProductionTimer) + LoadProgress) / ProductionTime;
 	}
 
 	return 0.0f;
+}
+
+void AProductionBuilding::LoadData(FTableSaveProductionBuilding Data)
+{
+	UID = Data.UID;
+	CurrentInventory = Data.CurrentInventory;
+	InputStorage = Data.InputStorage;
+	OutputStorage = Data.OutputStorage;
+
+	if(Data.ProductionTimer > 0)
+	{
+		LoadProgress = (ProductionTime - Data.ProductionTimer);
+
+		GetWorldTimerManager().SetTimer(ProductionTimer, this, &AProductionBuilding::OnItemProduce, Data.ProductionTimer);
+	}
+
+	if(Data.LastValidInventoryUID != NAME_None)
+	{
+		// get ref to the building with the specified ID
+		if (getTable()) 
+		{
+			LastValidInventory = Cast<ACityCentreTile>(getTable()->getBuildingWithID(Data.LastValidInventoryUID));
+		}
+	}
+
+	for (int32 i = 0; i < Data.Workers.Num(); i++)
+	{
+		FTableSaveHaulerCreature WorkerData = Data.Workers[i];
+
+		AHaulerCreature* NewWorker = SpawnHauler(WorkerData.Location);
+		if (NewWorker)
+		{
+			NewWorker->LoadData(WorkerData);
+
+			Haulers.Add(NewWorker);
+		}
+	}
+}
+
+void AProductionBuilding::SaveData_Implementation(UTableSavegame* Savegame)
+{
+	if(Savegame)
+	{
+		FTableSaveProductionBuilding Produciton;
+		Produciton.BuildingID = getBuildingData().ID;
+		Produciton.UID = UID;
+		Produciton.TileX = getTileX();
+		Produciton.TileY = getTileY();
+		Produciton.bRotated = bRotated;
+		Produciton.Rotation = GetActorRotation().Yaw;
+		Produciton.CurrentInventory = CurrentInventory;
+		Produciton.InputStorage = InputStorage;
+		Produciton.OutputStorage = OutputStorage;
+		Produciton.ProductionTimer = GetWorldTimerManager().GetTimerElapsed(ProductionTimer);
+
+		if (LastValidInventory)
+		{
+			Produciton.LastValidInventoryUID = LastValidInventory->getUID();
+		}
+
+		//Save Workers
+		for (int32 i = 0; i < Haulers.Num(); i++)
+		{
+			AHaulerCreature* Worker = Haulers[i];
+			if (Worker)
+			{
+				FTableSaveHaulerCreature WorkerData = Worker->getSaveData();
+				Produciton.Workers.Add(WorkerData);
+			}
+		}
+
+		Savegame->SavedProduction.Add(Produciton);
+	}
 }

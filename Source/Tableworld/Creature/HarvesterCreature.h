@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Creature/BaseCreature.h"
+#include "HumanCreature.h"
 #include "HarvesterCreature.generated.h"
 
 class AHarvesterTile;
 class UTileData;
 
 UCLASS()
-class TABLEWORLD_API AHarvesterCreature : public ABaseCreature
+class TABLEWORLD_API AHarvesterCreature : public AHumanCreature
 {
 	GENERATED_BODY()
 	
@@ -26,20 +27,10 @@ public:
 	UAnimationAsset* Work = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
-	UAnimationAsset* IdleWood = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
 	UAnimationAsset* WalkWood = nullptr;
 
-	//The time when we should play special effects
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
-	float WorkTime = 0.6f;
-
-	//The max time it takes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
-	float MaxWorkTime = 1.2f;
-
 	virtual void Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding);
+	virtual void OnPlayHarvestEffect() override;
 
 	void GiveHarvestJob(UTileData* nHarvestTile);
 	void GiveReturnJob();
@@ -49,7 +40,9 @@ public:
 
 	//Harvesting
 	void StartHarvesting();
-	void OnHarvestEffect();
+
+	UFUNCTION(BlueprintCallable, Category = "Effects")
+	void PlayHarvestEffect();
 
 	UFUNCTION()
 	void OnHarvest();
@@ -62,10 +55,12 @@ public:
 	virtual UAnimationAsset* getIdleAnimation() override;
 	virtual UAnimationAsset* getWalkAnimation() override;
 
+	void LoadData(FTableSaveHarvesterCreature Data);
+	FTableSaveHarvesterCreature getSaveData();
+
 protected:
 
 	FTimerHandle HarvestTimer;
-	FTimerHandle HarvestEffectsTimer;
 
 	bool bHasHarvested = false;
 	AHarvesterTile* HarvesterBuilding = nullptr;

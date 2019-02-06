@@ -16,9 +16,14 @@ void ATablePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitController();
+}
+
+void ATablePlayerController::InitController()
+{
 	bShowMouseCursor = true;
 
-	if(getHudManager())
+	if (getHudManager())
 	{
 		getHudManager()->BuildUI();
 		bShouldPerformFullTickWhenPaused = true;

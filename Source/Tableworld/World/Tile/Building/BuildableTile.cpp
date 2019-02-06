@@ -11,6 +11,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "World/TableChunk.h"
+#include "Savegame/TableSavegame.h"
 
 ABuildableTile::ABuildableTile()
 {
@@ -116,16 +117,25 @@ void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
 	ShowGridRadius();
 }
 
-void ABuildableTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+void ABuildableTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding)
 {
+	InitBuilding(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated);
+}
+
+void ABuildableTile::InitBuilding(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+{
+	bRotated = bNewRotated;
+
+	//Generate a UID
+	UID = FName(*FGuid::NewGuid().ToString());
+
 	//Snap the building to the place location
 	SetActorLocation(PlaceLoc);
 
 	//Reset the rotation of the building
 	SetActorRotation(FRotator(0, GetActorRotation().Yaw, 0));
 
-	bRotated = bNewRotated;
-	
+
 	PlacedOnTiles = nPlacedOnTiles;
 	BuildingData = nBuildingData;
 
@@ -134,23 +144,28 @@ void ABuildableTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, F
 		DynMaterial->SetScalarParameterValue("bIsGhost", 0.0f);
 	}
 
-	if(nPlacedOnTiles.Num() > 0)
+	if (nPlacedOnTiles.Num() > 0)
 	{
 		TileX = (int32)nPlacedOnTiles[0].X;
 		TileY = (int32)nPlacedOnTiles[0].Y;
 	}
 
-	if(bChangeFoundationTiles)
+	if (bChangeFoundationTiles)
 	{
-		if (getTable()) 
+		if (getTable())
 		{
 			TArray<UTileData*> Tiles;
-			for (int32 x = 0; x < getBuildingSize().X; x++)
+			int32 HalfX = (int32)getBuildingSize().X / 2;
+			int32 HalfY = (int32)getBuildingSize().Y / 2;
+
+			DebugWarning(FString::FromInt(HalfX) + "x" + FString::FromInt(HalfY));
+
+			for (int32 x = -HalfX; x <= HalfX; x++)
 			{
-				for (int32 y = 0; y < getBuildingSize().Y; y++)
+				for (int32 y = -HalfY; y <= HalfY; y++)
 				{
-					int32 X = getTileX() + x;
-					int32 Y = getTileY() + y;
+					int32 X = getCenterX() + x;
+					int32 Y = getCenterY() + y;
 
 					UTileData* Tile = getTable()->getTile(X, Y);
 					if (Tile)
@@ -161,30 +176,7 @@ void ABuildableTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, F
 				}
 			}
 
-			ATableChunk* LastChunk = nullptr;
-			for (int32 i = 0; i < Tiles.Num(); i++)
-			{
-				UTileData* Tile = Tiles[i];
-				if (Tile)
-				{
-					ATableChunk* Chunk = getTable()->getChunkForTile(Tile->getX(), Tile->getY());
-					if (Chunk) 
-					{
-						if (!LastChunk)
-						{
-							LastChunk = Chunk;
-							LastChunk->UpdateChunkTexture();
-							continue;
-						}
-
-						if (Chunk != LastChunk)
-						{
-							LastChunk = Chunk;
-							LastChunk->UpdateChunkTexture();
-						}
-					}
-				}
-			}
+			getTable()->SetMultipleTiles(Tiles);
 		}
 	}
 
@@ -247,8 +239,8 @@ UTileData* ABuildableTile::getValidTile()
 {
 	if (!getTable())return nullptr;
 	
-	int32 XSize = BuildingData.BuildingSize.X;
-	int32 YSize = BuildingData.BuildingSize.Y;
+	int32 XSize = getBuildingSize().X;
+	int32 YSize = getBuildingSize().Y;
 
 	for(int32 SX = 0; SX < XSize; SX++)
 	{
@@ -338,7 +330,7 @@ int32 ABuildableTile::getTileY()
 
 int32 ABuildableTile::getCenterX()
 {
-	int32 HalfX = ((int32)BuildingData.BuildingSize.X / 2);
+	int32 HalfX = ((int32)getBuildingSize().X / 2);
 
 	if (HalfX > 0) 
 	{
@@ -350,7 +342,7 @@ int32 ABuildableTile::getCenterX()
 
 int32 ABuildableTile::getCenterY()
 {
-	int32 HalfY = ((int32)BuildingData.BuildingSize.Y / 2);
+	int32 HalfY = ((int32)getBuildingSize().Y / 2);
 
 	if (HalfY > 0)
 	{
@@ -376,8 +368,21 @@ FVector ABuildableTile::getWorldCenter()
 
 	if(BuildingData.ID != NAME_None)
 	{
-		Loc.X = getTileX() * 100;
-		Loc.Y = getTileY() * 100;
+		if (getBuildingSize() <= FVector2D(1, 1))
+		{
+			Loc.X = getTileX() * 100 + 50;
+			Loc.Y = getTileY() * 100 + 50;
+
+			return Loc;
+		}
+
+		int32 HalfX = (int32)getBuildingSize().X / 2;
+		int32 HalfY = (int32)getBuildingSize().Y / 2;
+
+		Loc.X = (getTileX() + HalfX) * 100 + 50;
+		Loc.Y = (getTileY() + HalfY) * 100 + 50;
+
+		return Loc;
 	}
 
 	return Loc;
@@ -443,6 +448,11 @@ FColor ABuildableTile::getMinimapColor()
 	return FColor::Red;
 }
 
+FName ABuildableTile::getUID()
+{
+	return UID;
+}
+
 TArray<UTileData*> ABuildableTile::getTilesAroundUs(bool bForceRegenerate)
 {
 	if(bForceRegenerate)
@@ -450,9 +460,9 @@ TArray<UTileData*> ABuildableTile::getTilesAroundUs(bool bForceRegenerate)
 		bIsConnectedToRoad = false;
 		
 		TilesAroundUs.Empty();
-		for (int32 SX = 0; SX < (int32)BuildingData.BuildingSize.X; SX++)
+		for (int32 SX = 0; SX < (int32)getBuildingSize().X; SX++)
 		{
-			for (int32 SY = 0; SY < (int32)BuildingData.BuildingSize.Y; SY++)
+			for (int32 SY = 0; SY < (int32)getBuildingSize().Y; SY++)
 			{
 				for (int32 x = -1; x <= 1; x++)
 				{
@@ -491,4 +501,9 @@ bool ABuildableTile::isHaulerComming()
 bool ABuildableTile::isConnectedToRoad()
 {
 	return bIsConnectedToRoad;
+}
+
+void ABuildableTile::SaveData_Implementation(UTableSavegame* Savegame)
+{
+	
 }

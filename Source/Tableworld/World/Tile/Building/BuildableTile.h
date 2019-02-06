@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Misc/TableHelper.h"
+#include "Interface/SaveLoadInterface.h"
+#include "Savegame/TableSavegame.h"
 #include "BuildableTile.generated.h"
 
 class UInstancedStaticMeshComponent;
@@ -17,7 +19,7 @@ class ATableGamemode;
 class UTableGameInstance;
 
 UCLASS()
-class TABLEWORLD_API ABuildableTile : public AActor
+class TABLEWORLD_API ABuildableTile : public AActor, public ISaveLoadInterface
 {
 	GENERATED_BODY()
 	
@@ -52,7 +54,12 @@ public:
 	virtual void ClearGridRadius();
 
 	virtual void SetIsGhost(FTableBuilding nBuildingData);
-	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated);
+
+	//Called once the building got place in the world.
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated, bool bLoadBuilding = false);
+
+	//Called after the building got placed. 
+	virtual void InitBuilding(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated);
 
 	virtual void MoveBuildingToLocation(FVector NewLoc);
 
@@ -133,6 +140,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual FColor getMinimapColor();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	FName getUID();
+
 	UFUNCTION()
 	TArray<UTileData*> getTilesAroundUs(bool bForceRegenerate = false);
 
@@ -141,6 +151,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool isConnectedToRoad();
+
+	//Interface
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	void SaveData(UTableSavegame* Savegame);
+	virtual void SaveData_Implementation(UTableSavegame* Savegame);
 
 protected:
 
@@ -174,4 +189,6 @@ protected:
 
 	int32 TileX = 0;
 	int32 TileY = 0;
+
+	FName UID;
 };

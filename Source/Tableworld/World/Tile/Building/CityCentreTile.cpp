@@ -16,11 +16,14 @@ ACityCentreTile::ACityCentreTile()
 	Tags.Add("StorageBuilding");
 }
 
-void ACityCentreTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+void ACityCentreTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding)
 {
-	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated);
+	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated, bLoadBuilding);
 
-	StartWork();
+	if (!bLoadBuilding)
+	{
+		StartWork();
+	}
 }
 
 void ACityCentreTile::StartWork()
@@ -47,43 +50,6 @@ int32 ACityCentreTile::getBuildGridRadius()
 	return Super::getBuildGridRadius();
 }
 
-bool ACityCentreTile::InInfluenceRange(int32 X, int32 Y, FVector2D Size)
-{
-	if(getTable())
-	{
-		bool bInRange = true;
-
-		int32 Radius = getBuildGridRadius();
-		for (int32 x = -Radius; x <= Radius; x++)
-		{
-			for (int32 y = -Radius; y <= Radius; y++)
-			{
-				if ((x * x) + (y * y) <= (Radius * Radius))
-				{
-					int32 XX = (GetActorLocation().X / 100 + x);
-					int32 YY = (GetActorLocation().Y / 100 + y);
-
-					for (int32 bx = 0; bx < Size.X; bx++) 
-					{
-						for (int32 by = 0; by < Size.Y; by++) 
-						{
-							int32 Distance = UTableHelper::getDistance(getCenterX(), getCenterY(), X + bx, Y + by);
-							if (Distance >= Radius)
-							{
-								bInRange = false;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return bInRange;
-	}
-
-	return false;
-}
-
 void ACityCentreTile::OnRescourceCheck()
 {
 	//Try to spawn a hauler
@@ -106,10 +72,10 @@ void ACityCentreTile::OnRescourceCheck()
 					if (StartTile && EndTile) 
 					{
 						//Spawn a hauler and send him to haul the item
-						AHaulerCreature* Hauler = GetWorld()->SpawnActor<AHaulerCreature>(HaulerClass, StartTile->getWorldCenter(), FRotator::ZeroRotator);
+						AHaulerCreature* Hauler = SpawnWorker(StartTile->getWorldCenter());
 						if(Hauler)
 						{
-							Hauler->GiveHaulJob(Building, this, EndTile, StartTile);
+							Hauler->GiveHaulJob(Building->getUID(), getUID(), EndTile, StartTile);
 							Workers.Add(Hauler);
 						}
 					}
@@ -123,7 +89,6 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 {
 	if(nHauler)
 	{
-		//TODO Get the items!
 		if(getGamemode())
 		{
 			EItem HaulItem = EItem::None;
@@ -148,13 +113,32 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 	}
 }
 
+void ACityCentreTile::OnHaulReachedTarget(AHaulerCreature* nHauler)
+{
+	if (!nHauler)return;
+	if (!getTable())return;
+
+	AInventoryTile* InventoryBuilding = Cast<AInventoryTile>(getTable()->getBuildingWithID(nHauler->getTargetBuildingUID()));
+	if(InventoryBuilding)
+	{
+		InventoryBuilding->TransferInventory(nHauler);
+		nHauler->GiveReturnJob();
+	}
+}
+
 void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
 {
 	if (Item == EItem::None && Item == EItem::Max)return;
+
+	DebugError("------Amount " + FString::FromInt(Amount));
 	
 	if(!StoredItems.Contains(Item))
 	{
-		StoredItems.Add(Item, Amount);
+		if (Amount > 0) 
+		{
+			StoredItems.Add(Item, Amount);
+		}
+
 		return;
 	}
 
@@ -169,7 +153,7 @@ void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
 	StoredItems.Emplace(Item, OldAmount);
 }
 
-bool ACityCentreTile::ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Building)
+bool ACityCentreTile::ReserveItems(TMap<EItem, int32> Items, FName UID)
 {
 	if(HasItems(Items))
 	{
@@ -182,7 +166,7 @@ bool ACityCentreTile::ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Bui
 			FReservedItem ReservedItem;
 			ReservedItem.Item = Item;
 			ReservedItem.Amount = Amount;
-			ReservedItem.ReservingBuilding = Building;
+			ReservedItem.BuildingUID = UID;
 
 			ReservedItems.Add(ReservedItem);
 		}
@@ -193,19 +177,32 @@ bool ACityCentreTile::ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Bui
 	return false;
 }
 
-void ACityCentreTile::ClearReserveItems(ABuildableTile* Owner)
+void ACityCentreTile::ClearReserveItems(FName UID)
 {
-	if (Owner)
+	if (UID != NAME_None)
 	{
 		for (int32 i = 0; i < ReservedItems.Num(); i++)
 		{
 			FReservedItem Item = ReservedItems[i];
-			if(Item.ReservingBuilding == Owner)
+			if(Item.BuildingUID.IsEqual(UID))
 			{
 				ReservedItems.RemoveAt(i);
 			}
 		}
 	}
+}
+
+AHaulerCreature* ACityCentreTile::SpawnWorker(FVector SpawnLoc)
+{
+	AHaulerCreature* NewWorker = GetWorld()->SpawnActor<AHaulerCreature>(HaulerClass, SpawnLoc, FRotator::ZeroRotator);
+	if(NewWorker)
+	{
+		//Bind events
+		NewWorker->Event_HaulerReturnedHome.AddDynamic(this, &ACityCentreTile::OnHaulCompleted);
+		NewWorker->Event_HaulerReachedTarget.AddDynamic(this, &ACityCentreTile::OnHaulReachedTarget);
+	}
+
+	return NewWorker;
 }
 
 AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile)
@@ -242,7 +239,7 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 						continue;
 					}
 
-					if (!InInfluenceRange(Building->getTileX(), Building->getTileY(), Building->getBuildingSize()))
+					if (!getTable()->InInfluenceRange(getCenterX(), getCenterY(), getBuildGridRadius(), Building->getTileX(), Building->getTileY(), Building->getBuildingSize()))
 					{
 						//Do not care about buildings that are outside your range
 						continue;
@@ -370,4 +367,57 @@ bool ACityCentreTile::HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved)
 	}
 
 	return true;
+}
+
+void ACityCentreTile::LoadData(FTableSaveCityCenterBuilding Data)
+{
+	UID = Data.UID;
+	StoredItems = Data.StoredItems;
+	ReservedItems = Data.ReservedItems;
+
+	//Override the current workers with our new data
+	for (int32 i = 0; i < Data.Workers.Num(); i++)
+	{
+		FTableSaveHaulerCreature WorkerData = Data.Workers[i];
+
+		AHaulerCreature* NewWorker = SpawnWorker(WorkerData.Location);
+		if (NewWorker)
+		{
+			DebugWarning("Loaded new Worker!");
+			NewWorker->LoadData(WorkerData);
+
+			Workers.Add(NewWorker);
+		}
+	}
+
+	StartWork();
+}
+
+void ACityCentreTile::SaveData_Implementation(UTableSavegame* Savegame)
+{
+	if(Savegame)
+	{
+		FTableSaveCityCenterBuilding CityCenter;
+		CityCenter.UID = UID;
+		CityCenter.BuildingID = getBuildingData().ID;
+		CityCenter.TileX = getTileX();
+		CityCenter.TileY = getTileY();
+		CityCenter.Rotation = GetActorRotation().Yaw;
+		CityCenter.bRotated = bRotated;
+		CityCenter.StoredItems = StoredItems;
+		CityCenter.ReservedItems = ReservedItems;
+
+		//Save Workers
+		for(int32 i = 0; i < Workers.Num(); i++)
+		{
+			AHaulerCreature* Worker = Workers[i];
+			if(Worker)
+			{
+				FTableSaveHaulerCreature WorkerData = Worker->getSaveData();
+				CityCenter.Workers.Add(WorkerData);
+			}
+		}
+
+		Savegame->SavedCityCenters.Add(CityCenter);
+	}
 }

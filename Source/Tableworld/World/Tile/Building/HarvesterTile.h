@@ -63,7 +63,7 @@ public:
 	AHarvesterTile();
 
 	//Called when we place down the building
-	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated) override;
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding) override;
 
 	//Resumes work for this building
 	virtual void StartWork() override;
@@ -101,6 +101,9 @@ public:
 
 	virtual TArray<FProductionItem> getInputItems() override;
 	virtual TArray<FProductionItem> getOutputItems() override;
+
+	virtual void LoadData(FTableSaveHarvesterBuilding Data);
+	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
 
 protected:
 

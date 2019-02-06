@@ -22,6 +22,7 @@ public:
 
 	ATablePlayerController();
 	virtual void BeginPlay() override;
+	void InitController();
 
 	void SelectTool(EToolbarTools NewTool);
 	void ShowBuildingInfoPanel(ABuildableTile* Building);

@@ -45,10 +45,13 @@ public:
 	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
 	AProductionBuilding();
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated, bool bLoadBuilding) override;
 	virtual void StartWork() override;
 	virtual void StopWork() override;
 
 	virtual void TryProduceOutput();
+
+	AHaulerCreature* SpawnHauler(FVector Location);
 
 	void ModifyInventory(EItem Item, int32 Amount, TMap<EItem, int32>& Storage);
 
@@ -74,7 +77,12 @@ public:
 	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
 	float getProductionProgress();
 
+	virtual void LoadData(FTableSaveProductionBuilding Data);
+	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
+
 protected:
+
+	float LoadProgress = 0.0f;
 
 	ACityCentreTile* LastValidInventory = nullptr;
 

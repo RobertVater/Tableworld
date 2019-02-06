@@ -7,10 +7,18 @@
 #include "World/Tile/RockTile.h"
 #include "World/Tile/DirtRoadTile.h"
 #include "World/Tile/DirtTile.h"
+#include "World/TableWorldTable.h"
+
+ATableWorldTable* UTableHelper::TableRef = nullptr;
 
 bool UTableHelper::isDebug()
 {
 	return true;
+}
+
+void UTableHelper::Init(ATableWorldTable* nTableRef)
+{
+	TableRef = nTableRef;
 }
 
 TSubclassOf<UTileData> UTableHelper::getTileClass(ETileType Type)
@@ -52,4 +60,37 @@ int32 UTableHelper::getTileDistance(UTileData* TileA, UTileData* TileB)
 int32 UTableHelper::getDistance(int32 X, int32 Y, int32 EX, int32 EY)
 {
 	return (FVector(X, Y, 0) - FVector(EX, EY, 0)).Size2D();
+}
+
+TArray<FVector2D> UTableHelper::ConvertTileArrayTo2DVectorArray(TArray<UTileData*> Tiles)
+{
+	TArray<FVector2D> VectorArray;
+
+	for(int32 i = 0; i < Tiles.Num(); i++)
+	{
+		UTileData* Tile = Tiles[i];
+		if(Tile)
+		{
+			VectorArray.Add(FVector2D(Tile->getX(), Tile->getY()));
+		}
+	}
+
+	return VectorArray;
+}
+
+TArray<UTileData*> UTableHelper::Convert2DVectorArrayToTileArray(TArray<FVector2D> Tiles)
+{
+	TArray<UTileData*> VectorArray;
+
+	if (TableRef) 
+	{
+		for (int32 i = 0; i < Tiles.Num(); i++)
+		{
+			FVector2D Tile = Tiles[i];
+
+			VectorArray.Add(TableRef->getTile((int32)Tile.X, (int32)Tile.Y));
+		}
+	}
+
+	return VectorArray;
 }

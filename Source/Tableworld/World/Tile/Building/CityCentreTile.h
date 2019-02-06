@@ -8,6 +8,7 @@
 
 class AHaulerCreature;
 class AInventoryTile;
+class UTableSavegame;
 
 UCLASS()
 class TABLEWORLD_API ACityCentreTile : public ABuildableTile
@@ -30,23 +31,28 @@ public:
 	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
 	ACityCentreTile();
-	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated) override;
+	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding) override;
 	virtual void StartWork() override;
 	virtual void StopWork() override;
 
 	virtual int32 getBuildGridRadius() override;
-	virtual bool InInfluenceRange(int32 X, int32 Y, FVector2D Size);
 
 	void OnRescourceCheck();
 
+	UFUNCTION()
 	void OnHaulCompleted(AHaulerCreature* nHauler);
+
+	UFUNCTION()
+	void OnHaulReachedTarget(AHaulerCreature* nHauler);
 
 	UFUNCTION(meta = (BlueprintThreadSafe))
 	void ModifyInventory(EItem Item, int32 Amount);
 
 	//Reserves the items to a building. Those items are invisible to other buildings
-	bool ReserveItems(TMap<EItem, int32> Items, ABuildableTile* Building);
-	void ClearReserveItems(ABuildableTile* Owner);
+	bool ReserveItems(TMap<EItem, int32> Items, FName UID);
+	void ClearReserveItems(FName UID);
+
+	AHaulerCreature* SpawnWorker(FVector SpawnLoc);
 
 	AInventoryTile* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
 
@@ -55,6 +61,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved = false);
+
+	virtual void LoadData(FTableSaveCityCenterBuilding Data);
+	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
 
 protected:
 

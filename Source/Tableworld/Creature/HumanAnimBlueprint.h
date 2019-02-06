@@ -7,9 +7,8 @@
 #include "Misc/TableHelper.h"
 #include "HumanAnimBlueprint.generated.h"
 
-/**
- * 
- */
+class AHumanCreature;
+
 UCLASS(Blueprintable)
 class TABLEWORLD_API UHumanAnimBlueprint : public UAnimInstance
 {
@@ -17,8 +16,13 @@ class TABLEWORLD_API UHumanAnimBlueprint : public UAnimInstance
 	
 public:
 
+	virtual void NativeBeginPlay() override;
+
 	UFUNCTION(BlueprintCallable, meta = (BlueprintThreadSafe),Category = "Setter")
 	void UpdateStatus(ECreatureStatus NewStatus);
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintThreadSafe), Category = "Event")
+	void PlayHarvestEffects();
 
 	UFUNCTION(BlueprintCallable,BlueprintPure, meta = (BlueprintThreadSafe), Category = "Getter")
 	ECreatureStatus getCreatureStatus();
@@ -26,4 +30,5 @@ public:
 protected:
 
 	ECreatureStatus CurrentStatus = ECreatureStatus::Idle;
+	AHumanCreature* HumanRef = nullptr;
 };

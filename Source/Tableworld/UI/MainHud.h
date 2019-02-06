@@ -18,6 +18,9 @@ public:
 
 	virtual void NativeConstruct() override;
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Notification")
+	void OnNewNotification(FTableNotification  NewNotify);
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Minimap")
 	void UpdateMinimap(UTexture2D* NewMinimap);
 

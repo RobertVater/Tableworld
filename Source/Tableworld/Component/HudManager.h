@@ -29,6 +29,7 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void BuildUI();
+	virtual void ResetUI();
 
 	void ShowBuildingInfoPanel(ABuildableTile* SelectedBuilding);
 

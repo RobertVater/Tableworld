@@ -23,6 +23,12 @@ void ATableChunk::BeginPlay()
 	Super::BeginPlay();
 }
 
+void ATableChunk::CleanupMemory()
+{
+	ChunkTexture->RemoveFromRoot();
+	ChunkTexture = nullptr;
+}
+
 void ATableChunk::SetupChunk(uint8 nX, uint8 nY, ATableWorldTable* nParentTable)
 {
 	ParentTable = nParentTable;
@@ -98,12 +104,15 @@ void ATableChunk::GenerateChunkMesh()
 	int32 Resolution = 1;
 	int32 TextureSize = ((ChunkSize * TilesInPixels));
 
-	ChunkTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
-	ChunkTexture->AddToRoot();
-	ChunkTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
-	ChunkTexture->SRGB = false;
-	ChunkTexture->Filter = TextureFilter::TF_Nearest;
-	ChunkTexture->UpdateResource();
+	if (!ChunkTexture) 
+	{
+		ChunkTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
+		ChunkTexture->AddToRoot();
+		ChunkTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+		ChunkTexture->SRGB = false;
+		ChunkTexture->Filter = TextureFilter::TF_Nearest;
+		ChunkTexture->UpdateResource();
+	}
 }
 
 void ATableChunk::AddPlane(float X, float Y, int32 i, TArray<FVector>& Verts, TArray<FVector2D>& UVs)
@@ -143,8 +152,7 @@ void ATableChunk::UpdateChunkTexture()
 			int32 Resolution = 1;
 			int32 TextureSize = ((ChunkSize * TilesInPixels));
 
-			TArray<FColor> Pixels;
-			Pixels.AddUninitialized(TextureSize*TextureSize);
+			uint8* Pixels = new uint8[TextureSize * TextureSize * 4];
 			for (int32 ty = 0; ty < ChunkSize; ty++)
 			{
 				for (int32 tx = 0; tx < ChunkSize; tx++)
@@ -165,7 +173,11 @@ void ATableChunk::UpdateChunkTexture()
 							{
 								FColor PixelColor = TilePixels[py * TilesInPixels + px];
 
-								Pixels[(TileY + py) * TextureSize + (TileX + px)] = PixelColor;
+								int32 PixelIndex = (TileY + py) * TextureSize + (TileX + px);
+								Pixels[4 * PixelIndex + 2] = PixelColor.R;
+								Pixels[4 * PixelIndex + 1] = PixelColor.G;
+								Pixels[4 * PixelIndex + 0] = PixelColor.B;
+								Pixels[4 * PixelIndex + 3] = PixelColor.A;
 							}
 						}
 					}
@@ -176,18 +188,19 @@ void ATableChunk::UpdateChunkTexture()
 			Mip.BulkData.Lock(LOCK_READ_WRITE);
 
 			uint8* TextureData = (uint8*)Mip.BulkData.Realloc(TextureSize*TextureSize * 4);
-			FMemory::Memcpy(TextureData, Pixels.GetData(), sizeof(uint8) * (TextureSize * TextureSize * 4));
+			FMemory::Memcpy(TextureData, Pixels, sizeof(uint8) * (TextureSize * TextureSize * 4));
 			Mip.BulkData.Unlock();
 			ChunkTexture->UpdateResource();
 
+			delete[] Pixels;
+
 			DynamicMaterial->SetTextureParameterValue("Texture", ChunkTexture);
 
-			Pixels.Empty();
 		}
 	}
 }
 
-void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial)
+void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial, bool bModifyTile)
 {
 	UTileData* Tile = getTile(X, Y);
 	if(Tile)
@@ -203,6 +216,12 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 				if (NewTile)
 				{
 					NewTile->CopyTileData(Tile);
+
+					if(bModifyTile)
+					{
+						NewTile->SetModified();
+					}
+
 					Tiles[Tile->getLocalY() * ChunkSize + Tile->getLocalX()] = NewTile;
 
 					if (bUpdateMaterial)

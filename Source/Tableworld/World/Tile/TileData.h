@@ -22,6 +22,7 @@ public:
 	void SetHeigth(float nHeight);
 
 	void CopyTileData(UTileData* CopyTile);
+	void SetModified();
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
 	void SetRescource(int32 Index, ETileRescources Type, int32 Amount);
@@ -67,13 +68,17 @@ public:
 	bool HasTileObject();
 	ABuildableTile* getTileObject();
 
+	//True if this tile was modified at some point.
+	bool isModified();
+	bool HadRescource();
+	int32 getLastRescourceIndex();
+
 	//Pathfinding
 	int32 GCost = 0;
 	int32 HCost = 0;
 	UTileData* PathParent = nullptr;
 
 protected:
-	
 
 	//The building that is sitting on this tile
 	ABuildableTile* TileObject = nullptr;
@@ -91,8 +96,13 @@ protected:
 	int32 WorldX = 0;
 	int32 WorldY = 0;
 
+	bool bWasModified = false;
+
 	bool bHasHarvester = false;
 	int32 RescourceIndex = 0;
 	ETileRescources TileRescource = ETileRescources::None;
 	int32 RescourceCount = 0;
+
+	ETileRescources LastResource = ETileRescources::None;
+	int32 LastIndex = 0;
 };

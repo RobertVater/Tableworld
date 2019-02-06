@@ -24,6 +24,8 @@ public:
 	ATableChunk();
 	virtual void BeginPlay() override;
 
+	void CleanupMemory();
+
 	virtual void SetupChunk(uint8 nX, uint8 nY, ATableWorldTable* nParentTable);
 
 	virtual void GenerateTileData();
@@ -35,7 +37,7 @@ public:
 
 	virtual void UpdateChunkTexture();
 
-	void SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial = true);
+	void SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial = true, bool bModifyTile = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile, bool bUpdateMaterial = true);
 
 	void SetTileTexture(int32 X, int32 Y, ETileType Type);

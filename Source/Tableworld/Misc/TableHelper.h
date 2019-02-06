@@ -9,6 +9,15 @@
 
 class ABuildableTile;
 class UTileData;
+class ATableWorldTable;
+
+UENUM(BlueprintType)
+enum class ETableNotificationType : uint8
+{
+	Info,
+	Problem,
+	System
+};
 
 UENUM(BlueprintType)
 enum class ECreatureStatus: uint8
@@ -70,7 +79,7 @@ enum class ETileRescources : uint8
 {
 	None,
 	Tree,
-	IronOre,
+	CopperOre,
 	Fish,
 	Berries,
 	Max
@@ -133,7 +142,7 @@ struct FReservedItem
 	int32 Amount = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
-	ABuildableTile* ReservingBuilding = nullptr;
+	FName BuildingUID = "";
 };
 
 USTRUCT(BlueprintType)
@@ -174,6 +183,28 @@ struct FTilePixels
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TilePixels")
 	TArray<FColor> Pixels;
 };
+
+USTRUCT(BlueprintType)
+struct FTableNotification
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notification")
+	ETableNotificationType NotificationType = ETableNotificationType::Info;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notification")
+	FText NotificationTitle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notification")
+	FText NotificationText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notification")
+	bool bForcePause = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notification")
+	FVector NotificationLocation;
+};
+
 
 USTRUCT(BlueprintType)
 struct FTableRescource : public FTableRowBase
@@ -272,7 +303,15 @@ public:
 
 	static bool isDebug();
 
+	static void Init(ATableWorldTable* nTableRef);
+
 	static TSubclassOf<UTileData> getTileClass(ETileType Type);
 	static int32 getTileDistance(UTileData* TileA, UTileData* TileB);
 	static int32 getDistance(int32 X, int32 Y, int32 EX, int32 EY);
+	static TArray<FVector2D> ConvertTileArrayTo2DVectorArray(TArray<UTileData*> Tiles);
+	static TArray<UTileData*> Convert2DVectorArrayToTileArray(TArray<FVector2D> Tiles);
+
+protected:
+
+	static ATableWorldTable* TableRef;
 };

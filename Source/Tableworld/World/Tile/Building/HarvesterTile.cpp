@@ -12,9 +12,9 @@ AHarvesterTile::AHarvesterTile()
 	Tags.Add("HarvesterBuilding");
 }
 
-void AHarvesterTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated)
+void AHarvesterTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding)
 {
-	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated);
+	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated, bLoadBuilding);
 
 	if (getTable())
 	{
@@ -30,7 +30,10 @@ void AHarvesterTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, F
 			break;
 		}
 
-		StartWork();
+		if (!bLoadBuilding) 
+		{
+			StartWork();
+		}
 	}
 }
 
@@ -68,9 +71,13 @@ void AHarvesterTile::StopWork()
 
 void AHarvesterTile::InitWorkers()
 {
+	DebugError("Init Workers!");
+	
 	//Check if we need to spawn new workers.
 	if(Workers.Num() < MaxWorkerCount)
 	{
+		DebugError("Need new workers!");
+
 		int32 NeededWorkers = MaxWorkerCount - Workers.Num();
 		DebugWarning("Spawning " + FString::FromInt(NeededWorkers) + " workers!");
 		for(int32 i = 0; i < NeededWorkers; i++)
@@ -89,20 +96,24 @@ void AHarvesterTile::InitWorkers()
 		AHarvesterCreature* Worker = Workers[i];
 		if(Worker)
 		{
-			//Get a suitable tile for the worker
-			UTileData* NewHarvestTile = getNextHarvestTile();
-			if(NewHarvestTile == nullptr)
+			//Give workers who dont have a valid tile yet something todo
+			if (!Worker->getHarvestTile()) 
 			{
-				//Deactivate this worker.
-				DeactivateWorker(Worker);
-				continue;
+				//Get a suitable tile for the worker
+				UTileData* NewHarvestTile = getNextHarvestTile();
+				if (NewHarvestTile == nullptr)
+				{
+					//Deactivate this worker.
+					DeactivateWorker(Worker);
+					continue;
+				}
+
+				//Activate workers
+				ActivateWorker(Worker);
+
+				NewHarvestTile->GiveHarvester();
+				Worker->GiveHarvestJob(NewHarvestTile);
 			}
-
-			//Activate workers
-			ActivateWorker(Worker);
-
-			NewHarvestTile->GiveHarvester();
-			Worker->GiveHarvestJob(NewHarvestTile);
 		}
 	}
 }
@@ -158,6 +169,19 @@ bool AHarvesterTile::StoreItem()
 		if (getGamemode())
 		{
 			getGamemode()->AddFloatingItem(ProducedItems, 1, GetActorLocation());
+
+			if (CurrentInventory >= InventorySize)
+			{
+				//Full Storage
+				FTableNotification NewNotify;
+				NewNotify.NotificationType = ETableNotificationType::Problem;
+				NewNotify.NotificationTitle = FText::AsCultureInvariant("Full Storage");
+				NewNotify.NotificationText = FText::AsCultureInvariant("A Harvester building has stopped working because its storage is full!");
+				NewNotify.bForcePause = false;
+				NewNotify.NotificationLocation = getWorldCenter();
+
+				getGamemode()->AddNotification(NewNotify);
+			}
 		}
 
 		return true;
@@ -361,4 +385,52 @@ TArray<FProductionItem> AHarvesterTile::getInputItems()
 TArray<FProductionItem> AHarvesterTile::getOutputItems()
 {
 	return OutputItemsData;
+}
+
+void AHarvesterTile::LoadData(FTableSaveHarvesterBuilding Data)
+{
+	UID = Data.UID;
+	CurrentInventory = Data.CurrentInventory;
+
+	//Override the current workers with our new data
+	for(int32 i = 0; i < Data.Workers.Num(); i++)
+	{
+		FTableSaveHarvesterCreature WorkerData = Data.Workers[i];
+
+		AHarvesterCreature* NewWorker = SpawnWorker();
+		if(NewWorker)
+		{
+			DebugWarning("Loaded new Worker!");
+			NewWorker->LoadData(WorkerData);
+
+			Workers.Add(NewWorker);
+		}
+	}
+
+	StartWork();
+}
+
+void AHarvesterTile::SaveData_Implementation(UTableSavegame* Savegame)
+{
+	FTableSaveHarvesterBuilding Harvester;
+	
+	Harvester.UID = UID;
+	Harvester.TileX = getTileX();
+	Harvester.TileY = getTileY();
+	Harvester.Rotation = GetActorRotation().Yaw;
+	Harvester.bRotated = bRotated;
+	Harvester.BuildingID = getBuildingData().ID;
+	Harvester.CurrentInventory = getCurrentStorage();
+
+	//Save our workers
+	for(int32 i = 0; i < Workers.Num(); i++)
+	{
+		AHarvesterCreature* Worker = Workers[i];
+		if(Worker)
+		{
+			Harvester.Workers.Add(Worker->getSaveData());
+		}
+	}
+
+	Savegame->SavedHarvesters.Add(Harvester);
 }

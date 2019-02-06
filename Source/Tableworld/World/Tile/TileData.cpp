@@ -49,6 +49,11 @@ void UTileData::CopyTileData(UTileData* CopyTile)
 	}
 }
 
+void UTileData::SetModified()
+{
+	bWasModified = true;
+}
+
 void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 {
 	TileObject = nTileObject;
@@ -59,16 +64,23 @@ void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount)
 	RescourceIndex = Index;
 	TileRescource = Type;
 	RescourceCount = Amount;
+
+	LastResource = Type;
+	LastIndex = Index;
 }
 
 void UTileData::GiveHarvester()
 {
 	bHasHarvester = true;
+
+	bWasModified = true;
 }
 
 void UTileData::ClearHarvester()
 {
 	bHasHarvester = false;
+
+	bWasModified = true;
 }
 
 void UTileData::UpdateRescource(int32 Amount)
@@ -76,6 +88,8 @@ void UTileData::UpdateRescource(int32 Amount)
 	if(TileRescource != ETileRescources::None)
 	{
 		RescourceCount = Amount;
+
+		bWasModified = true;
 	}
 }
 
@@ -86,6 +100,8 @@ void UTileData::ClearRescource()
 	TileRescource = ETileRescources::None;
 
 	bHasHarvester = false;
+
+	bWasModified = true;
 }
 
 void UTileData::DebugHighlightTile(float Time /*= 10.0f*/, FColor Color)
@@ -128,14 +144,13 @@ FColor UTileData::getMinimapColor()
 		switch(getTileRescources())
 		{
 		case ETileRescources::Tree: return FColor::FromHex("#006400");
-		case ETileRescources::IronOre: return FColor::Orange;
+		case ETileRescources::CopperOre: return FColor::Orange;
 		case ETileRescources::Berries: return FColor::Purple;
 		}
 	}
 
 	if(HasTileObject())
 	{
-		DebugError("TileObject");
 		return TileObject->getMinimapColor();
 	}
 	
@@ -243,4 +258,19 @@ bool UTileData::HasTileObject()
 ABuildableTile* UTileData::getTileObject()
 {
 	return TileObject;
+}
+
+bool UTileData::isModified()
+{
+	return bWasModified;
+}
+
+bool UTileData::HadRescource()
+{
+	return (LastResource != ETileRescources::None);
+}
+
+int32 UTileData::getLastRescourceIndex()
+{
+	return LastIndex;
 }

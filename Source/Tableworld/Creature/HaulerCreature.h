@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Creature/BaseCreature.h"
 #include "Misc/TableHelper.h"
+#include "HumanCreature.h"
 #include "HaulerCreature.generated.h"
 
 class AInventoryTile;
@@ -16,7 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHaulerReachedTarget, AHaulerCreatur
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHaulerReturnedHome, AHaulerCreature*, Hauler);
 
 UCLASS()
-class TABLEWORLD_API AHaulerCreature : public ABaseCreature
+class TABLEWORLD_API AHaulerCreature : public AHumanCreature
 {
 	GENERATED_BODY()
 	
@@ -32,8 +33,7 @@ public:
 	UPROPERTY()
 	FHaulerReturnedHome Event_HaulerReturnedHome;
 
-	void GiveHaulJob(AInventoryTile* nTargetInventory, ACityCentreTile* nHomeCityCentre, UTileData* nTargetTile, UTileData* nHomeTile);
-	void GiveProductionHaulJob(ACityCentreTile* nInventory, AProductionBuilding* nHomeProductionBuilding, UTileData* nTargetTile, UTileData* nHomeTile);
+	void GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nTargetTile, UTileData* nHomeTile);
 
 	void GiveReturnJob();
 	void ForceReturnJob();
@@ -48,22 +48,20 @@ public:
 
 	bool HasItems();
 
-	ACityCentreTile* getInventoryBuilding();
-	AProductionBuilding* getHomeProductionBuilding();
+	FName getHomeBuildingUID();
+	FName getTargetBuildingUID();
 
 	virtual UAnimationAsset* getWalkAnimation() override;
+
+	void LoadData(FTableSaveHaulerCreature Data);
+	FTableSaveHaulerCreature getSaveData();
 
 protected:
 
 	UTileData* HaulTile = nullptr;
 
-	//Inventory
-	AInventoryTile* TargetInventory = nullptr;
-	ACityCentreTile* HomeCityCentre = nullptr;
-
-	//ProductionBuildings
-	ACityCentreTile* Inventory = nullptr;
-	AProductionBuilding* HomeProductionBuilding = nullptr;
+	FName HomeBuildingUID = "";
+	FName TargetBuildingUID = "";
 
 	bool bHauledItems = false;
 	TMap<EItem, int32> CarriedItems;

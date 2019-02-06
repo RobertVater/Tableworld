@@ -20,6 +20,7 @@ public:
 	int32 InventorySize = 5;
 
 	virtual void TransferInventory(AHaulerCreature* Hauler);
+	virtual void SetCurrentInventory(int32 nCurrentInventory);
 
 	virtual EItem getItemType();
 

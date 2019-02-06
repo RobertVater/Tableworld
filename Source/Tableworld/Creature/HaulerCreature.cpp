@@ -6,25 +6,15 @@
 #include "World/Tile/Building/CityCentreTile.h"
 #include "Core/TableGamemode.h"
 #include "DrawDebugHelpers.h"
+#include "World/TableWorldTable.h"
 
-void AHaulerCreature::GiveHaulJob(AInventoryTile* nTargetInventory, ACityCentreTile* nHomeCityCentre, UTileData* nTargetTile, UTileData* nHomeTile)
+void AHaulerCreature::GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nTargetTile, UTileData* nHomeTile)
 {
 	HaulTile = nTargetTile;
-	HomeCityCentre = nHomeCityCentre;
-	TargetInventory = nTargetInventory;
 	
-	HomeTile = nHomeTile->getPositionAsVector();
-
-	SetCreatureStatus(ECreatureStatus::GoingToWork);
-	RoadMoveTo(nTargetTile);
-}
-
-void AHaulerCreature::GiveProductionHaulJob(ACityCentreTile* nInventory, AProductionBuilding* nHomeProductionBuilding, UTileData* nTargetTile, UTileData* nHomeTile)
-{
-	Inventory = nInventory;
-	HomeProductionBuilding = nHomeProductionBuilding;
-
-	HaulTile = nTargetTile;
+	HomeBuildingUID = nHomeBuilding;
+	TargetBuildingUID = nTargetBuilding;
+	
 	HomeTile = nHomeTile->getPositionAsVector();
 
 	SetCreatureStatus(ECreatureStatus::GoingToWork);
@@ -52,33 +42,22 @@ void AHaulerCreature::ForceReturnJob()
 {
 	if (getGamemode())
 	{
-		if (HasItems())
+		TArray<FVector> NewPath;
+
+		//Remove every point until we found our point
+		for (int32 i = 0; i < PathPoints.Num(); i++)
 		{
-			SetCreatureStatus(ECreatureStatus::ReturningGoods);
-		}
-		else
-		{
-			SetCreatureStatus(ECreatureStatus::GoingToWork);
+			if(i >= CurrentPathIndex)
+			{
+				break;
+			}
+			
+			NewPath.Add(PathPoints[i]);
 		}
 
 		//Reverse the last calculated path.
-		Algo::Reverse(PathPoints);
-
-		//Remove every point until we found our points
-		UTileData* OurTile = getStandingTile();
-		if(OurTile)
-		{
-			for(int32 i = 0; i < PathPoints.Num(); i++)
-			{
-				FVector Loc = PathPoints[i];
-				if(Loc.Equals(OurTile->getWorldCenter()) )
-				{
-					break;
-				}
-
-				PathPoints.RemoveAt(i);
-			}
-		}
+		Algo::Reverse(NewPath);
+		PathPoints = NewPath;
 		
 		CurrentPathIndex = 0;
 	}
@@ -87,8 +66,6 @@ void AHaulerCreature::ForceReturnJob()
 void AHaulerCreature::AddHaulItems(EItem nItem, int32 nAmount)
 {
 	CarriedItems.Add(nItem, nAmount);
-
-	DebugWarning("Add Haul Items! " + FString::FromInt(nAmount));
 }
 
 void AHaulerCreature::OnMoveCompleted()
@@ -106,16 +83,8 @@ void AHaulerCreature::OnMoveCompleted()
 				{
 					if (HaulTile->getY() == OurTile->getY())
 					{
-						DebugWarning("Reached Target");
-
 						//We reached the target building
 						Event_HaulerReachedTarget.Broadcast(this);
-
-						if (TargetInventory) 
-						{
-							TargetInventory->TransferInventory(this);
-							GiveReturnJob();
-						}
 
 						bHauledItems = true;
 						return;
@@ -128,14 +97,8 @@ void AHaulerCreature::OnMoveCompleted()
 		{
 			if (HomeTile.Y == OurTile->getY())
 			{
-				DebugWarning("Reached Home");
-
 				//We reached our home base
 				Event_HaulerReturnedHome.Broadcast(this);
-				if (HomeCityCentre)
-				{
-					HomeCityCentre->OnHaulCompleted(this);
-				}
 				return;
 			}
 		}
@@ -165,14 +128,14 @@ bool AHaulerCreature::HasItems()
 	return (getCarriedItems().Num() > 0);
 }
 
-ACityCentreTile* AHaulerCreature::getInventoryBuilding()
+FName AHaulerCreature::getHomeBuildingUID()
 {
-	return Inventory;
+	return HomeBuildingUID;
 }
 
-AProductionBuilding* AHaulerCreature::getHomeProductionBuilding()
+FName AHaulerCreature::getTargetBuildingUID()
 {
-	return HomeProductionBuilding;
+	return TargetBuildingUID;
 }
 
 UAnimationAsset* AHaulerCreature::getWalkAnimation()
@@ -183,4 +146,65 @@ UAnimationAsset* AHaulerCreature::getWalkAnimation()
 	}
 
 	return Walk;
+}
+
+void AHaulerCreature::LoadData(FTableSaveHaulerCreature Data)
+{
+	//BaseCreature
+	HomeTile = Data.HomeTile;
+	CurrentPathIndex = Data.PathIndex;
+	PathPoints = Data.Path;
+	LastCalculatedPath = UTableHelper::Convert2DVectorArrayToTileArray(Data.LastCalcPath);
+	MinDistance = Data.MinDinstance;
+	SetCreatureStatus(Data.Status);
+
+	//Hauler
+	if(getGamemode())
+	{
+		ATableWorldTable* Table = getGamemode()->getTable();
+		if(Table)
+		{
+			//Haultile
+			if(Data.HaulTile > FVector2D(-1,-1))
+			{
+				HaulTile = getGamemode()->getTile((int32)Data.HaulTile.X, (int32)Data.HaulTile.Y);
+				HaulTile->DebugHighlightTile(10);
+			}
+		}
+	}
+
+	TargetBuildingUID = Data.TargetBuildingUID;
+	HomeBuildingUID = Data.HomeBuildingUID;
+
+	bHauledItems = Data.bHauledItems;
+	CarriedItems = Data.CarriedItems;
+}
+
+FTableSaveHaulerCreature AHaulerCreature::getSaveData()
+{
+	FTableSaveHaulerCreature Data;
+	
+	//BaseCreature
+	Data.HomeTile = HomeTile;
+	Data.MinDinstance = MinDistance;
+	Data.PathIndex = CurrentPathIndex;
+	Data.Path = PathPoints;
+	Data.LastCalcPath = UTableHelper::ConvertTileArrayTo2DVectorArray(LastCalculatedPath);
+	Data.Location = GetActorLocation();
+	Data.Status = getStatus();
+
+	//Hauler
+	Data.bHauledItems = bHauledItems;
+	Data.CarriedItems = CarriedItems;
+
+	//Hauler data
+	if (HaulTile) 
+	{
+		Data.HaulTile = HaulTile->getPositionAsVector();
+	}
+
+	Data.HomeBuildingUID = HomeBuildingUID;
+	Data.TargetBuildingUID = TargetBuildingUID;
+
+	return Data;
 }

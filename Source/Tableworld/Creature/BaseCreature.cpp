@@ -117,12 +117,18 @@ void ABaseCreature::SetRotationGoal(float NewGoal)
 
 void ABaseCreature::SetCreatureStatus(ECreatureStatus NewStatus)
 {
+	if(NewStatus == ECreatureStatus::Deactivated)
+	{
+		DeactivateCreature();
+	}
+
 	CreatureStatus = NewStatus;
 
 	if(getAnimationBlueprint())
 	{
 		getAnimationBlueprint()->UpdateStatus(CreatureStatus);
 	}
+
 }
 
 void ABaseCreature::StopMovement()

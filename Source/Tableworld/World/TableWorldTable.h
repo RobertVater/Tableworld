@@ -5,6 +5,8 @@
 #include "Tableworld.h"
 #include "GameFramework/Actor.h"
 #include "Misc/TableHelper.h"
+#include "Interface/SaveLoadInterface.h"
+#include "Savegame/TableSavegame.h"
 #include "TableWorldTable.generated.h"
 
 class UTileData;
@@ -12,6 +14,7 @@ class ATableChunk;
 class UFastNoise;
 class UInstancedStaticMeshComponent;
 class ATablePlayerController;
+class ATableGamemode;
 
 class ABuildableTile;
 class ACityCentreTile;
@@ -28,7 +31,7 @@ struct FRescourceWobble
 };
 
 UCLASS()
-class TABLEWORLD_API ATableWorldTable : public AActor
+class TABLEWORLD_API ATableWorldTable : public AActor, public ISaveLoadInterface
 {
 	GENERATED_BODY()
 	
@@ -36,9 +39,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	USceneComponent* Root = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
-	UStaticMesh* TileMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	int32 TilesInPixels = 32;
@@ -86,6 +86,7 @@ public:
 	void AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life);
 
 	//Generated a new map
+	virtual void InitTable();
 	virtual void GenerateMap();
 	virtual void GenerateChunks();
 
@@ -97,14 +98,16 @@ public:
 	//Breaks down the tile sheet and stores the pixels into a array
 	virtual void SetupTilePixels(TArray<ETileType> TileTypes);
 
+	void SetMultipleTiles(TArray<UTileData*> Tiles);
 	ATableChunk* getChunkForTile(int32 X, int32 Y);
 	UTileData* getTile(int32 X, int32 Y);
 	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius, ETileType Tile, bool bBlockRescources);
 	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource);
+	virtual bool InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size);
 
 	bool HarvestRescource(UTileData* Tile, int32 Amount);
 	void SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType);
-	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false);
+	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false, bool bModifyTile = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 
 	void AddBuilding(ABuildableTile* nBuilding);
@@ -114,6 +117,7 @@ public:
 	TArray<FColor> getTilePixels(ETileType TileType);
 
 	ATablePlayerController* getPlayerController();
+	ATableGamemode* getGamemode();
 	UFastNoise* getNoise();
 
 	//Pathfinding
@@ -133,14 +137,26 @@ public:
 	//Road Pathfinding
 	TArray<UTileData*> FindPathRoad(UTileData* StartTile, UTileData* EndTile, bool bAllowDiag = false);
 
+	ABuildableTile* getBuildingWithID(FName UID);
 	TArray<ABuildableTile*> getBuildings();
 	TArray<ACityCentreTile*> getCityCentres();
 
 	UTexture2D* getMinimapTexture();
 
+	int32 getNewRandomSeed();
+	int32 getRandomSeed();
+
+	virtual void LoadData(TArray<FTableSaveTile> Tiles);
+
+	//Interface
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	void SaveData(UTableSavegame* Savegame);
+	virtual void SaveData_Implementation(UTableSavegame* Savegame);
+
 protected:
 
 	ATablePlayerController* PC = nullptr;
+	ATableGamemode* GM = nullptr;
 
 	TArray<FRescourceWobble> RescourceWobble;
 

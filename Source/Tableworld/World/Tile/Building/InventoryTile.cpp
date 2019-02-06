@@ -15,6 +15,11 @@ void AInventoryTile::TransferInventory(AHaulerCreature* Hauler)
 	}
 }
 
+void AInventoryTile::SetCurrentInventory(int32 nCurrentInventory)
+{
+	CurrentInventory = nCurrentInventory;
+}
+
 EItem AInventoryTile::getItemType()
 {
 	return EItem::None;

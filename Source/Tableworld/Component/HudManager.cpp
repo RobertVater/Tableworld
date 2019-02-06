@@ -20,6 +20,18 @@ void UHudManager::BeginPlay()
 void UHudManager::BuildUI()
 {
 	DebugLog("BuildUI");
+
+	if(MainHud_Ref)
+	{
+		MainHud_Ref->RemoveFromParent();
+		MainHud_Ref = nullptr;
+	}
+
+	if(BuildingInfoPanel_Ref)
+	{
+		BuildingInfoPanel_Ref->RemoveFromParent();
+		BuildingInfoPanel_Ref = nullptr;
+	}
 	
 	//MainHud
 	if(Mainhud_Class)
@@ -40,6 +52,14 @@ void UHudManager::BuildUI()
 			BuildingInfoPanel_Ref->AddToPlayerScreen(0);
 			BuildingInfoPanel_Ref->SetVisibility(ESlateVisibility::Hidden);
 		}
+	}
+}
+
+void UHudManager::ResetUI()
+{
+	if(getMainHud())
+	{
+		getMainHud()->NativeConstruct();
 	}
 }
 

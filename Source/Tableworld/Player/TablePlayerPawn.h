@@ -5,10 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "Misc/TableHelper.h"
+#include "Savegame/TableSavegame.h"
 #include "TablePlayerPawn.generated.h"
 
 class UTileData;
 class ATableGamemode;
+class UTableGameInstance;
 class ABuildableTile;
 class ATablePlayerController;
 class USpringArmComponent;
@@ -85,26 +87,33 @@ public:
 	virtual void Input_GameSpeed_4();
 	virtual void ModifyGameSpeed(int32 SpeedLevel);
 
-	virtual void PlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
+	virtual void TryPlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
+	virtual ABuildableTile* PlaceBuilding(UTileData* Tile, float Rotation, FTableBuilding BuildingData);
+
+	virtual ABuildableTile* LoadBuilding(FTableSaveBuilding Data);
 
 	virtual void AdjustZoom();
 
 	UFUNCTION(BlueprintCallable,Category = "Teleport")
 	virtual void TeleportPlayer(FVector NewLocation);
 
+	virtual void SetZoomAlpha(float nZoomAlpha);
+
 	virtual void UpdateMinimapPlayerView();
 
 	bool HasValidBuildableTile();
 	bool CanBuild(FVector2D BuildingSize, UTileData* PlaceTile);
 
+	float getZoomAlpha();
 	ATableGamemode* getGamemode();
+	UTableGameInstance* getGameInstance();
 	ATablePlayerController* getPlayerController();
 
 	FVector2D getScreenMouseLocation();
 	FVector getMouseWorldLocation();
 	FVector getMouseWorldLocationGrid();
 
-	FVector2D getBuildingSize();
+	FVector2D getBuildingSize(bool bisRotated);
 	FVector getBuildingBuildLocation(UTileData* Tile);
 	FVector2D getBuildingBuildLocationTile(UTileData* Tile);
 
@@ -116,7 +125,7 @@ protected:
 
 	FTableBuilding CurrentBuilding;
 
-	ABuildableTile* TileActor = nullptr;
+	ABuildableTile* BuildingGhost = nullptr;
 
 	bool bIsDragBuilding = false;
 
@@ -128,6 +137,7 @@ protected:
 	TArray<FVector2D> DragTiles;
 
 	ATableGamemode* GM = nullptr;
+	UTableGameInstance* GI = nullptr;
 	ATablePlayerController* PC = nullptr;
 
 	float ZoomLerpGoal = 1.0f;
