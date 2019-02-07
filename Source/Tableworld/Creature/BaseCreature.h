@@ -43,7 +43,9 @@ public:
 	virtual void ActivateCreature();
 
 	virtual void SetRotationGoal(float NewGoal);
+
 	void SetCreatureStatus(ECreatureStatus NewStatus);
+	void UpdateCreatureStatus();
 
 	virtual void StopMovement();
 	virtual void SimpleMoveTo(FVector TargetLocation, float nMinDistance = 50.0f);

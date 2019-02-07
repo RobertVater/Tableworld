@@ -37,6 +37,18 @@ class TABLEWORLD_API ATableWorldTable : public AActor, public ISaveLoadInterface
 	
 public:	
 
+	static uint8 ChunkSize;
+
+	//Base tile Noise level
+	static float WaterLevel;
+	static float SandLevel;
+	static float RockLevel;
+
+	//Rescource Noise Level
+	static float TreeTile;
+	static float RockChance;
+	static float BerrieTile;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	USceneComponent* Root = nullptr;
 
@@ -62,10 +74,6 @@ public:
 	//The max depth in chunks of the map
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
 	int32 MaxSizeY = 8;
-
-	//The size of a chunk in tiles
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	int32 ChunkSize = 16;
 
 	//The size of the tiles.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
@@ -116,6 +124,7 @@ public:
 
 	TArray<FColor> getTilePixels(ETileType TileType);
 
+	FTransform getRescourceTransform(ETileRescources Rescource, int32 Index);
 	ATablePlayerController* getPlayerController();
 	ATableGamemode* getGamemode();
 	UFastNoise* getNoise();

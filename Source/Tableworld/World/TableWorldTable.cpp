@@ -18,6 +18,18 @@
 #include "Savegame/TableSavegame.h"
 #include "Misc/TableHelper.h"
 
+uint8 ATableWorldTable::ChunkSize = 16;
+
+//Base tile Noise level
+float ATableWorldTable::WaterLevel = -0.8f;
+float ATableWorldTable::SandLevel = -0.7f;
+float ATableWorldTable::RockLevel = 0.5f;
+
+//Rescource Noise Level
+float ATableWorldTable::TreeTile = 0.15f;
+float ATableWorldTable::RockChance = 0.15f;
+float ATableWorldTable::BerrieTile = 0.55f;
+
 ATableWorldTable::ATableWorldTable()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -172,7 +184,7 @@ void ATableWorldTable::InitTable()
 	GenerateMap();
 
 	//Force a garbage collect
-	GetWorld()->ForceGarbageCollection(true);
+	GEngine->ForceGarbageCollection(true);
 }
 
 void ATableWorldTable::GenerateMap()
@@ -213,12 +225,9 @@ void ATableWorldTable::GenerateMap()
 		for(int32 y = 0; y < MaxYTiles; y++)
 		{
 			float PerlinValue = Noise->GetNoise2D(x, y);
-
-			float WaterLevel = -0.7f;
-			float RockLevel = 0.5f;
 			
 			//Place sand
-			if(PerlinValue < WaterLevel+0.15f)
+			if(PerlinValue < SandLevel)
 			{
 				SetTile(x, y, ETileType::Sand);
 
@@ -364,13 +373,10 @@ void ATableWorldTable::GenerateMap()
 		{
 			float PerlinValue = Noise->GetNoise2D(x, y);
 
-			float TreeTile = 0.15f;
-			float RockChance = 0.15f;
-
 			//Place a tree
 			if (PerlinValue >= TreeTile)
 			{
-				SetRescource(x, y, ETileRescources::Tree, 1, ETileType::Grass);
+				SetRescource(x, y, ETileRescources::Tree, 125, ETileType::Grass);
 			}
 
 			//Place Copper ore!
@@ -390,12 +396,10 @@ void ATableWorldTable::GenerateMap()
 		{
 			float PerlinValue = Noise->GetNoise2D(x, y);
 
-			float BerrieChance = 0.65f;
-
 			//Place berries!
-			if (PerlinValue >= BerrieChance)
+			if (PerlinValue >= BerrieTile)
 			{
-				SetRescource(x, y, ETileRescources::Berries, 125, ETileType::Grass);
+				SetRescource(x, y, ETileRescources::Berries, 450, ETileType::Grass);
 			}
 		}
 	}
@@ -523,7 +527,6 @@ void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
 
 	if (getPlayerController()) 
 	{
-		DebugError("Updated Minimap");
 		getPlayerController()->UpdateMinimap();
 	}
 }
@@ -708,19 +711,12 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 
 bool ATableWorldTable::InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size)
 {
-	DrawDebugPoint(GetWorld(), FVector(CenterX * 100 + 50, CenterY * 100 + 50, 0), 10, FColor::White, false, 0);
-
 	int32 SizeX = (int32)Size.X / 2;
 	int32 SizeY = (int32)Size.Y / 2;
 
 	int32 TopLeftX = X - SizeX;
 	int32 TopLeftY = Y - SizeY;
-
-	DebugError(FString::FromInt(SizeX) + " / " + FString::FromInt(SizeY));
-
 	int32 Dist = UTableHelper::getDistance(CenterX, CenterY, X, Y);
-	DrawDebugLine(GetWorld(), FVector(CenterX * 100 + 50, CenterY * 100 + 50, 10), FVector(X * 100 + 50, Y * 100 + 50, 10), FColor::Blue, false, 0, 0, 5.0f);
-	DrawDebugString(GetWorld(), FVector(X * 100 + 50, Y * 100 + 50, 0), FString::FromInt(Dist), NULL, FColor::White, 0, false);
 
 	for (int32 x = -Radius-1; x <= Radius; x++)
 	{
@@ -892,6 +888,18 @@ TArray<FColor> ATableWorldTable::getTilePixels(ETileType TileType)
 	}
 
 	return NullArray;
+}
+
+FTransform ATableWorldTable::getRescourceTransform(ETileRescources Rescource, int32 Index)
+{
+	FTransform Trans;
+	UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Rescource);
+	if(Mesh)
+	{
+		Mesh->GetInstanceTransform(Index, Trans);
+	}
+
+	return Trans;
 }
 
 ATablePlayerController* ATableWorldTable::getPlayerController()
@@ -1103,6 +1111,7 @@ TArray<UTileData*> ATableWorldTable::FindPathRoad(UTileData* StartTile, UTileDat
 		return FindPath(Start, End, TArray<ETileType>(), bAllowDiag, true, AllowedTiles);
 	}
 
+	DebugError("Couldnt find a valid path between the start and end!");
 	return TArray<UTileData*>();
 }
 

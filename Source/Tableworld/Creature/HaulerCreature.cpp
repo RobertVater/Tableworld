@@ -79,10 +79,14 @@ void AHaulerCreature::OnMoveCompleted()
 		{
 			if (HaulTile)
 			{
+				DebugError("HaulTile");
+
 				if (HaulTile->getX() == OurTile->getX())
 				{
 					if (HaulTile->getY() == OurTile->getY())
 					{
+						DebugError("0");
+						
 						//We reached the target building
 						Event_HaulerReachedTarget.Broadcast(this);
 
@@ -103,6 +107,12 @@ void AHaulerCreature::OnMoveCompleted()
 			}
 		}
 	}
+}
+
+void AHaulerCreature::ClearInventory()
+{
+	bHauledItems = false;
+	CarriedItems.Empty();
 }
 
 bool AHaulerCreature::getItemZero(EItem& Item, int32& Amount)
@@ -157,6 +167,7 @@ void AHaulerCreature::LoadData(FTableSaveHaulerCreature Data)
 	LastCalculatedPath = UTableHelper::Convert2DVectorArrayToTileArray(Data.LastCalcPath);
 	MinDistance = Data.MinDinstance;
 	SetCreatureStatus(Data.Status);
+	UpdateCreatureStatus();
 
 	//Hauler
 	if(getGamemode())

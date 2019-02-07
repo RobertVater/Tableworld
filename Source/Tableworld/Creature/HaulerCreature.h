@@ -42,6 +42,8 @@ public:
 
 	virtual void OnMoveCompleted() override;
 
+	virtual void ClearInventory();
+
 	//Get the first item of the carried list.
 	bool getItemZero(EItem& Item, int32& Amount);
 	TMap<EItem, int32> getCarriedItems();

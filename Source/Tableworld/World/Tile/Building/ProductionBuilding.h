@@ -51,6 +51,7 @@ public:
 
 	virtual void TryProduceOutput();
 
+	void SpawnHaulers();
 	AHaulerCreature* SpawnHauler(FVector Location);
 
 	void ModifyInventory(EItem Item, int32 Amount, TMap<EItem, int32>& Storage);
@@ -59,6 +60,7 @@ public:
 	virtual bool CheckIfValidInventory(ACityCentreTile* InInventory, UTileData*& StartTile, UTileData*& EndTile);
 
 	//Hauler
+	UFUNCTION()
 	virtual void SendHaulerToInventory(ACityCentreTile* InInventory, UTileData* StartTile, UTileData* EndTile);
 
 	UFUNCTION()

@@ -22,6 +22,7 @@ void ACityCentreTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, 
 
 	if (!bLoadBuilding)
 	{
+		SpawnHaulers();
 		StartWork();
 	}
 }
@@ -52,32 +53,55 @@ int32 ACityCentreTile::getBuildGridRadius()
 
 void ACityCentreTile::OnRescourceCheck()
 {
-	//Try to spawn a hauler
-	if (Workers.Num() < HaulerAmount) 
-	{
-		FVector2D InTile;
-		FVector2D OutTile;
+	DebugError("Check");
 
-		AInventoryTile* Building = getValidHaulGoal(InTile,OutTile);
+	FVector2D InTile;
+	FVector2D OutTile;
+
+	//Check if we have a valid hauler with nothing todo
+	AHaulerCreature* FoundHauler = nullptr;
+
+	//Get a deactivated hauler and send him to the target!
+	for (int32 i = 0; i < Workers.Num(); i++)
+	{
+		AHaulerCreature* HaulerWorker = Workers[i];
+		if (HaulerWorker)
+		{
+			if (HaulerWorker->getStatus() == ECreatureStatus::Deactivated)
+			{
+				FoundHauler = HaulerWorker;
+				break;
+			}
+		}
+	}
+
+	if (FoundHauler) 
+	{
+		DebugError("Found Hauler");
+
+		AInventoryTile* Building = getValidHaulGoal(InTile, OutTile);
 		if (Building)
 		{
+			DebugError("Found Building");
+
 			Building->SetHaulLocked(true);
 
-			if (getGamemode()) 
+			if (getGamemode())
 			{
 				if (getGamemode()->getTable())
 				{
+					DebugError("Found Table");
+
 					UTileData* StartTile = getGamemode()->getTile((int32)OutTile.X, (int32)OutTile.Y);
 					UTileData* EndTile = getGamemode()->getTile((int32)InTile.X, (int32)InTile.Y);
-					if (StartTile && EndTile) 
+					if (StartTile && EndTile)
 					{
-						//Spawn a hauler and send him to haul the item
-						AHaulerCreature* Hauler = SpawnWorker(StartTile->getWorldCenter());
-						if(Hauler)
-						{
-							Hauler->GiveHaulJob(Building->getUID(), getUID(), EndTile, StartTile);
-							Workers.Add(Hauler);
-						}
+						//Send the hauler to work.
+						
+						FoundHauler->SetActorLocation(StartTile->getWorldCenter());
+
+						FoundHauler->ActivateCreature();
+						FoundHauler->GiveHaulJob(Building->getUID(), getUID(), EndTile, StartTile);
 					}
 				}
 			}
@@ -85,7 +109,7 @@ void ACityCentreTile::OnRescourceCheck()
 	}
 }
 
-void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
+void ACityCentreTile::OnHaulerReturnHome(AHaulerCreature* nHauler)
 {
 	if(nHauler)
 	{
@@ -96,8 +120,6 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 
 			if (nHauler->getItemZero(HaulItem, HaulerAmount))
 			{
-				DebugWarning("Haul completed " + FString::FromInt(HaulAmount));
-
 				getGamemode()->AddFloatingItem(HaulItem, HaulerAmount, getWorldCenter());
 
 				//Add to local inventory
@@ -108,8 +130,8 @@ void ACityCentreTile::OnHaulCompleted(AHaulerCreature* nHauler)
 			}
 		}
 
-		Workers.Remove(nHauler);
-		nHauler->Destroy();
+		nHauler->ClearInventory();
+		nHauler->DeactivateCreature();
 	}
 }
 
@@ -130,8 +152,6 @@ void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
 {
 	if (Item == EItem::None && Item == EItem::Max)return;
 
-	DebugError("------Amount " + FString::FromInt(Amount));
-	
 	if(!StoredItems.Contains(Item))
 	{
 		if (Amount > 0) 
@@ -192,14 +212,25 @@ void ACityCentreTile::ClearReserveItems(FName UID)
 	}
 }
 
+void ACityCentreTile::SpawnHaulers()
+{
+	for(int32 i = 0; i < HaulerAmount; i++)
+	{
+		AHaulerCreature* Hauler = SpawnWorker(getWorldCenter());
+	}
+}
+
 AHaulerCreature* ACityCentreTile::SpawnWorker(FVector SpawnLoc)
 {
 	AHaulerCreature* NewWorker = GetWorld()->SpawnActor<AHaulerCreature>(HaulerClass, SpawnLoc, FRotator::ZeroRotator);
 	if(NewWorker)
 	{
 		//Bind events
-		NewWorker->Event_HaulerReturnedHome.AddDynamic(this, &ACityCentreTile::OnHaulCompleted);
+		NewWorker->Event_HaulerReturnedHome.AddDynamic(this, &ACityCentreTile::OnHaulerReturnHome);
 		NewWorker->Event_HaulerReachedTarget.AddDynamic(this, &ACityCentreTile::OnHaulReachedTarget);
+
+		NewWorker->DeactivateCreature();
+		Workers.Add(NewWorker);
 	}
 
 	return NewWorker;
@@ -207,10 +238,14 @@ AHaulerCreature* ACityCentreTile::SpawnWorker(FVector SpawnLoc)
 
 AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile)
 {
+	DebugError("----0");
+
 	if (getGamemode())
 	{
+		DebugError("----1");
 		if (getGamemode()->getTable())
 		{
+			DebugError("----2");
 			TArray<UTileData*> TilesAroundUs = getTilesAroundUs(true);
 
 			//Check if we are connected to a road
@@ -218,6 +253,7 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 			{
 				return nullptr;
 			}
+			DebugError("----3");
 
 			TArray<ABuildableTile*> Buildings = getGamemode()->getTable()->getBuildings();
 			for (int32 i = 0; i < Buildings.Num(); i++)
@@ -225,6 +261,8 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 				ABuildableTile* Building = Buildings[i];
 				if (Building)
 				{
+					DebugError("----4");
+					
 					Building->getTilesAroundUs(true);
 					
 					//Check if the building is a inventory building
@@ -232,34 +270,40 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 					{
 						continue;
 					}
+					DebugError("----5");
 
 					if (Building->isHaulerComming())
 					{
 						//Ignore buildings that already have a hauler comming
 						continue;
 					}
+					DebugError("----6");
 
 					if (!getTable()->InInfluenceRange(getCenterX(), getCenterY(), getBuildGridRadius(), Building->getTileX(), Building->getTileY(), Building->getBuildingSize()))
 					{
 						//Do not care about buildings that are outside your range
 						continue;
 					}
+					DebugError("----7");
 
 					//Check if the target building is connected to a road
 					if(!Building->isConnectedToRoad())
 					{
 						continue;
 					}
+					DebugError("----8");
 
 					AInventoryTile* InventoryTile = Cast<AInventoryTile>(Building);
 					if (InventoryTile)
 					{
+						DebugError("----9");
 						//If this building has some items stored
 						if (!InventoryTile->canBeHauled())
 						{
 							//Check the next building
 							continue;
 						}
+						DebugError("----10");
 
 						//Check if we can reach any of the tiles around the building
 						TArray<UTileData*> Tiles = Building->getTilesAroundUs(true);
@@ -271,35 +315,42 @@ AInventoryTile* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVector2D& 
 							{
 								continue;
 							}
+							DebugError("----11");
 
 							if(Tile->getTileType() != ETileType::DirtRoad)
 							{
 								continue;
 							}
+							DebugError("----12");
 
 							if (Tile->IsBlocked())
 							{
 								continue;
 							}
+							DebugError("----13");
 
 							for (int32 k = 0; k < TilesAroundUs.Num(); k++)
 							{
 								UTileData* OurTile = TilesAroundUs[k];
 								if (OurTile)
 								{
+									DebugError("----14");
 									if (OurTile->getTileType() != ETileType::DirtRoad)
 									{
 										continue;
 									}
+									DebugError("----15");
 
 									if (OurTile->IsBlocked())
 									{
 										continue;
 									}
+									DebugError("----16");
 
 									TArray<UTileData*> Path = getGamemode()->getTable()->FindPathRoad(Tile, OurTile, false);
 									if (Path.Num() > 0)
 									{
+										DebugError("----17 END");
 										InTile = Tile->getPositionAsVector();
 										OutTile = OurTile->getPositionAsVector();
 
@@ -375,18 +426,23 @@ void ACityCentreTile::LoadData(FTableSaveCityCenterBuilding Data)
 	StoredItems = Data.StoredItems;
 	ReservedItems = Data.ReservedItems;
 
+	//Spawn all haulers.
+	SpawnHaulers();
 	//Override the current workers with our new data
 	for (int32 i = 0; i < Data.Workers.Num(); i++)
 	{
 		FTableSaveHaulerCreature WorkerData = Data.Workers[i];
 
-		AHaulerCreature* NewWorker = SpawnWorker(WorkerData.Location);
-		if (NewWorker)
+		if (Workers.IsValidIndex(i)) 
 		{
-			DebugWarning("Loaded new Worker!");
-			NewWorker->LoadData(WorkerData);
+			AHaulerCreature* NewWorker = Workers[i];
+			if (NewWorker)
+			{
+				NewWorker->LoadData(WorkerData);
+				NewWorker->SetActorLocation(WorkerData.Location);
 
-			Workers.Add(NewWorker);
+				Workers.Add(NewWorker);
+			}
 		}
 	}
 

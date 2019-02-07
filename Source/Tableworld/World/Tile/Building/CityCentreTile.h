@@ -40,7 +40,7 @@ public:
 	void OnRescourceCheck();
 
 	UFUNCTION()
-	void OnHaulCompleted(AHaulerCreature* nHauler);
+	void OnHaulerReturnHome(AHaulerCreature* nHauler);
 
 	UFUNCTION()
 	void OnHaulReachedTarget(AHaulerCreature* nHauler);
@@ -52,6 +52,7 @@ public:
 	bool ReserveItems(TMap<EItem, int32> Items, FName UID);
 	void ClearReserveItems(FName UID);
 
+	void SpawnHaulers();
 	AHaulerCreature* SpawnWorker(FVector SpawnLoc);
 
 	AInventoryTile* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);

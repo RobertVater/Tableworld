@@ -13,8 +13,6 @@ void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile*
 {
 	HomeTile = nCreationTileLocation;
 	HarvesterBuilding = nHarvesterBuilding;
-
-	DebugWarning("Created! " + HomeTile.ToString());
 }
 
 void AHarvesterCreature::OnPlayHarvestEffect()
@@ -125,20 +123,30 @@ void AHarvesterCreature::PlayHarvestEffect()
 		UGameplayStatics::PlaySoundAtLocation(this, HarvestSound, GetActorLocation());
 	}
 
-	if(HarvestParticles)
-	{
-		FVector Start = GetActorLocation();
-		FVector Dir = GetActorForwardVector() * 50.0f;
-		FVector End = Dir + Start;
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HarvestParticles, End, FRotator::ZeroRotator, true);
-	}
-
 	//Play the wobble animation
 	if (getGamemode())
 	{
 		if (getGamemode()->getTable())
 		{
 			getGamemode()->getTable()->AddRescourceWobble(HarvestTile->getTileRescources(), HarvestTile->getTileRescourceIndex(), 1.0f);
+
+			if (HarvestParticles)
+			{
+				if (HarvestTile)
+				{
+					int32 Index = HarvestTile->getTileRescourceIndex();
+					FTransform ResTransform = getGamemode()->getTable()->getRescourceTransform(HarvestTile->getTileRescources(), Index);
+
+					FVector Location = ResTransform.GetLocation();
+
+					if(HarvestTile->getTileRescources() == ETileRescources::None)
+					{
+						Location = Mesh->GetSocketLocation("Pickaxe_End");
+					}
+
+					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HarvestParticles, Location, FRotator(0.0f, FMath::RandRange(-90.0f, 90.0f), 0.0f), true);
+				}
+			}
 		}
 	}
 }
@@ -223,6 +231,7 @@ void AHarvesterCreature::LoadData(FTableSaveHarvesterCreature Data)
 	DrawDebugPoint(GetWorld(), Data.Location, 10, FColor::Orange, false, 10, 0);
 	DrawDebugPoint(GetWorld(), GetActorLocation(), 10, FColor::Green, false, 10, 0);
 	SetCreatureStatus(Data.Status);
+	UpdateCreatureStatus();
 
 	bHasHarvested = Data.bHasCollected;
 

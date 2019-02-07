@@ -117,11 +117,6 @@ void ABaseCreature::SetRotationGoal(float NewGoal)
 
 void ABaseCreature::SetCreatureStatus(ECreatureStatus NewStatus)
 {
-	if(NewStatus == ECreatureStatus::Deactivated)
-	{
-		DeactivateCreature();
-	}
-
 	CreatureStatus = NewStatus;
 
 	if(getAnimationBlueprint())
@@ -129,6 +124,17 @@ void ABaseCreature::SetCreatureStatus(ECreatureStatus NewStatus)
 		getAnimationBlueprint()->UpdateStatus(CreatureStatus);
 	}
 
+}
+
+void ABaseCreature::UpdateCreatureStatus()
+{
+	if(getStatus() == ECreatureStatus::Deactivated)
+	{
+		DeactivateCreature();
+		return;
+	}
+
+	Mesh->SetVisibility(true);
 }
 
 void ABaseCreature::StopMovement()

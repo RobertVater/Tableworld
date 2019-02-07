@@ -74,9 +74,12 @@ public:
 	//Try to spawn only so many worker as our storage allows
 	virtual void InitWorkers();
 
+	virtual void SpawnWorkers();
 	virtual AHarvesterCreature* SpawnWorker();
-	virtual void DeactivateWorker(AHarvesterCreature* Worker);
-	virtual void ActivateWorker(AHarvesterCreature* Worker);
+
+	//Notifications
+	void Notification_FullStorage();
+	void Notification_NoRescources();
 
 	//Increases the stored item count by 1
 	virtual bool StoreItem();

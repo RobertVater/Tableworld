@@ -162,6 +162,9 @@ struct FTableSaveProductionBuilding : public FTableSaveInventoryBuilding
 	float ProductionTimer = 0.0f;
 
 	UPROPERTY()
+	float ResCheckTimer = 0.0f;
+
+	UPROPERTY()
 	TArray<FTableSaveHaulerCreature> Workers;
 };
 
