@@ -150,6 +150,9 @@ void ATableGamemode::LoadGame(FString SaveName)
 				FMath::RandInit(WorldSeed);
 				DebugLog("-Load Seed " + FString::FromInt(Save->WorldSeed));
 
+				//Clear the old minimap
+				getTable()->ClearMinimap();
+
 				//Init the base world
 				getTable()->InitTable(Save->WorldSeed, Save->WorldSize, Save->bHasRiver, Save->RiverCount);
 

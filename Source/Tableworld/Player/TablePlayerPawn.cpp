@@ -640,6 +640,7 @@ void ATablePlayerPawn::UpdateMinimapPlayerView()
 			{
 				float WorldSize = getGamemode()->getTable()->getWorldSize();
 				float Scale = 8.0f / WorldSize;
+				float WorldScale = WorldSize / 8.0f;
 
 				float RectSizeX = 64 * Scale;
 				float RectSizeY = 32 * Scale;
@@ -647,23 +648,20 @@ void ATablePlayerPawn::UpdateMinimapPlayerView()
 				float RectHalfX = RectSizeX / 2;
 				float RectHalfY = RectSizeY / 2;
 				
-				float Max = (MapGenerator::ChunkSize * WorldSize);
+				float ScaleFactor = 100 * WorldScale;
+				float OurX = ((GetActorLocation().X / ScaleFactor) * 2);
+				float OurY = ((GetActorLocation().Y / ScaleFactor) * 2);
 
-				float OurX = (GetActorLocation().X / 100.0f) * 2;
-				float OurY = (GetActorLocation().Y / 100.0f) * 2;
+				float MapMaxX = 256.0f;
+				float MapMaxY = 256.0f;
 
-				float MapMaxX = 256.0f - RectHalfX;
-				float MapMaxY = 256.0f - RectHalfY;
-
-				float MapMinX = RectHalfX;
-				float MapMinY = RectHalfY;
+				float MapMinX = 0;
+				float MapMinY = 0;
 
 				OurX = FMath::Clamp(OurX, MapMinX, MapMaxX);
 				OurY = FMath::Clamp(OurY, MapMinY, MapMaxY);
 
-				float RectScale = FMath::Lerp(0.5f, 1.0f, ZoomLerpGoal) * Scale;
-
-				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal, RectScale);
+				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal, Scale, WorldScale);
 			}
 		}
 	}

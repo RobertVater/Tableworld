@@ -68,6 +68,7 @@ public:
 	virtual void GenerateMap();
 	virtual void GenerateChunks();
 
+	void ClearMinimap();
 	virtual UTexture2D* GenerateMinimap();
 
 	UFUNCTION(meta = (BlueprintThreadSafe))

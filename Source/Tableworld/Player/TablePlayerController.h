@@ -28,7 +28,7 @@ public:
 	void ShowBuildingInfoPanel(ABuildableTile* Building);
 
 	void UpdateMinimap();
-	void UpdateMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha, float ViewScale);
+	void UpdateMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha, float ViewScale, float WorldScale);
 
 	UFUNCTION(BlueprintCallable,BlueprintNativeEvent, Category = "Getter")
 	UHudManager* getHudManager();

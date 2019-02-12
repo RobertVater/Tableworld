@@ -120,8 +120,6 @@ void ATableWorldTable::AddRescourceWobble(ETileRescources Rescource, int32 Index
 
 void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver, uint8 nRiverCount)
 {
-	DebugWarning("InitTable");
-	
 	Seed = nSeed;
 	WorldSize = nWorldSize;
 	bHasRiver = bnHasRiver;
@@ -191,8 +189,6 @@ void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver,
 	TileTypes.Add(ETileType::Rock);
 	TileTypes.Add(ETileType::DirtRoad);
 
-	DebugWarning("Finished Init");
-
 	//Setup tile pixels for the tiletypes
 	SetupTilePixels(TileTypes);
 
@@ -247,6 +243,15 @@ void ATableWorldTable::GenerateChunks()
 				Chunks.Add(Chunk);
 			}
 		}
+	}
+}
+
+void ATableWorldTable::ClearMinimap()
+{
+	if(MinimapTexture)
+	{
+		MinimapTexture->RemoveFromRoot();
+		MinimapTexture = nullptr;
 	}
 }
 
