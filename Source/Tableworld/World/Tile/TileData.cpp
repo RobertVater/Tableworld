@@ -137,26 +137,6 @@ float UTileData::getBaseHeigth()
 	return 0.0f;
 }
 
-FColor UTileData::getMinimapColor()
-{
-	if(HasRescource())
-	{
-		switch(getTileRescources())
-		{
-		case ETileRescources::Tree: return FColor::FromHex("#006400");
-		case ETileRescources::CopperOre: return FColor::Orange;
-		case ETileRescources::Berries: return FColor::Purple;
-		}
-	}
-
-	if(HasTileObject())
-	{
-		return TileObject->getMinimapColor();
-	}
-	
-	return FColor::Purple;
-}
-
 float UTileData::getHeigth()
 {
 	return Heigth;

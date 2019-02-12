@@ -18,6 +18,7 @@
 #include "Misc/TableHelper.h"
 #include "Core/TableGameInstance.h"
 #include "World/Tile/Building/HarvesterTile.h"
+#include "World/MapGenerator.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -637,13 +638,32 @@ void ATablePlayerPawn::UpdateMinimapPlayerView()
 		{
 			if(getGamemode()->getTable())
 			{
-				float MaxX = (getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeX);
-				float MaxY = (getGamemode()->getTable()->ChunkSize * getGamemode()->getTable()->MaxSizeY);
+				float WorldSize = getGamemode()->getTable()->getWorldSize();
+				float Scale = 8.0f / WorldSize;
 
-				float OurX = GetActorLocation().X;
-				float OurY = GetActorLocation().Y;
+				float RectSizeX = 64 * Scale;
+				float RectSizeY = 32 * Scale;
+				
+				float RectHalfX = RectSizeX / 2;
+				float RectHalfY = RectSizeY / 2;
+				
+				float Max = (MapGenerator::ChunkSize * WorldSize);
 
-				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal);
+				float OurX = (GetActorLocation().X / 100.0f) * 2;
+				float OurY = (GetActorLocation().Y / 100.0f) * 2;
+
+				float MapMaxX = 256.0f - RectHalfX;
+				float MapMaxY = 256.0f - RectHalfY;
+
+				float MapMinX = RectHalfX;
+				float MapMinY = RectHalfY;
+
+				OurX = FMath::Clamp(OurX, MapMinX, MapMaxX);
+				OurY = FMath::Clamp(OurY, MapMinY, MapMaxY);
+
+				float RectScale = FMath::Lerp(0.5f, 1.0f, ZoomLerpGoal) * Scale;
+
+				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal, RectScale);
 			}
 		}
 	}

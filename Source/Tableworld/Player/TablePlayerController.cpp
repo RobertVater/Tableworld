@@ -66,7 +66,7 @@ void ATablePlayerController::UpdateMinimap()
 	}
 }
 
-void ATablePlayerController::UpdateMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha)
+void ATablePlayerController::UpdateMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha, float ViewScale)
 {
 	if (getHudManager())
 	{
@@ -74,7 +74,7 @@ void ATablePlayerController::UpdateMinimapPlayerView(float AlphaX, float AlphaY,
 		{
 			if (getTable())
 			{
-				getHudManager()->getMainHud()->MoveMinimapPlayerView(AlphaX, AlphaY, ZoomAlpha);
+				getHudManager()->getMainHud()->MoveMinimapPlayerView(AlphaX, AlphaY, ZoomAlpha, ViewScale);
 			}
 		}
 	}

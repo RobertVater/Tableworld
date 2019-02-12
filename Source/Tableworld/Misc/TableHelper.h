@@ -79,6 +79,7 @@ enum class ETileRescources : uint8
 {
 	None,
 	Tree,
+	TinOre,
 	CopperOre,
 	Fish,
 	Berries,
@@ -292,6 +293,18 @@ struct FTableBuilding : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	ETableTileCategory TileCategory = ETableTileCategory::Management;
+};
+
+USTRUCT(BlueprintType)
+struct FLoadedSavegame
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FName FileName = "Save";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FName LastPlayed = "1.1.1";
 };
 
 UCLASS()

@@ -18,5 +18,4 @@ public:
 
 	virtual ETileType getTileType() override;
 	virtual int32 getMovementCost() override;
-	virtual FColor getMinimapColor() override;
 };

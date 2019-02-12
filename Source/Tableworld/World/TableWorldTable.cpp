@@ -17,18 +17,7 @@
 #include "Core/TableGamemode.h"
 #include "Savegame/TableSavegame.h"
 #include "Misc/TableHelper.h"
-
-uint8 ATableWorldTable::ChunkSize = 16;
-
-//Base tile Noise level
-float ATableWorldTable::WaterLevel = -0.8f;
-float ATableWorldTable::SandLevel = -0.7f;
-float ATableWorldTable::RockLevel = 0.5f;
-
-//Rescource Noise Level
-float ATableWorldTable::TreeTile = 0.15f;
-float ATableWorldTable::RockChance = 0.15f;
-float ATableWorldTable::BerrieTile = 0.55f;
+#include "MapGenerator.h"
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -41,6 +30,25 @@ ATableWorldTable::ATableWorldTable()
 void ATableWorldTable::BeginPlay()
 {
 	Super::BeginPlay();
+
+	for (auto Elem : RescourceMesh)
+	{
+		ETileRescources Res = Elem.Key;
+		UStaticMesh* Mesh = Elem.Value;
+
+		if (Res != ETileRescources::None && Res != ETileRescources::Max)
+		{
+			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
+			if (InstMesh)
+			{
+				InstMesh->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+				InstMesh->SetStaticMesh(Mesh);
+				InstMesh->RegisterComponent();
+
+				InstancedRescourcesMesh.Add(Res, InstMesh);
+			}
+		}
+	}
 
 	UTableHelper::Init(this);
 }
@@ -110,8 +118,15 @@ void ATableWorldTable::AddRescourceWobble(ETileRescources Rescource, int32 Index
 	RescourceWobble.Add(NewWobble);
 }
 
-void ATableWorldTable::InitTable()
+void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver, uint8 nRiverCount)
 {
+	DebugWarning("InitTable");
+	
+	Seed = nSeed;
+	WorldSize = nWorldSize;
+	bHasRiver = bnHasRiver;
+	RiverCount = nRiverCount;
+
 	//Reset all buildings
 	for (int32 i = 0; i < Buildings.Num(); i++)
 	{
@@ -144,7 +159,6 @@ void ATableWorldTable::InitTable()
 			Mesh->ClearInstances();
 		}
 	}
-	InstancedRescourcesMesh.Empty();
 
 	//Clear all creatures
 	TArray<AActor*> OutCreatures;
@@ -177,231 +191,25 @@ void ATableWorldTable::InitTable()
 	TileTypes.Add(ETileType::Rock);
 	TileTypes.Add(ETileType::DirtRoad);
 
+	DebugWarning("Finished Init");
+
 	//Setup tile pixels for the tiletypes
 	SetupTilePixels(TileTypes);
 
 	//Generate the world
 	GenerateMap();
-
-	//Force a garbage collect
-	GEngine->ForceGarbageCollection(true);
 }
 
 void ATableWorldTable::GenerateMap()
 {
-	InstancedRescourcesMesh.Empty();
-	for(uint8 i = 0; i < (uint8)ETileRescources::Max; i++)
-	{
-		ETileRescources Res = (ETileRescources)i;
-		if(Res != ETileRescources::None && Res != ETileRescources::Max)
-		{
-			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
-			if(InstMesh)
-			{
-				InstMesh->AttachToComponent(GetRootComponent(),FAttachmentTransformRules::KeepRelativeTransform);
-				InstMesh->SetStaticMesh(RescourceMesh.FindRef(Res));
-				InstMesh->RegisterComponent();
-
-				InstancedRescourcesMesh.Add(Res, InstMesh);
-			}
-		}
-	}
-	
-	//Setup the noise
-	if(Noise)
-	{
-		Noise->SetFrequency(0.05f);
-	} 
-
-	//Generate the base chunks
 	GenerateChunks();
+	
+	TArray<FGeneratedMapTile> Tiles = MapGenerator::GenerateMap(Seed, WorldSize, bHasRiver, RiverCount);
 
-	int32 MaxXTiles = MaxSizeX * ChunkSize;
-	int32 MaxYTiles = MaxSizeY * ChunkSize;
-
-	//Generate the base tiles
-	for(int32 x = 0; x < MaxXTiles; x++)
+	for(int32 i = 0; i < Tiles.Num(); i++)
 	{
-		for(int32 y = 0; y < MaxYTiles; y++)
-		{
-			float PerlinValue = Noise->GetNoise2D(x, y);
-			
-			//Place sand
-			if(PerlinValue < SandLevel)
-			{
-				SetTile(x, y, ETileType::Sand);
-
-				int32 dx = FMath::RandRange(-1, 1);
-				int32 dy = FMath::RandRange(-1, 1);
-				SetTileIfTile(x+dx, y+dy, ETileType::Sand, ETileType::Grass);
-			}
-
-			//Place water
-			if(PerlinValue < WaterLevel)
-			{
-				SetTile(x, y, ETileType::Water);
-			}
-
-			//Rock
-			if(PerlinValue > RockLevel)
-			{
-				SetTileIfTile(x, y, ETileType::Rock, ETileType::Grass);
-
-				int32 dx = FMath::RandRange(-1, 1);
-				int32 dy = FMath::RandRange(-1, 1);
-				SetTileIfTile(x+dx, y+dy, ETileType::Rock, ETileType::Grass);
-			}
-		}
-	}
-
-	//Generate the rivers
-	int32 NumRivers = FMath::RandRange(1, 5);
-	bool bYRiver = FMath::RandBool();
-
-	int32 MaxX = ChunkSize * MaxSizeX;
-	int32 MaxY = ChunkSize * MaxSizeY;
-
-	for(int32 i = 0; i < NumRivers; i++)
-	{
-		bYRiver = !bYRiver;
-		int32 RiverSize = FMath::RandRange(1, 2);
-
-		int32 SX = 0;
-		int32 SY = 0;
-
-		int32 EX = 0;
-		int32 EY = 0;
-
-		if(!bYRiver)
-		{
-			SX = 0;
-			SY = FMath::RandRange(MaxY / 4, MaxY);
-
-		}else
-		{
-			SX = FMath::RandRange(MaxX / 4, MaxX);
-			SY = 0;
-		}
-
-		EX = FMath::RandRange(0, ChunkSize * MaxSizeX);
-		EY = FMath::RandRange(0, ChunkSize * MaxSizeY);
-
-		TArray<UTileData*> RiverTiles;
-
-		UTileData* StartTile = getTile(SX, SY);
-		UTileData* EndTile = getTile(EX, EY);
-
-		if(StartTile && EndTile)
-		{
-			RiverTiles.Add(StartTile);
-			RiverTiles.Add(EndTile);
-
-			int32 RX = SX;
-			int32 RY = SY;
-
-			int32 Failsafe = 0;
-			while (RX != EX && RY != EY) 
-			{
-				if (RX < EX)
-				{
-					RX++;
-					RiverTiles.Add(getTile(RX, RY));
-				}
-
-				if (RX > EX)
-				{
-					RX--;
-					RiverTiles.Add(getTile(RX, RY));
-				}
-
-				if (RY < EY)
-				{
-					RY++;
-					RiverTiles.Add(getTile(RX, RY));
-				}
-
-				if (RY > EY)
-				{
-					RY--;
-					RiverTiles.Add(getTile(RX, RY));
-				}
-
-				RX += FMath::RandRange(-1, 1);
-				RY += FMath::RandRange(-1, 1);
-
-				for(int32 x = -RiverSize; x <= RiverSize; x++)
-				{
-					for (int32 y = -RiverSize; y <= RiverSize; y++)
-					{
-						UTileData* Tile = getTile(RX + x, RY + y);
-						if(Tile)
-						{
-							if(!RiverTiles.Contains(Tile))
-							{
-								RiverTiles.Add(Tile);
-							}
-						}
-					}
-				}
-
-				Failsafe++;
-				if(Failsafe >= 500)
-				{
-					break;
-				}
-			}
-
-			for(int32 j = 0; j < RiverTiles.Num(); j++)
-			{
-				UTileData* Tile = RiverTiles[j];
-				if(Tile)
-				{
-					SetTile(Tile->getX(), Tile->getY(), ETileType::Water, false);
-				}
-			}
-
-		}
-
-	}
-
-	Noise->SetSeed(getNewRandomSeed());
-
-	//Generate Rescources
-	for (int32 x = 0; x < MaxXTiles; x++)
-	{
-		for (int32 y = 0; y < MaxYTiles; y++)
-		{
-			float PerlinValue = Noise->GetNoise2D(x, y);
-
-			//Place a tree
-			if (PerlinValue >= TreeTile)
-			{
-				SetRescource(x, y, ETileRescources::Tree, 125, ETileType::Grass);
-			}
-
-			//Place Copper ore!
-			float CopperOre = FMath::RandRange(0.0f, 1.0f);
-			if(CopperOre <= RockChance)
-			{
-				SetRescource(x, y, ETileRescources::CopperOre, 150, ETileType::Rock);
-			}
-		}
-	}
-
-	Noise->SetSeed(getNewRandomSeed());
-
-	for (int32 x = 0; x < MaxXTiles; x++)
-	{
-		for (int32 y = 0; y < MaxYTiles; y++)
-		{
-			float PerlinValue = Noise->GetNoise2D(x, y);
-
-			//Place berries!
-			if (PerlinValue >= BerrieTile)
-			{
-				SetRescource(x, y, ETileRescources::Berries, 450, ETileType::Grass);
-			}
-		}
+		FGeneratedMapTile Data = Tiles[i];
+		LoadTile(Data);
 	}
 
 	//Generate the chunk visuals
@@ -424,12 +232,12 @@ void ATableWorldTable::GenerateMap()
 
 void ATableWorldTable::GenerateChunks()
 {
-	for (int32 Y = 0; Y < MaxSizeY; Y++) 
+	for (int32 Y = 0; Y < (int32)WorldSize; Y++) 
 	{
-		for (int32 X = 0; X < MaxSizeX; X++) 
+		for (int32 X = 0; X < (int32)WorldSize; X++) 
 		{
 			//Spawn a new chunk
-			ATableChunk* Chunk = GetWorld()->SpawnActor<ATableChunk>(ATableChunk::StaticClass(), FVector((X * ChunkSize) * TileSize, (Y * ChunkSize) * TileSize, 0), FRotator::ZeroRotator);
+			ATableChunk* Chunk = GetWorld()->SpawnActor<ATableChunk>(ATableChunk::StaticClass(), FVector((X * MapGenerator::ChunkSize) * MapGenerator::TileSize, (Y * MapGenerator::ChunkSize) * MapGenerator::TileSize, 0), FRotator::ZeroRotator);
 			if(Chunk)
 			{
 				//Setup the chunk using basic data
@@ -444,7 +252,7 @@ void ATableWorldTable::GenerateChunks()
 
 UTexture2D* ATableWorldTable::GenerateMinimap()
 {
-	int32 TextureSize = ChunkSize * MaxSizeX;
+	int32 TextureSize = MapGenerator::ChunkSize * WorldSize;
 
 	if (!MinimapTexture)
 	{
@@ -459,16 +267,16 @@ UTexture2D* ATableWorldTable::GenerateMinimap()
 	//Go through each tile
 	uint8* Pixels = new uint8[TextureSize*TextureSize * 4];
 
-	for (int32 tx = 0; tx < (ChunkSize * MaxSizeX); tx++)
+	for (int32 tx = 0; tx < TextureSize; tx++)
 	{
-		for (int32 ty = 0; ty < (ChunkSize * MaxSizeY); ty++)
+		for (int32 ty = 0; ty < TextureSize; ty++)
 		{
 			UTileData* Tile = getTile(tx, ty);
 			if (Tile)
 			{
-				FColor Color = Tile->getMinimapColor();
+				FColor Color = MapGenerator::getTileColor(Tile->getTileType(), Tile->getTileRescources());
 
-				int32 PixelIndex = ty * (ChunkSize * MaxSizeX) + tx;
+				int32 PixelIndex = ty * TextureSize + tx;
 				Pixels[4 * PixelIndex + 2] = Color.R;
 				Pixels[4 * PixelIndex + 1] = Color.G;
 				Pixels[4 * PixelIndex + 0] = Color.B;
@@ -498,7 +306,7 @@ void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
 		GenerateMinimap();
 	}
 
-	int32 TextureSize = ChunkSize * MaxSizeX;
+	int32 TextureSize = MapGenerator::ChunkSize * WorldSize;
 
 	FTexture2DMipMap& Mip = MinimapTexture->PlatformData->Mips[0];
 	FColor* FormatedColorData = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
@@ -511,7 +319,7 @@ void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
 			int32 X = Tile->getX();
 			int32 Y = Tile->getY();
 
-			FColor Color = Tile->getMinimapColor();
+			FColor Color = MapGenerator::getTileColor(Tile->getTileType(), Tile->getTileRescources());
 
 			int32 PixelIndex = Y * (TextureSize) + X;
 			FormatedColorData[PixelIndex] = Color;
@@ -574,9 +382,6 @@ void ATableWorldTable::SetupTilePixels(TArray<ETileType> TileTypes)
 
 		//Clear up the ram
 		Mip.BulkData.Unlock();
-
-		//Clear the RawData
-		//delete[] FormatedColorData;
 	}
 }
 
@@ -615,11 +420,11 @@ ATableChunk* ATableWorldTable::getChunkForTile(int32 X, int32 Y)
 		ATableChunk* Chunk = Chunks[i];
 		if (Chunk)
 		{
-			int32 MinX = Chunk->getX() * ChunkSize;
-			int32 MinY = Chunk->getY() * ChunkSize;
+			int32 MinX = Chunk->getX() * MapGenerator::ChunkSize;
+			int32 MinY = Chunk->getY() * MapGenerator::ChunkSize;
 
-			int32 MaxX = MinX + ChunkSize;
-			int32 MaxY = MinY + ChunkSize;
+			int32 MaxX = MinX + MapGenerator::ChunkSize;
+			int32 MaxY = MinY + MapGenerator::ChunkSize;
 			if (X >= MinX && X < MaxX)
 			{
 				if (Y >= MinY && Y < MaxY)
@@ -835,6 +640,16 @@ void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileT
 	if (Chunk)
 	{
 		return Chunk->SetTileIfTile(X, Y, NewTile, IfTile, false);
+	}
+}
+
+void ATableWorldTable::LoadTile(FGeneratedMapTile Data)
+{
+	SetTile(Data.X, Data.Y, Data.TileType, false, false);
+
+	if(Data.Resscource != ETileRescources::None && Data.Resscource != ETileRescources::Max)
+	{
+		SetRescource(Data.X, Data.Y, Data.Resscource, Data.ResscourceAmount, Data.TileType);
 	}
 }
 
@@ -1175,10 +990,15 @@ int32 ATableWorldTable::getRandomSeed()
 {
 	if(getGamemode())
 	{
-		return getGamemode()->getRandomSeed();
+		return getGamemode()->getWorldSeed();
 	}
 
 	return 0;
+}
+
+uint8 ATableWorldTable::getWorldSize()
+{
+	return WorldSize;
 }
 
 void ATableWorldTable::LoadData(TArray<FTableSaveTile> Tiles)
@@ -1231,9 +1051,9 @@ void ATableWorldTable::LoadData(TArray<FTableSaveTile> Tiles)
 void ATableWorldTable::SaveData_Implementation(UTableSavegame* Savegame)
 {
 	//Save Modified tiles
-	for(int32 x = 0; x < ChunkSize*MaxSizeX; x++)
+	for(int32 x = 0; x < MapGenerator::ChunkSize*WorldSize; x++)
 	{
-		for (int32 y = 0; y < ChunkSize*MaxSizeY; y++)
+		for (int32 y = 0; y < MapGenerator::ChunkSize*WorldSize; y++)
 		{
 			UTileData* Tile = getTile(x, y);
 			if (Tile)
@@ -1254,6 +1074,11 @@ void ATableWorldTable::SaveData_Implementation(UTableSavegame* Savegame)
 			}
 		}
 	}
+
+	//Save World Settings
+	Savegame->WorldSize = WorldSize;
+	Savegame->bHasRiver = bHasRiver;
+	Savegame->RiverCount = RiverCount;
 
 	DebugLog("-Saved " + FString::FromInt(Savegame->SavedTiles.Num()) + " Modified tiles!");
 }

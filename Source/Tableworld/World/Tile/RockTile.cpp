@@ -11,13 +11,3 @@ int32 URockTile::getMovementCost()
 {
 	return 40;
 }
-
-FColor URockTile::getMinimapColor()
-{
-	if (HasRescource() || HasTileObject())
-	{
-		return Super::getMinimapColor();
-	}
-
-	return FColor(100, 100, 100);
-}

@@ -7,6 +7,7 @@
 #include "Misc/TableHelper.h"
 #include "Interface/SaveLoadInterface.h"
 #include "Savegame/TableSavegame.h"
+#include "MapGenerator.h"
 #include "TableWorldTable.generated.h"
 
 class UTileData;
@@ -37,18 +38,6 @@ class TABLEWORLD_API ATableWorldTable : public AActor, public ISaveLoadInterface
 	
 public:	
 
-	static uint8 ChunkSize;
-
-	//Base tile Noise level
-	static float WaterLevel;
-	static float SandLevel;
-	static float RockLevel;
-
-	//Rescource Noise Level
-	static float TreeTile;
-	static float RockChance;
-	static float BerrieTile;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	USceneComponent* Root = nullptr;
 
@@ -67,34 +56,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	TMap<ETileRescources, UStaticMesh*> RescourceMesh;
 
-	//The max width in chunks of the map
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	int32 MaxSizeX = 8;
-
-	//The max depth in chunks of the map
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	int32 MaxSizeY = 8;
-
-	//The size of the tiles.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	int32 TileSize = 100;
-
-	//True if a river should be generated
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	bool bHasRiver = true;
-
-	//The size in tiles of the river
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WorldGeneration")
-	uint8 RiverSize = 2;
-
 	ATableWorldTable();
+
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	void AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life);
 
 	//Generated a new map
-	virtual void InitTable();
+	virtual void InitTable(int32 Seed, uint8 WorldSize, bool bHasRiver, uint8 RiverCount);
 	virtual void GenerateMap();
 	virtual void GenerateChunks();
 
@@ -117,6 +87,7 @@ public:
 	void SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType);
 	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false, bool bModifyTile = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
+	void LoadTile(FGeneratedMapTile Data);
 
 	void AddBuilding(ABuildableTile* nBuilding);
 	void ShowInfluenceGrid();
@@ -155,6 +126,8 @@ public:
 	int32 getNewRandomSeed();
 	int32 getRandomSeed();
 
+	uint8 getWorldSize();
+
 	virtual void LoadData(TArray<FTableSaveTile> Tiles);
 
 	//Interface
@@ -163,6 +136,11 @@ public:
 	virtual void SaveData_Implementation(UTableSavegame* Savegame);
 
 protected:
+
+	int32 Seed = 0;
+	uint8 WorldSize = 0;
+	bool bHasRiver = false;
+	uint8 RiverCount = 0;
 
 	ATablePlayerController* PC = nullptr;
 	ATableGamemode* GM = nullptr;

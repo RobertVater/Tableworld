@@ -19,24 +19,41 @@ void ATableGamemode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//Get a Random Seed
-	WorldSeed = FMath::Rand();
-	FMath::RandInit(WorldSeed);
-
-	SetCurrentAge(StartAge);
-	CurrentFunds = StartFunds;
-
-	ModifyRescource(EItem::WoodLog, 25);
-	ModifyRescource(EItem::Stone, 6);
-
-	TArray<AActor*> OutActors;
-	UGameplayStatics::GetAllActorsOfClass(this, ATableWorldTable::StaticClass(), OutActors);
-	if(OutActors.IsValidIndex(0))
+	if (getGameInstance())
 	{
-		Table = Cast<ATableWorldTable>(OutActors[0]);
-		if(Table)
+		TArray<AActor*> OutActors;
+		UGameplayStatics::GetAllActorsOfClass(this, ATableWorldTable::StaticClass(), OutActors);
+		if (OutActors.IsValidIndex(0))
 		{
-			Table->InitTable();
+			Table = Cast<ATableWorldTable>(OutActors[0]);
+			if (Table)
+			{
+				if (!getGameInstance()->isLoadGame())
+				{
+					//Start a new game.
+					DebugWarning("Start new game");
+
+					//Get the Seed
+					WorldSeed = getGameInstance()->getSeed();
+					FMath::RandInit(getGameInstance()->getSeed());
+					SetCurrentAge(StartAge);
+
+					ModifyRescource(EItem::WoodLog, 25);
+					ModifyRescource(EItem::Stone, 6);
+
+					Table->InitTable(getGameInstance()->getSeed(), getGameInstance()->getWorldSize(), getGameInstance()->hasRivers(), getGameInstance()->getRiverCount());
+
+					//Reste world settings.
+					getGameInstance()->ClearWorldSettings();
+				}else
+				{
+					//Load a save
+					LoadGame(getGameInstance()->getSaveGame());
+
+					getGameInstance()->ClearLoadGame();
+					return;
+				}
+			}
 		}
 	}
 }
@@ -79,7 +96,7 @@ void ATableGamemode::SaveGame(FString SaveName)
 			UTableSavegame* Save = Cast<UTableSavegame>(UGameplayStatics::CreateSaveGameObject(UTableSavegame::StaticClass()));
 			if (Save)
 			{
-				Save->WorldSeed = getRandomSeed();
+				Save->WorldSeed = getWorldSeed();
 
 				Save->PlayerX = getPlayerPawn()->GetActorLocation().X;
 				Save->PlayerY = getPlayerPawn()->GetActorLocation().Y;
@@ -117,18 +134,24 @@ void ATableGamemode::LoadGame(FString SaveName)
 	UTableSavegame* Save = Cast<UTableSavegame>(UGameplayStatics::LoadGameFromSlot(SaveName, 0));
 	if(Save)
 	{
+		DebugLog("Save found!");
 		if (getPlayerPawn())
 		{
 			if (getTable())
 			{
+				SetCurrentAge(ETableAge::StoneAge);
+				
+				//Load the seed
 				WorldSeed = Save->WorldSeed;
 
+				//Load the res
 				StoredRescources = Save->GlobalItems;
 
 				FMath::RandInit(WorldSeed);
 				DebugLog("-Load Seed " + FString::FromInt(Save->WorldSeed));
 
-				getTable()->InitTable();
+				//Init the base world
+				getTable()->InitTable(Save->WorldSeed, Save->WorldSize, Save->bHasRiver, Save->RiverCount);
 
 				//Load Modified tiles
 				getTable()->LoadData(Save->SavedTiles);
@@ -197,6 +220,9 @@ void ATableGamemode::LoadGame(FString SaveName)
 				ModifyTime(Save->GameSpeed);
 			}
 		}
+	}else
+	{
+		DebugError("Failed to load " + SaveName);
 	}
 }
 
@@ -457,7 +483,7 @@ int32 ATableGamemode::getGameTime()
 	return GameSpeed;
 }
 
-int32 ATableGamemode::getRandomSeed()
+int32 ATableGamemode::getWorldSeed()
 {
 	return WorldSeed;
 }

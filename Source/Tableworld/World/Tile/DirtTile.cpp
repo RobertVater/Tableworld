@@ -11,8 +11,3 @@ int32 UDirtTile::getMovementCost()
 {
 	return 5;
 }
-
-FColor UDirtTile::getMinimapColor()
-{
-	return FColor::Orange;
-}

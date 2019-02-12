@@ -16,13 +16,3 @@ int32 UWaterTile::getMovementCost()
 {
 	return 50;
 }
-
-FColor UWaterTile::getMinimapColor()
-{
-	if (HasRescource() || HasTileObject())
-	{
-		return Super::getMinimapColor();
-	}
-
-	return FColor::FromHex("#0077be");
-}

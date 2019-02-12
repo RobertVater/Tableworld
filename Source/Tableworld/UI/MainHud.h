@@ -25,7 +25,7 @@ public:
 	void UpdateMinimap(UTexture2D* NewMinimap);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Minimap")
-	void MoveMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha);
+	void MoveMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha, float ViewRectScale);
 
 	UFUNCTION(BlueprintCallable,BlueprintNativeEvent,Category = "Building")
 	void BuildBuildableTiles();

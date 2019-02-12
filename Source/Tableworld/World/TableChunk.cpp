@@ -36,7 +36,7 @@ void ATableChunk::SetupChunk(uint8 nX, uint8 nY, ATableWorldTable* nParentTable)
 	X = nX;
 	Y = nY;
 
-	ChunkSize = ParentTable->ChunkSize;
+	ChunkSize = MapGenerator::ChunkSize;
 
 	GenerateTileData();
 }

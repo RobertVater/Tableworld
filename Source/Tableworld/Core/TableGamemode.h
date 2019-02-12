@@ -102,7 +102,7 @@ public:
 	int32 getGameTime();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
-	int32 getRandomSeed();
+	int32 getWorldSeed();
 
 	//Events
 

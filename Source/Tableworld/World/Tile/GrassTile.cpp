@@ -11,13 +11,3 @@ int32 UGrassTile::getMovementCost()
 {
 	return 10;
 }
-
-FColor UGrassTile::getMinimapColor()
-{
-	if(HasRescource() || HasTileObject())
-	{
-		return Super::getMinimapColor();
-	}
-	
-	return FColor::FromHex("#263617");
-}

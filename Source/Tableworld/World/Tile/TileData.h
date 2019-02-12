@@ -40,7 +40,6 @@ public:
 
 	virtual ETileType getTileType();
 	virtual float getBaseHeigth();
-	virtual FColor getMinimapColor();
 	float getHeigth();
 
 	int32 getX();

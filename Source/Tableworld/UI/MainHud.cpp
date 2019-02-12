@@ -34,7 +34,7 @@ void UMainHud::OnNewNotification_Implementation(FTableNotification NewNotify)
 
 }
 
-void UMainHud::MoveMinimapPlayerView_Implementation(float AlphaX, float AlphaY, float ZoomAlpha)
+void UMainHud::MoveMinimapPlayerView_Implementation(float AlphaX, float AlphaY, float ZoomAlpha, float ViewRectScale)
 {
 
 }

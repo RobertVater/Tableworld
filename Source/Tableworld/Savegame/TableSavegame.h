@@ -217,6 +217,15 @@ public:
 	UPROPERTY()
 	int32 WorldSeed;
 
+	UPROPERTY()
+	uint8 WorldSize;
+
+	UPROPERTY()
+	bool bHasRiver;
+
+	UPROPERTY()
+	uint8 RiverCount;
+
 	//All the harvesters
 	UPROPERTY()
 	TArray<FTableSaveHarvesterBuilding> SavedHarvesters;
