@@ -661,7 +661,9 @@ void ATablePlayerPawn::UpdateMinimapPlayerView()
 				OurX = FMath::Clamp(OurX, MapMinX, MapMaxX);
 				OurY = FMath::Clamp(OurY, MapMinY, MapMaxY);
 
-				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal, Scale, WorldScale);
+				float PlayerScale = FMath::Lerp(0.5f, 1.0f, ZoomLerpGoal) * Scale;
+
+				getPlayerController()->UpdateMinimapPlayerView(OurX, OurY, ZoomLerpGoal, PlayerScale, WorldScale);
 			}
 		}
 	}

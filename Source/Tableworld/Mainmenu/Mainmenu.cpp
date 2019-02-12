@@ -78,7 +78,6 @@ TArray<FLoadedSavegame> AMainmenu::ListSaveGames()
 
 	FString SavegamePath = FString(FPaths::GameSavedDir()) + "SaveGames/*.sav";
 	DebugLog(SavegamePath);
-
 	IFileManager& FileManager = IFileManager::Get();
 
 	TArray<FString> Files;
@@ -155,7 +154,6 @@ UTexture2D* AMainmenu::GenerateMapPreview()
 
 					PixelColor = MapGenerator::getTileColor(TileData.TileType, TileData.Resscource);
 				}
-
 				int32 PixelIndex = y * TextureSize + x;
 				Pixels[4 * PixelIndex + 2] = PixelColor.R;
 				Pixels[4 * PixelIndex + 1] = PixelColor.G;
