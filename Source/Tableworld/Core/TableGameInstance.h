@@ -19,6 +19,10 @@ class TABLEWORLD_API UTableGameInstance : public UGameInstance
 	
 public:
 
+	virtual void Init() override;
+
+	void LoadHumanNames();
+
 	void PrepareNewGame(int32 nSeed, uint8 nWorldSize, bool nRiver, uint8 nRiverCount);
 	void PrepareLoadGame(FString nSaveGame);
 
@@ -59,6 +63,9 @@ public:
 	bool hasRivers();
 	uint8 getRiverCount();
 
+	FName getHumanName(int32 Index);
+	int32 getRandomHumanName();
+
 	//Event
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Events")
 	FUIShowLoadingScreen Event_ShowLoadingScreen;
@@ -73,6 +80,8 @@ public:
 	FUIShowDialog Event_ShowDialog;
 
 protected:
+
+	TArray<FName> Human_Names;
 
 	bool bLoadGame = false;
 	FString SaveGame;

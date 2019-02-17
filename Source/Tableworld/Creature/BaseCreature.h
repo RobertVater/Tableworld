@@ -39,6 +39,8 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void Create();
+
 	virtual void DeactivateCreature();
 	virtual void ActivateCreature();
 
@@ -66,7 +68,15 @@ public:
 	virtual UAnimationAsset* getWalkAnimation();
 	ECreatureStatus getStatus();
 
+	virtual FName getCreatureName();
+	virtual bool isMale();
+	virtual uint8 getSkinIndex();
+
 protected:
+
+	int32 NameIndex = 0;
+	uint8 SkinIndex = 0;
+	bool bIsMale = true;
 
 	ECreatureStatus CreatureStatus = ECreatureStatus::Idle;
 

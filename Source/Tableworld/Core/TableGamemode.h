@@ -38,7 +38,10 @@ public:
 	void ModifyTime(int32 NewTime);
 
 	UFUNCTION(BlueprintCallable)
-	void StopTime();
+	bool StopTime();
+
+	UFUNCTION(BlueprintCallable)
+	void ResetTime();
 
 	UFUNCTION(BlueprintCallable, Category = "SaveLoad")
 	void SaveGame(FString SaveName);

@@ -94,6 +94,11 @@ void ABaseCreature::Tick(float DeltaTime)
 	SetActorRotation(FRotator(0.0f, YawLerp, 0.0f));
 }
 
+void ABaseCreature::Create()
+{
+	bIsMale = FMath::RandBool();
+}
+
 void ABaseCreature::DeactivateCreature()
 {
 	SetCreatureStatus(ECreatureStatus::Deactivated);
@@ -275,5 +280,20 @@ UAnimationAsset* ABaseCreature::getWalkAnimation()
 ECreatureStatus ABaseCreature::getStatus()
 {
 	return CreatureStatus;
+}
+
+FName ABaseCreature::getCreatureName()
+{
+	return FName();
+}
+
+bool ABaseCreature::isMale()
+{
+	return bIsMale;
+}
+
+uint8 ABaseCreature::getSkinIndex()
+{
+	return SkinIndex;
 }
 

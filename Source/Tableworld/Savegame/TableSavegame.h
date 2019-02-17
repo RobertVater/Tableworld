@@ -4,241 +4,73 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "ObjectAndNameAsStringProxyArchive.h"
 #include "TableSavegame.generated.h"
 
-USTRUCT(BlueprintType)
-struct FTableSaveTile
+struct FTableSaveGameArchive : public FObjectAndNameAsStringProxyArchive
 {
-	GENERATED_BODY()
-
-	UPROPERTY()
-	int32 X = 0;
-
-	UPROPERTY()
-	int32 Y = 0;
-
-	UPROPERTY()
-	ETileType Type = ETileType::Grass;
-
-	UPROPERTY()
-	bool bHasHarvester = false;
-
-	UPROPERTY()
-	int32 RescourceInstanceID = -1;
-
-	UPROPERTY()
-	ETileRescources RescourceType = ETileRescources::None;
-
-	UPROPERTY()
-	int32 RescourceHealth = 0;
+	FTableSaveGameArchive(FArchive& InInnerArchive) : FObjectAndNameAsStringProxyArchive(InInnerArchive, true)
+	{
+		ArIsSaveGame = true;
+		ArNoDelta = true; // Optional, useful when saving/loading variables without resetting the level.
+						  // Serialize variables even if weren't modified and mantain their default values.
+	}
 };
 
 USTRUCT(BlueprintType)
-struct FTableSaveCreature
+struct FObjectRecord
 {
-	GENERATED_BODY()
 
-	UPROPERTY()
-	FVector2D HomeTile = FVector2D(-1,-1);
+	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY()
-	int32 PathIndex = 0;
+public:
 
-	UPROPERTY()
-	float MinDinstance = 0.0f;
+	// class that this object is
+	UPROPERTY(BlueprintReadWrite)
+	UClass* Class;
 
-	UPROPERTY()
-	TArray<FVector> Path;
+	// save the outer used for object so they get loaded back in the correct hierachy
+	UPROPERTY(BlueprintReadWrite)
+	UObject* Outer;
 
-	UPROPERTY()
-	TArray<FVector2D> LastCalcPath;
+	// save the outer used for object so they get loaded back in the correct hierachy
+	UPROPERTY(BlueprintReadWrite)
+	int32 OuterID;
 
-	UPROPERTY()
-	FVector Location = FVector::ZeroVector;
+	// if the outer is an actor otherwise will be UObject
+	UPROPERTY(BlueprintReadWrite)
+	bool bActor;
 
-	UPROPERTY()
-	ECreatureStatus Status = ECreatureStatus::Idle;
-};
+	// this is for loading only, store a pointer for the loaded object here so you can loop for the records later to de-serialize all the data
+	UPROPERTY(BlueprintReadWrite)
+	UObject* Self;
 
-USTRUCT(BlueprintType)
-struct FTableSaveHarvesterCreature : public FTableSaveCreature
-{
-	GENERATED_BODY()
+	// Name of the object
+	UPROPERTY(BlueprintReadWrite)
+	FName Name;
 
-	UPROPERTY()
-	float HarvestTimer = 0.0f;
+	// serialized data for all UProperties that are 'SaveGame' enabled
+	UPROPERTY(BlueprintReadWrite)
+	TArray<uint8> Data;
 
-	UPROPERTY()
-	bool bHasCollected = false;
+	// Spawn location if it's an actor
+	UPROPERTY(BlueprintReadWrite)
+	FTransform Transform;
 
-	UPROPERTY()
-	bool bHasHarvestTile = false;
-
-	UPROPERTY()
-	int32 HarvestTileX = 0;
-
-	UPROPERTY()
-	int32 HarvestTileY = 0;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveHaulerCreature : public FTableSaveCreature
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FVector2D HaulTile = FVector2D(-1, -1);
-
-	UPROPERTY()
-	FName TargetBuildingUID = "";
-
-	UPROPERTY()
-	FName HomeBuildingUID = "";
-
-	UPROPERTY()
-	bool bHauledItems = false;
-
-	UPROPERTY()
-	TMap<EItem, int32> CarriedItems;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveBuilding
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FName UID = "";
-
-	UPROPERTY()
-	int32 TileX = 0;
-
-	UPROPERTY()
-	int32 TileY = 0;
-
-	UPROPERTY()
-	uint8 Rotation = 0;
-
-	UPROPERTY()
-	bool bRotated = false;
-
-	UPROPERTY()
-	FName BuildingID;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveInventoryBuilding : public FTableSaveBuilding
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	int32 CurrentInventory = 0;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveHarvesterBuilding : public FTableSaveInventoryBuilding
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<FTableSaveHarvesterCreature> Workers;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveProductionBuilding : public FTableSaveInventoryBuilding
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FName LastValidInventoryUID = "";
-
-	UPROPERTY()
-	TMap<EItem, int32> InputStorage;
-
-	UPROPERTY()
-	TMap<EItem, int32> OutputStorage;
-
-	UPROPERTY()
-	float ProductionTimer = 0.0f;
-
-	UPROPERTY()
-	float ResCheckTimer = 0.0f;
-
-	UPROPERTY()
-	TArray<FTableSaveHaulerCreature> Workers;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveStorageBuilding : public FTableSaveBuilding
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TMap<EItem, int32> StoredItems;
-
-	UPROPERTY()
-	TArray<FReservedItem> ReservedItems;
-
-	UPROPERTY()
-	TArray<FTableSaveHaulerCreature> Workers;
-};
-
-USTRUCT(BlueprintType)
-struct FTableSaveCityCenterBuilding : public FTableSaveStorageBuilding
-{
-	GENERATED_BODY()
-
-	
+	FObjectRecord()
+	{
+		Class = nullptr;
+		Outer = nullptr;
+		Self = nullptr;
+	}
 };
 
 UCLASS()
 class TABLEWORLD_API UTableSavegame : public USaveGame
 {
 	GENERATED_BODY()
-	
+
 public:
 
-	UPROPERTY()
-	float PlayerX = 0;
 
-	UPROPERTY()
-	float PlayerY = 0;
-
-	UPROPERTY()
-	float ZoomAlpha = 0;
-
-	UPROPERTY()
-	int32 GameSpeed = 1;
-
-	UPROPERTY()
-	TMap<EItem, int32> GlobalItems;
-
-	//The seed of the world
-	UPROPERTY()
-	int32 WorldSeed;
-
-	UPROPERTY()
-	uint8 WorldSize;
-
-	UPROPERTY()
-	bool bHasRiver;
-
-	UPROPERTY()
-	uint8 RiverCount;
-
-	//All the harvesters
-	UPROPERTY()
-	TArray<FTableSaveHarvesterBuilding> SavedHarvesters;
-
-	//All the City Centers
-	UPROPERTY()
-	TArray<FTableSaveCityCenterBuilding> SavedCityCenters;
-
-	//All of the Production Buildings
-	UPROPERTY()
-	TArray<FTableSaveProductionBuilding> SavedProduction;
-
-	//All the saved rescources
-	UPROPERTY()
-	TArray<FTableSaveTile> SavedTiles;
 };

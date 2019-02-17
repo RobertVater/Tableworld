@@ -3,25 +3,28 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Creature/BaseCreature.h"
 #include "Misc/TableHelper.h"
-#include "HumanCreature.h"
+#include "WorkerCreature.h"
 #include "HaulerCreature.generated.h"
 
-class AInventoryTile;
-class ACityCentreTile;
 class AProductionBuilding;
+class ACityCentreTile;
+class AFactoryBuilding;
 class UTileData;
+class UInventoryComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHaulerReachedTarget, AHaulerCreature*, Hauler);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHaulerReturnedHome, AHaulerCreature*, Hauler);
 
 UCLASS()
-class TABLEWORLD_API AHaulerCreature : public AHumanCreature
+class TABLEWORLD_API AHaulerCreature : public AWorkerCreature
 {
 	GENERATED_BODY()
 	
 public:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInventoryComponent* InventoryComponent = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
 	UAnimationAsset* WalkLoaded = nullptr;
@@ -33,6 +36,7 @@ public:
 	UPROPERTY()
 	FHaulerReturnedHome Event_HaulerReturnedHome;
 
+	AHaulerCreature();
 	void GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nTargetTile, UTileData* nHomeTile);
 
 	void GiveReturnJob();
@@ -44,8 +48,6 @@ public:
 
 	virtual void ClearInventory();
 
-	//Get the first item of the carried list.
-	bool getItemZero(EItem& Item, int32& Amount);
 	TMap<EItem, int32> getCarriedItems();
 
 	bool HasItems();
@@ -55,9 +57,6 @@ public:
 
 	virtual UAnimationAsset* getWalkAnimation() override;
 
-	void LoadData(FTableSaveHaulerCreature Data);
-	FTableSaveHaulerCreature getSaveData();
-
 protected:
 
 	UTileData* HaulTile = nullptr;
@@ -66,5 +65,4 @@ protected:
 	FName TargetBuildingUID = "";
 
 	bool bHauledItems = false;
-	TMap<EItem, int32> CarriedItems;
 };

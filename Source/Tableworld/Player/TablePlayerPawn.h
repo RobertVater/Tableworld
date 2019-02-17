@@ -85,12 +85,12 @@ public:
 	virtual void Input_GameSpeed_2();
 	virtual void Input_GameSpeed_3();
 	virtual void Input_GameSpeed_4();
+
+	UFUNCTION(BlueprintCallable, Category = "Time")
 	virtual void ModifyGameSpeed(int32 SpeedLevel);
 
 	virtual void TryPlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
 	virtual ABuildableTile* PlaceBuilding(UTileData* Tile, float Rotation, FTableBuilding BuildingData);
-
-	virtual ABuildableTile* LoadBuilding(FTableSaveBuilding Data);
 
 	virtual void AdjustZoom();
 

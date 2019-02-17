@@ -19,4 +19,15 @@ public:
 	//Hooks for Animation Events from the HumanAnimationBlueprint
 	UFUNCTION(BlueprintCallable,Category = "Animation Events")
 	virtual void OnPlayHarvestEffect();
+
+	virtual void Create() override;
+
+	virtual FName getCreatureName() override;
+	virtual float getSkinTone();
+	virtual UMaterialInstanceDynamic* getDynMaterial();
+
+protected:
+
+	UMaterialInstanceDynamic* DynMaterial = nullptr;
+	float SkinTone = 0.0f;
 };

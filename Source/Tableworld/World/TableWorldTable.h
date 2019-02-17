@@ -81,7 +81,7 @@ public:
 	ATableChunk* getChunkForTile(int32 X, int32 Y);
 	UTileData* getTile(int32 X, int32 Y);
 	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius, ETileType Tile, bool bBlockRescources);
-	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource);
+	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, TArray<ETileRescources> Rescource);
 	virtual bool InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size);
 
 	bool HarvestRescource(UTileData* Tile, int32 Amount);
@@ -128,8 +128,6 @@ public:
 	int32 getRandomSeed();
 
 	uint8 getWorldSize();
-
-	virtual void LoadData(TArray<FTableSaveTile> Tiles);
 
 	//Interface
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")

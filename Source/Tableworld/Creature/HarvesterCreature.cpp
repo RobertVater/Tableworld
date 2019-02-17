@@ -2,27 +2,24 @@
 
 #include "HarvesterCreature.h"
 #include "World/Tile/TileData.h"
-#include "World/Tile/Building/HarvesterTile.h"
+#include "World/Tile/Building/HarvesterBuilding.h"
 #include "Core/TableGamemode.h"
 #include "World/TableWorldTable.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Misc/TableHelper.h"
 
-void AHarvesterCreature::Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding)
-{
-	HomeTile = nCreationTileLocation;
-	HarvesterBuilding = nHarvesterBuilding;
-}
 
 void AHarvesterCreature::OnPlayHarvestEffect()
 {
 	PlayHarvestEffect();
 }
 
-void AHarvesterCreature::GiveHarvestJob(UTileData* nHarvestTile)
+void AHarvesterCreature::GiveHarvestJob(UTileData* nHarvestTile, EItem HarvestItem)
 {
+	HarvestedItem = HarvestItem;
 	HarvestTile = nHarvestTile;
+
 	SetCreatureStatus(ECreatureStatus::GoingToWork);
 
 	if(HarvestTile)
@@ -161,6 +158,7 @@ void AHarvesterCreature::OnHarvest()
 			{
 				//Harvest the tile
 				bool bDestroyed = getGamemode()->getTable()->HarvestRescource(getHarvestTile(), 1);
+
 				bHasHarvested = true;
 			}
 		}
@@ -174,12 +172,22 @@ void AHarvesterCreature::OnHarvest()
 
 AHarvesterTile* AHarvesterCreature::getHarvesterTile()
 {
+	if(!HarvesterBuilding)
+	{
+		HarvesterBuilding = Cast<AHarvesterTile>(ParentBuilding);
+	}
+	
 	return HarvesterBuilding;
 }
 
 UTileData* AHarvesterCreature::getHarvestTile()
 {
 	return HarvestTile;
+}
+
+EItem AHarvesterCreature::getHarvestItem()
+{
+	return HarvestedItem;
 }
 
 bool AHarvesterCreature::HasTileStillRescources()
@@ -213,63 +221,4 @@ UAnimationAsset* AHarvesterCreature::getWalkAnimation()
 	}
 
 	return Walk;
-}
-
-void AHarvesterCreature::LoadData(FTableSaveHarvesterCreature Data)
-{
-	DebugWarning("Load Worker Data!");
-
-	//Load the saved path of the creature
-	HomeTile = Data.HomeTile;
-	PathPoints = Data.Path;
-	LastCalculatedPath = UTableHelper::Convert2DVectorArrayToTileArray(Data.LastCalcPath);
-	CurrentPathIndex = Data.PathIndex;
-	MinDistance = Data.MinDinstance;
-
-	//Load the exact location and the status of the creature
-	SetActorLocation(Data.Location);
-	DrawDebugPoint(GetWorld(), Data.Location, 10, FColor::Orange, false, 10, 0);
-	DrawDebugPoint(GetWorld(), GetActorLocation(), 10, FColor::Green, false, 10, 0);
-	SetCreatureStatus(Data.Status);
-	UpdateCreatureStatus();
-
-	bHasHarvested = Data.bHasCollected;
-
-	//Get the HarvestTile
-	if(Data.bHasHarvestTile)
-	{
-		HarvestTile = getGamemode()->getTile(Data.HarvestTileX, Data.HarvestTileY);
-	}
-
-	//Set the HarvestTimer
-	if(Data.HarvestTimer > 0)
-	{
-		GetWorldTimerManager().SetTimer(HarvestTimer, this, &AHarvesterCreature::OnHarvest, Data.HarvestTimer, false);
-	}
-}
-
-FTableSaveHarvesterCreature AHarvesterCreature::getSaveData()
-{
-	FTableSaveHarvesterCreature Data;
-
-	Data.HomeTile = HomeTile;
-	Data.Path = PathPoints;
-	Data.LastCalcPath = UTableHelper::ConvertTileArrayTo2DVectorArray(LastCalculatedPath);
-	Data.MinDinstance = MinDistance;
-	Data.PathIndex = CurrentPathIndex;
-
-	Data.Location = GetActorLocation();
-	Data.Status = getStatus();
-
-	Data.HarvestTimer = GetWorldTimerManager().GetTimerRemaining(HarvestTimer);
-	Data.bHasCollected = bHasHarvested;
-
-	if(HarvestTile)
-	{
-		Data.HarvestTileX = HarvestTile->getX();
-		Data.HarvestTileY = HarvestTile->getY();
-		Data.bHasHarvestTile = true;
-	}
-
-	return Data;
 }

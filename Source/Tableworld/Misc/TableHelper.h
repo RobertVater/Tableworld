@@ -62,6 +62,8 @@ enum class EItem : uint8
 	IronBar,
 	CooperOre,
 	CopperBar,
+	TinOre,
+	TinBar,
 	BronzeBar,
 	Steel,
 	Coal,

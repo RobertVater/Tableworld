@@ -23,6 +23,31 @@ FTableRescource UTableGameInstance::getRescource_Implementation(ETileRescources 
 	return FTableRescource();
 }
 
+void UTableGameInstance::Init()
+{
+	Super::Init();
+
+	LoadHumanNames();
+}
+
+void UTableGameInstance::LoadHumanNames()
+{
+	Human_Names.Empty();
+
+	FString SavegamePath = FString(FPaths::GameContentDir() + "Names/" + "Human_Names" + ".txt");
+	DebugWarning(SavegamePath);
+
+	TArray<FString> RawNames;
+	FFileHelper::LoadFileToStringArray(RawNames, *SavegamePath);
+
+	for(int32 i = 0; i < RawNames.Num(); i++)
+	{
+		Human_Names.Add(FName(*RawNames[i]));
+	}
+
+	DebugLog("-Loaded " + FString::FromInt(Human_Names.Num()) + " Humannames!");
+}
+
 void UTableGameInstance::PrepareNewGame(int32 nSeed, uint8 nWorldSize, bool nRiver, uint8 nRiverCount)
 {
 	Seed = nSeed;
@@ -101,4 +126,25 @@ bool UTableGameInstance::hasRivers()
 uint8 UTableGameInstance::getRiverCount()
 {
 	return RiverCount;
+}
+
+FName UTableGameInstance::getHumanName(int32 Index)
+{
+	if(Human_Names.IsValidIndex(Index))
+	{
+		return Human_Names[Index];
+	}
+
+	return FName();
+}
+
+int32 UTableGameInstance::getRandomHumanName()
+{
+	int32 RIndex = FMath::RandRange(0, Human_Names.Num() - 1);
+	if(Human_Names.IsValidIndex(RIndex))
+	{
+		return RIndex;
+	}
+
+	return 0;
 }

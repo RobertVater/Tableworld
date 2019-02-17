@@ -8,7 +8,7 @@
 #include "Misc/Math/FastNoise.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include <time.h>
-#include "Tile/Building/CityCentreTile.h"
+#include "Tile/Building/CityCentreBuilding.h"
 #include "Tile/Building/BuildableTile.h"
 #include "HeapSort.h"
 #include "Component/HudManager.h"
@@ -30,25 +30,6 @@ ATableWorldTable::ATableWorldTable()
 void ATableWorldTable::BeginPlay()
 {
 	Super::BeginPlay();
-
-	for (auto Elem : RescourceMesh)
-	{
-		ETileRescources Res = Elem.Key;
-		UStaticMesh* Mesh = Elem.Value;
-
-		if (Res != ETileRescources::None && Res != ETileRescources::Max)
-		{
-			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
-			if (InstMesh)
-			{
-				InstMesh->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-				InstMesh->SetStaticMesh(Mesh);
-				InstMesh->RegisterComponent();
-
-				InstancedRescourcesMesh.Add(Res, InstMesh);
-			}
-		}
-	}
 
 	UTableHelper::Init(this);
 }
@@ -120,6 +101,34 @@ void ATableWorldTable::AddRescourceWobble(ETileRescources Rescource, int32 Index
 
 void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver, uint8 nRiverCount)
 {
+	for (auto Elem : InstancedRescourcesMesh)
+	{
+		UInstancedStaticMeshComponent* Mesh = Elem.Value;
+		if (Mesh)
+		{
+			Mesh->ClearInstances();
+		}
+	}
+
+	for (auto Elem : RescourceMesh)
+	{
+		ETileRescources Res = Elem.Key;
+		UStaticMesh* Mesh = Elem.Value;
+
+		if (Res != ETileRescources::None && Res != ETileRescources::Max)
+		{
+			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
+			if (InstMesh)
+			{
+				InstMesh->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+				InstMesh->SetStaticMesh(Mesh);
+				InstMesh->RegisterComponent();
+
+				InstancedRescourcesMesh.Add(Res, InstMesh);
+			}
+		}
+	}
+	
 	Seed = nSeed;
 	WorldSize = nWorldSize;
 	bHasRiver = bnHasRiver;
@@ -147,16 +156,6 @@ void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver,
 		}
 	}
 	Chunks.Empty();
-
-	//Reset all rescources
-	for (auto Elem : InstancedRescourcesMesh)
-	{
-		UInstancedStaticMeshComponent* Mesh = Elem.Value;
-		if (Mesh)
-		{
-			Mesh->ClearInstances();
-		}
-	}
 
 	//Clear all creatures
 	TArray<AActor*> OutCreatures;
@@ -325,6 +324,10 @@ void ATableWorldTable::UpdateMinimap(TArray<UTileData*> ModifiedTiles)
 			int32 Y = Tile->getY();
 
 			FColor Color = MapGenerator::getTileColor(Tile->getTileType(), Tile->getTileRescources());
+			if(Tile->HasTileObject())
+			{
+				Color = Tile->getTileObject()->getMinimapColor();
+			}
 
 			int32 PixelIndex = Y * (TextureSize) + X;
 			FormatedColorData[PixelIndex] = Color;
@@ -377,8 +380,6 @@ void ATableWorldTable::SetupTilePixels(TArray<ETileType> TileTypes)
 					FColor Pixel = FormatedColorData[YY * SheetX + XX];
 
 					NewTilePixels.Pixels.Add(Pixel);
-
-					//DrawDebugPoint(GetWorld(), FVector(x, y, 0), 5, Pixel, false, 999, 0);
 				}
 			}
 
@@ -416,6 +417,9 @@ void ATableWorldTable::SetMultipleTiles(TArray<UTileData*> Tiles)
 			}
 		}
 	}
+
+	//Refresh the minimap
+	UpdateMinimap(Tiles);
 }
 
 ATableChunk* ATableWorldTable::getChunkForTile(int32 X, int32 Y)
@@ -491,7 +495,7 @@ TArray<UTileData*> ATableWorldTable::getTilesInRadius(int32 X, int32 Y, int32 Ra
 	return Tiles;
 }
 
-TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int32 Radius, ETileRescources Rescource)
+TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int32 Radius, TArray<ETileRescources> Rescource)
 {
 	TArray<UTileData*> Tiles;
 
@@ -507,7 +511,7 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 				UTileData* Tile = getTile(XX, YY);
 				if (Tile)
 				{
-					if (Tile->getTileRescources() == Rescource) 
+					if (Rescource.Contains(Tile->getTileRescources())) 
 					{
 						Tiles.Add(Tile);
 					}
@@ -716,7 +720,7 @@ FTransform ATableWorldTable::getRescourceTransform(ETileRescources Rescource, in
 	UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Rescource);
 	if(Mesh)
 	{
-		Mesh->GetInstanceTransform(Index, Trans);
+		Mesh->GetInstanceTransform(Index, Trans, true);
 	}
 
 	return Trans;
@@ -1006,84 +1010,7 @@ uint8 ATableWorldTable::getWorldSize()
 	return WorldSize;
 }
 
-void ATableWorldTable::LoadData(TArray<FTableSaveTile> Tiles)
-{
-	TArray<UTileData*> ModTiles;
-	for(int32 i = 0; i < Tiles.Num(); i++)
-	{
-		FTableSaveTile Tile = Tiles[i];
-		SetTile(Tile.X, Tile.Y, Tile.Type, false, true);
-		
-		UTileData* TileRef = getTile(Tile.X, Tile.Y);
-		if(TileRef)
-		{
-			if(Tile.bHasHarvester)
-			{
-				TileRef->GiveHarvester();
-			}
-
-			if(Tile.RescourceInstanceID >= 0)
-			{
-				if (Tile.RescourceType != ETileRescources::None) 
-				{
-					//Update the rescource on the tile
-					TileRef->SetRescource(Tile.RescourceInstanceID, Tile.RescourceType, Tile.RescourceHealth);
-				}else
-				{
-					//Clear the rescource mesh
-					UInstancedStaticMeshComponent* ResMesh = InstancedRescourcesMesh.FindRef(TileRef->getTileRescources());
-					if(ResMesh)
-					{
-						ResMesh->UpdateInstanceTransform(Tile.RescourceInstanceID, FTransform(FRotator::ZeroRotator, FVector(0, 0, -1000)));
-					}
-
-					//Clear the tile rescource
-					TileRef->ClearRescource();
-
-				}
-			}
-
-			ModTiles.Add(TileRef);
-		}
-	}
-
-	SetMultipleTiles(ModTiles);
-	UpdateMinimap(ModTiles);
-
-	DebugLog("-Loaded " + FString::FromInt(Tiles.Num()) + " Tiles!");
-}
-
 void ATableWorldTable::SaveData_Implementation(UTableSavegame* Savegame)
 {
-	//Save Modified tiles
-	for(int32 x = 0; x < MapGenerator::ChunkSize*WorldSize; x++)
-	{
-		for (int32 y = 0; y < MapGenerator::ChunkSize*WorldSize; y++)
-		{
-			UTileData* Tile = getTile(x, y);
-			if (Tile)
-			{
-				if(Tile->isModified())
-				{
-					FTableSaveTile SaveTile;
-					SaveTile.X = x;
-					SaveTile.Y = y;
-					SaveTile.Type = Tile->getTileType();
-					SaveTile.RescourceType = Tile->getTileRescources();
-					SaveTile.RescourceHealth = Tile->getTileRescourceAmount();
-					SaveTile.RescourceInstanceID = Tile->getLastRescourceIndex();
-					SaveTile.bHasHarvester = Tile->HasHarvester();
 
-					Savegame->SavedTiles.Add(SaveTile);
-				}
-			}
-		}
-	}
-
-	//Save World Settings
-	Savegame->WorldSize = WorldSize;
-	Savegame->bHasRiver = bHasRiver;
-	Savegame->RiverCount = RiverCount;
-
-	DebugLog("-Saved " + FString::FromInt(Savegame->SavedTiles.Num()) + " Modified tiles!");
 }

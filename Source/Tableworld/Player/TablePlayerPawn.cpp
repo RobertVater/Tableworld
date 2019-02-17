@@ -14,10 +14,10 @@
 #include "World/TableChunk.h"
 #include "World/Tile/Building/BuildableTile.h"
 #include "Kismet/KismetMaterialLibrary.h"
-#include "World/Tile/Building/CityCentreTile.h"
+#include "World/Tile/Building/CityCentreBuilding.h"
 #include "Misc/TableHelper.h"
 #include "Core/TableGameInstance.h"
-#include "World/Tile/Building/HarvesterTile.h"
+#include "World/Tile/Building/HarvesterBuilding.h"
 #include "World/MapGenerator.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
@@ -44,6 +44,8 @@ void ATablePlayerPawn::BeginPlay()
 	{
 		SpringArm->PrimaryComponentTick.bTickEvenWhenPaused = true;
 	}
+
+	PrimaryActorTick.bTickEvenWhenPaused = true;
 
 	ZoomLerpGoal = ZoomAlpha;
 	AdjustZoom();
@@ -100,7 +102,7 @@ void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAxis("Forward", this, &ATablePlayerPawn::Input_Forward).bExecuteWhenPaused=true;
+	PlayerInputComponent->BindAxis("Forward", this, &ATablePlayerPawn::Input_Forward).bExecuteWhenPaused = true;
 	PlayerInputComponent->BindAxis("Right", this, &ATablePlayerPawn::Input_Right).bExecuteWhenPaused = true;
 
 	PlayerInputComponent->BindAction("ZoomIn", IE_Pressed, this, &ATablePlayerPawn::Input_ZoomIn).bExecuteWhenPaused = true;
@@ -422,7 +424,12 @@ void ATablePlayerPawn::ModifyGameSpeed(int32 SpeedLevel)
 	{
 		if(SpeedLevel <= 0)
 		{
-			getGamemode()->StopTime();
+			bool bPaused = getGamemode()->StopTime();
+			if(!bPaused)
+			{
+				//Return to the previous time
+				getGamemode()->ResetTime();
+			}
 			return;
 		}
 		
@@ -536,70 +543,6 @@ ABuildableTile* ATablePlayerPawn::PlaceBuilding(UTileData* TargetTile, float Rot
 			}
 			
 			return PlacedTile;
-		}
-	}
-
-	return nullptr;
-}
-
-ABuildableTile* ATablePlayerPawn::LoadBuilding(FTableSaveBuilding Data)
-{
-	if(Data.BuildingID != NAME_None)
-	{
-		if (getGameInstance()) 
-		{
-			if (getGamemode()) 
-			{
-				bool bFound = false;
-				FTableBuilding BuildingData = getGameInstance()->getBuilding(Data.BuildingID, bFound);
-
-				if (bFound)
-				{
-					int32 HalfX = (int32)BuildingData.BuildingSize.X / 2;
-					int32 HalfY = (int32)BuildingData.BuildingSize.Y / 2;
-
-					if(Data.bRotated)
-					{
-						int32 OldX = HalfX;
-						HalfX = HalfY;
-						HalfY = OldX;
-					}
-
-					UTileData* TopLeftTile = getGamemode()->getTile(Data.TileX, Data.TileY);
-					UTileData* CenterTile = getGamemode()->getTile(Data.TileX  + HalfX, Data.TileY + HalfY);
-					if(TopLeftTile && CenterTile)
-					{
-						ABuildableTile* BuildingTile = GetWorld()->SpawnActor<ABuildableTile>(BuildingData.TileClass, CenterTile->getWorldCenter(), FRotator(0, Data.Rotation, 0));
-						if(BuildingTile)
-						{
-							TArray<FVector2D> PlacedOnTiles;
-							TArray<UTileData*> ModifiedTiles;
-
-							for(int32 sx = -HalfX; sx <= HalfX; sx++)
-							{
-								for (int32 sy = -HalfY; sy <= HalfY; sy++)
-								{
-									UTileData* Tile = getGamemode()->getTile(CenterTile->getX() + sx, CenterTile->getY() + sy);
-									if(Tile)
-									{
-										Tile->AddBuildableTile(BuildingTile);
-
-										ModifiedTiles.Add(Tile);
-										PlacedOnTiles.Add(FVector2D(Tile->getX(), Tile->getY()));
-									}
-								}
-							}
-
-							BuildingTile->Place(CenterTile->getWorldCenter(), PlacedOnTiles, BuildingData, Data.bRotated, true);
-
-							getGamemode()->getTable()->AddBuilding(BuildingTile);
-							getGamemode()->getTable()->UpdateMinimap(ModifiedTiles);
-
-							return BuildingTile;
-						}
-					}
-				}
-			}
 		}
 	}
 

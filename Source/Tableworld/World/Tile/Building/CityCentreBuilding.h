@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "World/Tile/Building/BuildableTile.h"
-#include "CityCentreTile.generated.h"
+#include "CityCentreBuilding.generated.h"
 
-class AHaulerCreature;
-class AInventoryTile;
+class UWorkerComponent;
+class UInventoryComponent;
+
+class AWorkerCreature;
+class AProductionBuilding;
 class UTableSavegame;
 
 UCLASS()
@@ -17,18 +20,18 @@ class TABLEWORLD_API ACityCentreTile : public ABuildableTile
 	
 public:
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
-	int32 InfluenceRadius = 10;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UWorkerComponent* WorkerComponent = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInventoryComponent* InventoryComponent = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
-	int32 HaulerAmount = 2;
+	int32 InfluenceRadius = 10;
 
 	//The delay whenever the building checks for harvesters with inventory
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
 	float RescourceCheckTime = 1.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
-	TSubclassOf<AHaulerCreature> HaulerClass = nullptr;
 
 	ACityCentreTile();
 	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding) override;
@@ -45,17 +48,15 @@ public:
 	UFUNCTION()
 	void OnHaulReachedTarget(AHaulerCreature* nHauler);
 
-	UFUNCTION(meta = (BlueprintThreadSafe))
 	void ModifyInventory(EItem Item, int32 Amount);
 
 	//Reserves the items to a building. Those items are invisible to other buildings
 	bool ReserveItems(TMap<EItem, int32> Items, FName UID);
 	void ClearReserveItems(FName UID);
 
-	void SpawnHaulers();
-	AHaulerCreature* SpawnWorker(FVector SpawnLoc);
+	TArray<AWorkerCreature*> getWorkers();
 
-	AInventoryTile* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
+	AProductionBuilding* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
 
 	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
 	TMap<EItem, int32> getStoredItems();
@@ -63,17 +64,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved = false);
 
-	virtual void LoadData(FTableSaveCityCenterBuilding Data);
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
 
 protected:
-
-	TArray<AHaulerCreature*> Workers;
-
-	//The items this city Centre has stored
-	TMap<EItem, int32> StoredItems;
-
-	TArray<FReservedItem> ReservedItems;
 
 	FTimerHandle RescourceCheckTimer;
 };

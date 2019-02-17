@@ -3,15 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Creature/BaseCreature.h"
-#include "HumanCreature.h"
+#include "WorkerCreature.h"
 #include "HarvesterCreature.generated.h"
 
 class AHarvesterTile;
 class UTileData;
 
 UCLASS()
-class TABLEWORLD_API AHarvesterCreature : public AHumanCreature
+class TABLEWORLD_API AHarvesterCreature : public AWorkerCreature
 {
 	GENERATED_BODY()
 	
@@ -29,10 +28,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature")
 	UAnimationAsset* WalkWood = nullptr;
 
-	virtual void Create(FVector2D nCreationTileLocation, AHarvesterTile* nHarvesterBuilding);
 	virtual void OnPlayHarvestEffect() override;
 
-	void GiveHarvestJob(UTileData* nHarvestTile);
+	void GiveHarvestJob(UTileData* nHarvestTile, EItem HarvestItem);
 	void GiveReturnJob();
 
 	virtual void OnMoveCompleted() override;
@@ -49,20 +47,20 @@ public:
 
 	AHarvesterTile* getHarvesterTile();
 	UTileData* getHarvestTile();
+	EItem getHarvestItem();
 	bool HasTileStillRescources();
 	bool hasHarvested();
 
 	virtual UAnimationAsset* getIdleAnimation() override;
 	virtual UAnimationAsset* getWalkAnimation() override;
 
-	void LoadData(FTableSaveHarvesterCreature Data);
-	FTableSaveHarvesterCreature getSaveData();
-
 protected:
 
 	FTimerHandle HarvestTimer;
 
+	EItem HarvestedItem = EItem::None;
 	bool bHasHarvested = false;
+
 	AHarvesterTile* HarvesterBuilding = nullptr;
 
 	UTileData* HarvestTile = nullptr;

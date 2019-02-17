@@ -9,10 +9,10 @@
 #include "World/TableChunk.h"
 #include "TableGameInstance.h"
 #include "Player/TablePlayerPawn.h"
-#include "World/Tile/Building/CityCentreTile.h"
+#include "World/Tile/Building/CityCentreBuilding.h"
 #include "Savegame/TableSavegame.h"
 #include "Interface/SaveLoadInterface.h"
-#include "World/Tile/Building/HarvesterTile.h"
+#include "World/Tile/Building/HarvesterBuilding.h"
 #include "World/Tile/Building/ProductionBuilding.h"
 
 void ATableGamemode::BeginPlay()
@@ -60,6 +60,8 @@ void ATableGamemode::BeginPlay()
 
 void ATableGamemode::ModifyTime(int32 NewTime)
 {
+	DebugError("ModifyTime " + FString::FromInt(NewTime));
+	
 	UGameplayStatics::SetGamePaused(this, false);
 	UGameplayStatics::SetGlobalTimeDilation(this, NewTime);
 
@@ -67,64 +69,29 @@ void ATableGamemode::ModifyTime(int32 NewTime)
 	Event_GameSpeedUpdated.Broadcast(NewTime);
 }
 
-void ATableGamemode::StopTime()
+bool ATableGamemode::StopTime()
 {
+	DebugError("StopTime");
 	bGamePaused = !bGamePaused;
 	
 	UGameplayStatics::SetGamePaused(this, bGamePaused);
 
 	if(bGamePaused)
 	{
-		LastGameSpeed = GameSpeed;
+		Event_GameSpeedUpdated.Broadcast(0);
 	}
-	
-	GameSpeed = bGamePaused ? 0 : LastGameSpeed;
-	Event_GameSpeedUpdated.Broadcast(GameSpeed);
+
+	return bGamePaused;
+}
+
+void ATableGamemode::ResetTime()
+{
+	ModifyTime(GameSpeed);
 }
 
 void ATableGamemode::SaveGame(FString SaveName)
 {
-	DebugLog("Trying to save game to " + SaveName);
-
-	if(getTable())
-	{
-		if (getPlayerPawn()) 
-		{
-			TArray<AActor*> Actors;
-			UGameplayStatics::GetAllActorsWithInterface(this, USaveLoadInterface::StaticClass(), Actors);
-
-			UTableSavegame* Save = Cast<UTableSavegame>(UGameplayStatics::CreateSaveGameObject(UTableSavegame::StaticClass()));
-			if (Save)
-			{
-				Save->WorldSeed = getWorldSeed();
-
-				Save->PlayerX = getPlayerPawn()->GetActorLocation().X;
-				Save->PlayerY = getPlayerPawn()->GetActorLocation().Y;
-				Save->ZoomAlpha = getPlayerPawn()->getZoomAlpha();
-
-				Save->GlobalItems = StoredRescources;
-				Save->GameSpeed = GameSpeed;
-
-				DebugLog("-Saved Zoomlevel " + FString::SanitizeFloat(Save->ZoomAlpha));
-				DebugLog("-Saved Seed " + FString::FromInt(Save->WorldSeed));
-
-				for (int32 i = 0; i < Actors.Num(); i++)
-				{
-					AActor* Actor = Actors[i];
-					if (Actor)
-					{
-						ISaveLoadInterface::Execute_SaveData(Actor, Save);
-					}
-				}
-
-				DebugLog("-Saved " + FString::FromInt(Save->SavedCityCenters.Num()) + " Centers!");
-				DebugLog("-Saved " + FString::FromInt(Save->SavedHarvesters.Num()) + " Harvesters!");
-				DebugLog("-Saved " + FString::FromInt(Save->SavedProduction.Num()) + " Producer!");
-
-				UGameplayStatics::SaveGameToSlot(Save, SaveName, 0);
-			}
-		}
-	}
+	
 }
 
 void ATableGamemode::LoadGame(FString SaveName)
@@ -134,95 +101,7 @@ void ATableGamemode::LoadGame(FString SaveName)
 	UTableSavegame* Save = Cast<UTableSavegame>(UGameplayStatics::LoadGameFromSlot(SaveName, 0));
 	if(Save)
 	{
-		DebugLog("Save found!");
-		if (getPlayerPawn())
-		{
-			if (getTable())
-			{
-				SetCurrentAge(ETableAge::StoneAge);
-				
-				//Load the seed
-				WorldSeed = Save->WorldSeed;
-
-				//Load the res
-				StoredRescources = Save->GlobalItems;
-
-				FMath::RandInit(WorldSeed);
-				DebugLog("-Load Seed " + FString::FromInt(Save->WorldSeed));
-
-				//Clear the old minimap
-				getTable()->ClearMinimap();
-
-				//Init the base world
-				getTable()->InitTable(Save->WorldSeed, Save->WorldSize, Save->bHasRiver, Save->RiverCount);
-
-				//Load Modified tiles
-				getTable()->LoadData(Save->SavedTiles);
-
-				if (getPlayerController())
-				{
-					getPlayerController()->InitController();
-				}
-
-				//Load City Centers
-				for (int32 i = 0; i < Save->SavedCityCenters.Num(); i++)
-				{
-					FTableSaveCityCenterBuilding Data = Save->SavedCityCenters[i];
-					if(Data.BuildingID != NAME_None)
-					{
-						ACityCentreTile* Building = Cast<ACityCentreTile>(getPlayerPawn()->LoadBuilding(Data));
-						if (Building)
-						{
-							Building->LoadData(Data);
-						}
-
-						DebugLog("-Load " + Data.BuildingID.ToString());
-					}
-				}
-
-				//Load Harvesters
-				for(int32 i = 0; i < Save->SavedHarvesters.Num(); i++)
-				{
-					FTableSaveHarvesterBuilding Data = Save->SavedHarvesters[i];
-					if(Data.BuildingID != NAME_None)
-					{
-						AHarvesterTile* Building = Cast<AHarvesterTile>(getPlayerPawn()->LoadBuilding(Data));
-						if(Building)
-						{
-							Building->LoadData(Data);
-						}
-
-						DebugLog("-Load " + Data.BuildingID.ToString());
-					}
-				}
-
-				//Load Production
-				for (int32 i = 0; i < Save->SavedProduction.Num(); i++)
-				{
-					FTableSaveProductionBuilding Data = Save->SavedProduction[i];
-					if (Data.BuildingID != NAME_None)
-					{
-						AProductionBuilding* Building = Cast<AProductionBuilding>(getPlayerPawn()->LoadBuilding(Data));
-						if (Building)
-						{
-							Building->LoadData(Data);
-						}
-
-						DebugLog("-Load " + Data.BuildingID.ToString());
-					}
-				}
-
-				// Load player zoom
-				getPlayerPawn()->SetZoomAlpha(Save->ZoomAlpha);
-				DebugLog("-Load Zoomlevel " + FString::SanitizeFloat(Save->ZoomAlpha));
-
-				//Load player location.
-				FVector Location = FVector(Save->PlayerX, Save->PlayerY, 0.0f);
-				getPlayerPawn()->TeleportPlayer(Location);
-
-				ModifyTime(Save->GameSpeed);
-			}
-		}
+		
 	}else
 	{
 		DebugError("Failed to load " + SaveName);
