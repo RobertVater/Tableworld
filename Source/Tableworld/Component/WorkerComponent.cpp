@@ -71,3 +71,18 @@ TArray<AWorkerCreature*> UWorkerComponent::getWorkers()
 {
 	return Workers;
 }
+
+TArray<FName> UWorkerComponent::getWorkerNames()
+{
+	TArray<FName> Names;
+	for(int32 i = 0; i < getWorkers().Num(); i++)
+	{
+		AWorkerCreature* Workers = getWorkers()[i];
+		if(Workers)
+		{
+			Names.Add(Workers->getCreatureName());
+		}
+	}
+
+	return Names;
+}

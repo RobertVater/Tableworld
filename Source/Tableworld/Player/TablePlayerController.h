@@ -9,6 +9,7 @@
 
 class UHudManager;
 class ABuildableTile;
+class AHumanCreature;
 
 class ATableGamemode;
 class ATableWorldTable;
@@ -25,7 +26,10 @@ public:
 	void InitController();
 
 	void SelectTool(EToolbarTools NewTool);
-	void ShowBuildingInfoPanel(ABuildableTile* Building);
+
+	void ShowInfoPanel(FTableInfoPanel PanelData);
+
+	void OnHumanDeactivated(AActor* Human);
 
 	void UpdateMinimap();
 	void UpdateMinimapPlayerView(float AlphaX, float AlphaY, float ZoomAlpha, float ViewScale, float WorldScale);

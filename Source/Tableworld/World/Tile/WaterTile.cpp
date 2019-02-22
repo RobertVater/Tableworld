@@ -9,7 +9,7 @@ ETileType UWaterTile::getTileType()
 
 float UWaterTile::getBaseHeigth()
 {
-	return -50.0f;
+	return -1.0f;
 }
 
 int32 UWaterTile::getMovementCost()

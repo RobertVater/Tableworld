@@ -19,6 +19,7 @@
 #include "Core/TableGameInstance.h"
 #include "World/Tile/Building/HarvesterBuilding.h"
 #include "World/MapGenerator.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -234,6 +235,7 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 
 void ATablePlayerPawn::Input_LeftMouse_Pressed()
 {
+	
 	if (HasValidBuildableTile()) 
 	{
 		if (CurrentBuilding.bDragBuilding)
@@ -263,6 +265,26 @@ void ATablePlayerPawn::Input_LeftMouse_Pressed()
 		return;
 	}
 
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = getMouseWorldLocation();
+
+	FHitResult Hit;
+
+	if(UKismetSystemLibrary::LineTraceSingle(this, Start, End, ETraceTypeQuery::TraceTypeQuery1, false, TArray<AActor*>(), EDrawDebugTrace::None, Hit, true))
+	{
+		if(Hit.GetActor())
+		{
+			if (Hit.GetActor()->GetClass()->ImplementsInterface(UInfoPanelInterface::StaticClass()))
+			{
+				if (getPlayerController())
+				{
+					getPlayerController()->ShowInfoPanel(IInfoPanelInterface::Execute_getInfoPanelData(Hit.GetActor()));
+					return;
+				}
+			}
+		}
+	}
+
 	//Try to open the details panel
 	if(SelectedTile)
 	{
@@ -271,13 +293,20 @@ void ATablePlayerPawn::Input_LeftMouse_Pressed()
 			//Try to get the building on the tileobject
 			if (SelectedTile->getTileObject())
 			{
-				SelectedTile->DebugHighlightTile(1.0f);
-
-				getPlayerController()->ShowBuildingInfoPanel(SelectedTile->getTileObject());
+				if (SelectedTile->getTileObject()->GetClass()->ImplementsInterface(UInfoPanelInterface::StaticClass()))
+				{
+					getPlayerController()->ShowInfoPanel(IInfoPanelInterface::Execute_getInfoPanelData(SelectedTile->getTileObject()));
+				}
 				return;
 			}
 
-			getPlayerController()->ShowBuildingInfoPanel(nullptr);
+			if (SelectedTile->HadRescource())
+			{
+				getPlayerController()->ShowInfoPanel(SelectedTile->getInfoPanelData());
+				return;
+			}
+
+			getPlayerController()->ShowInfoPanel(FTableInfoPanel());
 		}
 	}
 }

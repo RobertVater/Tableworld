@@ -309,3 +309,13 @@ void ACityCentreTile::SaveData_Implementation(UTableSavegame* Savegame)
 {
 	
 }
+
+FTableInfoPanel ACityCentreTile::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+
+	Data.InventoryComponent = InventoryComponent;
+	Data.WorkerComponent = WorkerComponent;
+
+	return Data;
+}

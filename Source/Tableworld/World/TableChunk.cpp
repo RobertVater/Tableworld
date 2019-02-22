@@ -66,30 +66,41 @@ void ATableChunk::GenerateChunkMesh()
 {
 	if (!ParentTable)return;
 
-	TArray<int32> Triangles;
-	TArray<FVector> Normals;
-	TArray<FProcMeshTangent> Tangents;
-	TArray<FVector2D> UVs;
+	int32 Index = 0;
+	Vertices.Empty();
+	Triangles.Empty();
+	Normals.Empty();
+	Tangents.Empty();
+	UVs.Empty();
 
 	int32 ActualChunkSize = ChunkSize + 1;
 
-	//Add the Verts
-	Vertices.AddUninitialized((ActualChunkSize) * (ActualChunkSize));
-
 	//Generate the chunk tiles
-	int32 i = 0;
-	for (int32 y = 0; y < ActualChunkSize; y++)
+	if (ParentTable) 
 	{
-		for (int32 x = 0; x < ActualChunkSize; x++)
+		for (int32 y = 0; y < ChunkSize; y++)
 		{
-			AddPlane(x, y, i, Vertices, UVs);
+			for (int32 x = 0; x < ChunkSize; x++)
+			{
+				int32 TX = (getX() * ChunkSize) + x;
+				int32 TY = (getY() * ChunkSize) + y;
 
-			i++;
+				int32 WX = (x * TileSize);
+				int32 WY = (y * TileSize);
+				
+				UTileData* Tile = ParentTable->getTile(TX, TY);
+				if (Tile)
+				{
+					//Our tile height
+					int32 Height = Tile->getHeigth();
+
+					AddCube(x, y, Height, Index);
+				}
+			}
 		}
 	}
 
 	//Generate the Tris and Tangents / Normals of the plane
-	UKismetProceduralMeshLibrary::CreateGridMeshTriangles(ActualChunkSize, ActualChunkSize, true, Triangles);
 	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UVs, Normals, Tangents);
 
 	//Create the mesh
@@ -101,10 +112,9 @@ void ATableChunk::GenerateChunkMesh()
 	uint8 TilesInPixels = ParentTable->TilesInPixels;
 
 	//Create the texture
-	int32 Resolution = 1;
 	int32 TextureSize = ((ChunkSize * TilesInPixels));
 
-	if (!ChunkTexture) 
+	if (!ChunkTexture)
 	{
 		ChunkTexture = UTexture2D::CreateTransient(TextureSize, TextureSize);
 		ChunkTexture->AddToRoot();
@@ -135,9 +145,155 @@ void ATableChunk::AddPlane(float X, float Y, int32 i, TArray<FVector>& Verts, TA
 	UVs.Add(FVector2D(UVX, UVY));
 }
 
-void ATableChunk::AddCube(float X, float Y, float Heigth, int32 i, TArray<FVector>& Verts, TArray<FVector2D>& UVs)
+void ATableChunk::AddCubeFace(int32 X, int32 Y, int32 Z, ETableDirections Dir, int32& i)
 {
+	int32 BlockHeigth = TileSize;
+
+	float WX = X * TileSize;
+	float WY = Y * TileSize;
+	float WZ = Z * BlockHeigth;
 	
+	switch (Dir)
+	{
+	case ETableDirections::Top:
+		Vertices.Add(FVector(WX, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY, WZ));
+		Vertices.Add(FVector(WX, WY, WZ));
+		break;
+
+	case ETableDirections::North:
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX, WY + TileSize, WZ - BlockHeigth));
+		break;
+
+	case ETableDirections::East:
+		Vertices.Add(FVector(WX + TileSize, WY, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX + TileSize, WY, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ - BlockHeigth));
+		break;
+
+	case ETableDirections::South:
+		Vertices.Add(FVector(WX, WY, WZ - TileSize));
+		Vertices.Add(FVector(WX, WY, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY, WZ));
+		Vertices.Add(FVector(WX + TileSize, WY, WZ - BlockHeigth));
+		break;
+
+	case ETableDirections::West:
+		Vertices.Add(FVector(WX, WY + TileSize, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX, WY + TileSize, WZ));
+		Vertices.Add(FVector(WX, WY, WZ));
+		Vertices.Add(FVector(WX, WY, WZ - TileSize));
+		break;
+
+	case ETableDirections::Bottom:
+		Vertices.Add(FVector(WX, WY, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX + TileSize, WY, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX + TileSize, WY + TileSize, WZ - BlockHeigth));
+		Vertices.Add(FVector(WX, WY + TileSize, WZ - BlockHeigth));
+		break;
+	}
+
+	AddTriangle(i * 4, i * 4 + 1, i * 4 + 2);
+	AddTriangle(i * 4, i * 4 + 2, i * 4 + 3);
+
+	float tUnit = 0.0625f;
+	float CordX = (WX / TileSize) * tUnit;
+	float CordY = (WY / TileSize) * tUnit;
+
+	UVs.Add(FVector2D(CordX + tUnit, CordY));
+	UVs.Add(FVector2D(CordX + tUnit, CordY + tUnit));
+	UVs.Add(FVector2D(CordX, CordY + tUnit));
+	UVs.Add(FVector2D(CordX, CordY));
+
+	i++;
+}
+
+void ATableChunk::AddCube(int32 X, int32 Y, int32 Z, int32& i)
+{
+	int32 WX = X * TileSize;
+	int32 WY = Y * TileSize;
+	int32 WZ = Z * TileSize;
+
+	int32 TX = (getX() * ChunkSize) + X;
+	int32 TY = (getY() * ChunkSize) + Y;
+
+	//Add the top plane
+	AddCubeFace(X, Y, Z, ETableDirections::Top, i);
+	int32 ZHeigth = Z;
+
+	UTileData* North = ParentTable->getTile(TX, TY + 1);
+	if (North)
+	{
+		if (Z > North->getHeigth())
+		{
+			while (ZHeigth > North->getHeigth()) 
+			{
+				AddCubeFace(X, Y, ZHeigth, ETableDirections::North, i);
+
+				ZHeigth--;
+			}
+		}
+	}
+
+	UTileData* South = ParentTable->getTile(TX, TY - 1);
+	if(South)
+	{
+		if(Z > South->getHeigth())
+		{
+			ZHeigth = Z;
+
+			while (ZHeigth > South->getHeigth())
+			{
+				AddCubeFace(X, Y, ZHeigth, ETableDirections::South, i);
+
+				ZHeigth--;
+			}
+		}
+	}
+
+	UTileData* East = ParentTable->getTile(TX + 1, TY);
+	if (East)
+	{
+		if (Z > East->getHeigth())
+		{
+			ZHeigth = Z;
+			
+			while (ZHeigth > East->getHeigth()) 
+			{
+				AddCubeFace(X, Y, ZHeigth, ETableDirections::East, i);
+
+				ZHeigth--;
+			}
+		}
+	}
+
+	UTileData* West = ParentTable->getTile(TX - 1, TY);
+	if (West)
+	{
+		if (Z > West->getHeigth())
+		{
+			ZHeigth = Z;
+
+			while (ZHeigth > West->getHeigth())
+			{
+				AddCubeFace(X, Y, ZHeigth, ETableDirections::West, i);
+
+				ZHeigth--;
+			}
+		}
+	}
+}
+
+void ATableChunk::AddTriangle(int32 a, int32 b, int32 c)
+{
+	Triangles.Add(a);
+	Triangles.Add(b);
+	Triangles.Add(c);
 }
 
 void ATableChunk::UpdateChunkTexture()
@@ -200,7 +356,7 @@ void ATableChunk::UpdateChunkTexture()
 	}
 }
 
-void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial, bool bModifyTile)
+UTileData* ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateMaterial, bool bModifyTile)
 {
 	UTileData* Tile = getTile(X, Y);
 	if(Tile)
@@ -209,6 +365,7 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 		{
 			//Update the tile data
 			
+			UTileData* ReturnTile = nullptr;
 			TSubclassOf<UTileData> TileClass = UTableHelper::getTileClass(NewTileType);
 			if (TileClass) 
 			{
@@ -235,6 +392,8 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 							ParentTable->UpdateMinimap(ModifiedTiles);
 						}
 					}
+					
+					ReturnTile = NewTile;
 				}
 			}
 
@@ -243,8 +402,12 @@ void ATableChunk::SetTile(int32 X, int32 Y, ETileType NewTileType, bool bUpdateM
 			{
 				UpdateChunkTexture();
 			}
+
+			return ReturnTile;
 		}
 	}
+
+	return nullptr;
 }
 
 
@@ -286,6 +449,31 @@ void ATableChunk::SetTileTexture(int32 X, int32 Y, ETileType Type)
 	}
 }
 
+void ATableChunk::UpdateTileHeights()
+{
+	return;
+
+	for(int32 x = 0; x < ChunkSize; x++)
+	{
+		for (int32 y = 0; y < ChunkSize; y++)
+		{
+			UTileData* Tile = getLocalTile(x, y);
+			if (Tile)
+			{
+				float Height = Tile->getBaseHeigth();
+				ChangeTileHeight(x, y, Height);
+			}
+		}
+	}
+
+	RebuildMesh();
+}
+
+void ATableChunk::InsertPlane(int32 X, int32 Y, float Height)
+{
+
+}
+
 void ATableChunk::ChangeTileHeight(int32 X, int32 Y, float Heigth)
 {
 	UTileData* Tile = getLocalTile(X, Y);
@@ -305,28 +493,32 @@ void ATableChunk::ChangeTileHeight(int32 X, int32 Y, float Heigth)
 				Tile->SetHeigth(Heigth);
 			}
 		}
-
-		UpdateMesh();
 	}
 }
 
-void ATableChunk::ChangeVertHeight(int32 X, int32 Y, float Heigth)
+void ATableChunk::ChangeVertHeight(int32 Y, int32 X, float Heigth)
 {
 	int32 Size = ChunkSize + 1;
-	int32 VertIndex = Y * Size + X;
-	if (Vertices.IsValidIndex(VertIndex))
-	{
-		FVector VertLoc = Vertices[VertIndex];
 
-		VertLoc.Z = Heigth;
+	//The next vert index
+	int32 VertIndex = (Y * Size + X);
+	FVector VertLoc = FVector(X * TileSize, Y * TileSize, Heigth);
 
-		Vertices[VertIndex] = VertLoc;
-	}
+	Vertices.Insert(VertLoc, VertIndex - 1);
+	
+	DrawDebugPoint(GetWorld(), VertLoc, 10, FColor::Red, false, 1);
 }
 
-void ATableChunk::UpdateMesh()
+void ATableChunk::RebuildMesh()
 {
-	ChunkMesh->UpdateMeshSection(0, Vertices, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
+	//Clear the old mesh
+	ChunkMesh->ClearAllMeshSections();
+
+	int32 ActualChunkSize = ChunkSize + 1;
+
+	UKismetProceduralMeshLibrary::CreateGridMeshTriangles(ActualChunkSize, ActualChunkSize, true, Triangles);
+	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UVs, Normals, Tangents);
+	ChunkMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents, true);
 }
 
 int32 ATableChunk::getX()

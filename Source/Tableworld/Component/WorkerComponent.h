@@ -32,6 +32,9 @@ public:
 	AWorkerCreature* getDeactivatedWorker();
 	TArray<AWorkerCreature*> getWorkers();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	TArray<FName> getWorkerNames();
+
 protected:
 	
 	ABuildableTile* ParentBuilding = nullptr;

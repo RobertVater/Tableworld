@@ -22,8 +22,14 @@ public:
 
 	virtual void Create() override;
 
+	virtual void OnDeactivate() override;
+
 	virtual FName getCreatureName() override;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual float getSkinTone();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual UMaterialInstanceDynamic* getDynMaterial();
 
 protected:

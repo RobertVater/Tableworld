@@ -32,20 +32,33 @@ void UTableGameInstance::Init()
 
 void UTableGameInstance::LoadHumanNames()
 {
-	Human_Names.Empty();
+	HumanMale_Names.Empty();
+	HumanFemale_Names.Empty();
 
-	FString SavegamePath = FString(FPaths::GameContentDir() + "Names/" + "Human_Names" + ".txt");
-	DebugWarning(SavegamePath);
+	//Male
+	FString MalePath = FString(FPaths::GameContentDir() + "Names/" + "HumanMale_Names" + ".txt");
 
-	TArray<FString> RawNames;
-	FFileHelper::LoadFileToStringArray(RawNames, *SavegamePath);
+	TArray<FString> RawMaleNames;
+	FFileHelper::LoadFileToStringArray(RawMaleNames, *MalePath);
 
-	for(int32 i = 0; i < RawNames.Num(); i++)
+	for(int32 i = 0; i < RawMaleNames.Num(); i++)
 	{
-		Human_Names.Add(FName(*RawNames[i]));
+		HumanMale_Names.Add(FName(*RawMaleNames[i]));
 	}
 
-	DebugLog("-Loaded " + FString::FromInt(Human_Names.Num()) + " Humannames!");
+	//Female
+	FString FemalePath = FString(FPaths::GameContentDir() + "Names/" + "HumanFemale_Names" + ".txt");
+
+	TArray<FString> RawFemaleNames;
+	FFileHelper::LoadFileToStringArray(RawFemaleNames, *FemalePath);
+
+	for (int32 i = 0; i < RawFemaleNames.Num(); i++)
+	{
+		HumanFemale_Names.Add(FName(*RawFemaleNames[i]));
+	}
+
+	DebugLog("-Loaded " + FString::FromInt(HumanMale_Names.Num()) + " Human male names!");
+	DebugLog("-Loaded " + FString::FromInt(HumanFemale_Names.Num()) + " Human female names!");
 }
 
 void UTableGameInstance::PrepareNewGame(int32 nSeed, uint8 nWorldSize, bool nRiver, uint8 nRiverCount)
@@ -128,22 +141,39 @@ uint8 UTableGameInstance::getRiverCount()
 	return RiverCount;
 }
 
-FName UTableGameInstance::getHumanName(int32 Index)
+FName UTableGameInstance::getHumanName(int32 Index, bool bIsMale)
 {
-	if(Human_Names.IsValidIndex(Index))
+	if (bIsMale)
 	{
-		return Human_Names[Index];
+		if (HumanMale_Names.IsValidIndex(Index))
+		{
+			return HumanMale_Names[Index];
+		}
+	}
+
+	if (HumanFemale_Names.IsValidIndex(Index))
+	{
+		return HumanFemale_Names[Index];
 	}
 
 	return FName();
 }
 
-int32 UTableGameInstance::getRandomHumanName()
+int32 UTableGameInstance::getRandomHumanName(bool bIsMale)
 {
-	int32 RIndex = FMath::RandRange(0, Human_Names.Num() - 1);
-	if(Human_Names.IsValidIndex(RIndex))
+	if (bIsMale) 
 	{
-		return RIndex;
+		int32 RMaleIndex = FMath::RandRange(0, HumanMale_Names.Num() - 1);
+		if (HumanMale_Names.IsValidIndex(RMaleIndex))
+		{
+			return RMaleIndex;
+		}
+	}
+
+	int32 RFemaleIndex = FMath::RandRange(0, HumanFemale_Names.Num() - 1);
+	if (HumanFemale_Names.IsValidIndex(RFemaleIndex))
+	{
+		return RFemaleIndex;
 	}
 
 	return 0;

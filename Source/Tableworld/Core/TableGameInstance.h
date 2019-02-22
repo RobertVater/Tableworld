@@ -63,8 +63,8 @@ public:
 	bool hasRivers();
 	uint8 getRiverCount();
 
-	FName getHumanName(int32 Index);
-	int32 getRandomHumanName();
+	FName getHumanName(int32 Index, bool bIsMale);
+	int32 getRandomHumanName(bool bIsMale);
 
 	//Event
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Events")
@@ -81,12 +81,13 @@ public:
 
 protected:
 
-	TArray<FName> Human_Names;
+	TArray<FName> HumanMale_Names;
+	TArray<FName> HumanFemale_Names;
 
 	bool bLoadGame = false;
 	FString SaveGame;
 
-	int32 Seed = 0;
+	int32 Seed = 1337;
 	uint8 WorldSize = 8;
 	bool bHasRiver = true;
 	uint8 RiverCount = 3;

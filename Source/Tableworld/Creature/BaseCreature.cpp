@@ -107,12 +107,26 @@ void ABaseCreature::DeactivateCreature()
 	PathPoints.Empty();
 	MinDistance = 0.0f;
 	CurrentPathIndex = 0;
+
+	OnDeactivate();
 }
 
 void ABaseCreature::ActivateCreature()
 {
 	Mesh->SetVisibility(true);
 	SetCreatureStatus(ECreatureStatus::Idle);
+
+	OnActivate();
+}
+
+void ABaseCreature::OnActivate()
+{
+	
+}
+
+void ABaseCreature::OnDeactivate()
+{
+
 }
 
 void ABaseCreature::SetRotationGoal(float NewGoal)
@@ -282,6 +296,21 @@ ECreatureStatus ABaseCreature::getStatus()
 	return CreatureStatus;
 }
 
+FName ABaseCreature::getReadableStatus()
+{
+	switch(getStatus())
+	{
+	case ECreatureStatus::Deactivated: return "";
+	case ECreatureStatus::GoingToWork: return "Going to work";
+	case ECreatureStatus::Harvesting: return "Gathering";
+	case ECreatureStatus::Idle: return "Idle";
+	case ECreatureStatus::ReturningGoods: return "Returning Items";
+	case ECreatureStatus::Wandering: return "Wandering around";
+	}
+
+	return FName();
+}
+
 FName ABaseCreature::getCreatureName()
 {
 	return FName();
@@ -295,5 +324,28 @@ bool ABaseCreature::isMale()
 uint8 ABaseCreature::getSkinIndex()
 {
 	return SkinIndex;
+}
+
+FTableInfoPanel ABaseCreature::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Panel;
+
+	FTableInfo_Text NameText;
+	NameText.RawText = FText::FromName(getCreatureName());
+	NameText.Size = 25;
+	Panel.DetailText.Add(NameText);
+
+	FTableInfo_Text SatusText;
+	SatusText.RawText = FText::FromName(getReadableStatus());
+	SatusText.Size = 15;
+	Panel.DetailText.Add(SatusText);
+
+	FTableInfo_Text GenderText;
+	GenderText.Size = 20;
+	GenderText.RawText = FText::FromString(bIsMale ? "Male" : "Female");
+	Panel.InfoText.Add(GenderText);
+
+	Panel.WorldContext = this;
+	return Panel;
 }
 

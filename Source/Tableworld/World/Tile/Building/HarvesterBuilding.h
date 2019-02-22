@@ -120,10 +120,14 @@ public:
 	virtual TArray<FProductionItem> getInputItems() override;
 	virtual TArray<FProductionItem> getOutputItems() override;
 
-	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
+	virtual TArray<ETileRescources> getInputChoices() override;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual int32 getHarvestRescourceIndex();
 
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
+	
+	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
 
 protected:
 

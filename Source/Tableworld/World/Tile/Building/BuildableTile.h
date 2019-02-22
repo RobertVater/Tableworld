@@ -7,6 +7,7 @@
 #include "Misc/TableHelper.h"
 #include "Interface/SaveLoadInterface.h"
 #include "Savegame/TableSavegame.h"
+#include "Interface/InfoPanelInterface.h"
 #include "BuildableTile.generated.h"
 
 class UInstancedStaticMeshComponent;
@@ -19,7 +20,7 @@ class ATableGamemode;
 class UTableGameInstance;
 
 UCLASS()
-class TABLEWORLD_API ABuildableTile : public AActor, public ISaveLoadInterface
+class TABLEWORLD_API ABuildableTile : public AActor, public ISaveLoadInterface, public IInfoPanelInterface
 {
 	GENERATED_BODY()
 	
@@ -156,6 +157,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
 	void SaveData(UTableSavegame* Savegame);
 	virtual void SaveData_Implementation(UTableSavegame* Savegame);
+
+	//Interface
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	FTableInfoPanel getInfoPanelData();
+	virtual FTableInfoPanel getInfoPanelData_Implementation();
 
 protected:
 

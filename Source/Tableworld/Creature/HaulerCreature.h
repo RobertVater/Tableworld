@@ -55,6 +55,7 @@ public:
 	FName getHomeBuildingUID();
 	FName getTargetBuildingUID();
 
+	virtual FName getReadableStatus() override;
 	virtual UAnimationAsset* getWalkAnimation() override;
 
 protected:

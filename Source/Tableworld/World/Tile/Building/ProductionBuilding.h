@@ -7,6 +7,7 @@
 #include "ProductionBuilding.generated.h"
 
 class AHaulerCreature;
+class UInventoryComponent;
 
 UCLASS()
 class TABLEWORLD_API AProductionBuilding : public ABuildableTile
@@ -24,10 +25,18 @@ public:
 
 	virtual EItem getItemType();
 
-	bool HasInventorySpace();
+	virtual bool HasInventorySpace();
 	virtual bool canBeHauled();
-	int32 getStoredItemCount();
+	virtual int32 getStoredItemCount();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual TArray<ETileRescources> getOutputChoices();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual TArray<ETileRescources> getInputChoices();
 
 	virtual int32 getCurrentStorage() override;
 	virtual int32 getMaxStorage() override;
+
+	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
 };

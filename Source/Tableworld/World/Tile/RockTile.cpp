@@ -11,3 +11,8 @@ int32 URockTile::getMovementCost()
 {
 	return 40;
 }
+
+float URockTile::getBaseHeigth()
+{
+	return 1;
+}

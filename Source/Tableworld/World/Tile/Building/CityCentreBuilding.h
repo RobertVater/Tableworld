@@ -65,6 +65,7 @@ public:
 	bool HasItems(TMap<EItem, int32> Items, bool bIgnoreReserved = false);
 
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
+	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
 
 protected:
 

@@ -6,6 +6,7 @@
 #include "UObject/NoExportTypes.h"
 #include "Tableworld.h"
 #include "Misc/TableHelper.h"
+#include "Interface/InfoPanelInterface.h"
 #include "TileData.generated.h"
 
 class ATableChunk;
@@ -25,7 +26,7 @@ public:
 	void SetModified();
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
-	void SetRescource(int32 Index, ETileRescources Type, int32 Amount);
+	void SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited);
 
 	void GiveHarvester();
 	void ClearHarvester();
@@ -66,6 +67,7 @@ public:
 	bool HasHarvester();
 	bool HasTileObject();
 	ABuildableTile* getTileObject();
+	virtual FText getTileName();
 
 	//True if this tile was modified at some point.
 	bool isModified();
@@ -76,6 +78,9 @@ public:
 	int32 GCost = 0;
 	int32 HCost = 0;
 	UTileData* PathParent = nullptr;
+
+	//Interface
+	virtual FTableInfoPanel getInfoPanelData();
 
 protected:
 
@@ -101,6 +106,7 @@ protected:
 	int32 RescourceIndex = 0;
 	ETileRescources TileRescource = ETileRescources::None;
 	int32 RescourceCount = 0;
+	bool bUnlimitedRescource = false;
 
 	ETileRescources LastResource = ETileRescources::None;
 	int32 LastIndex = 0;

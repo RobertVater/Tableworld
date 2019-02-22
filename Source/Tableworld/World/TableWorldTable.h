@@ -16,6 +16,7 @@ class UFastNoise;
 class UInstancedStaticMeshComponent;
 class ATablePlayerController;
 class ATableGamemode;
+class UTableGameInstance;
 
 class ABuildableTile;
 class ACityCentreTile;
@@ -40,6 +41,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	USceneComponent* Root = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInstancedStaticMeshComponent* WaterPlanes = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	int32 TilesInPixels = 32;
@@ -82,11 +86,12 @@ public:
 	UTileData* getTile(int32 X, int32 Y);
 	TArray<UTileData*> getTilesInRadius(int32 X, int32 Y, int32 Radius, ETileType Tile, bool bBlockRescources);
 	TArray<UTileData*> getRescourcesInRadius(int32 X, int32 Y, int32 Radius, TArray<ETileRescources> Rescource);
+	int32 getNumTilesAroundTile(int32 X, int32 Y, ETileType Type);
 	virtual bool InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size);
 
 	bool HarvestRescource(UTileData* Tile, int32 Amount);
-	void SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType);
-	void SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false, bool bModifyTile = false);
+	void SetRescource(int32 X, int32 Y, ETileRescources Res, ETileType NeededType);
+	UTileData* SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture = false, bool bModifyTile = false);
 	void SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile);
 	void LoadTile(FGeneratedMapTile Data);
 
@@ -99,6 +104,7 @@ public:
 	FTransform getRescourceTransform(ETileRescources Rescource, int32 Index);
 	ATablePlayerController* getPlayerController();
 	ATableGamemode* getGamemode();
+	UTableGameInstance* getGameInstance();
 	UFastNoise* getNoise();
 
 	//Pathfinding
@@ -143,6 +149,7 @@ protected:
 
 	ATablePlayerController* PC = nullptr;
 	ATableGamemode* GM = nullptr;
+	UTableGameInstance* GI = nullptr;
 
 	TArray<FRescourceWobble> RescourceWobble;
 

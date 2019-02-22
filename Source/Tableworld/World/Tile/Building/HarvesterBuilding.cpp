@@ -445,6 +445,11 @@ TArray<FProductionItem> AHarvesterTile::getOutputItems()
 	return OutputItemsData;
 }
 
+TArray<ETileRescources> AHarvesterTile::getInputChoices()
+{
+	return HarvestRescources;
+}
+
 int32 AHarvesterTile::getHarvestRescourceIndex()
 {
 	return HarvestRescourceIndex;
@@ -453,4 +458,39 @@ int32 AHarvesterTile::getHarvestRescourceIndex()
 void AHarvesterTile::SaveData_Implementation(UTableSavegame* Savegame)
 {
 	
+}
+
+FTableInfoPanel AHarvesterTile::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+	Data.WorkerComponent = WorkerComponent;
+
+	//Input
+	for (int32 i = 0; i < InputItemsData.Num(); i++) 
+	{
+		FProductionItem Item = InputItemsData[i];
+		
+		FTableInfo_Item InputItem;
+		InputItem.Icon = Item.Icon;
+		InputItem.Name = Item.Name;
+		InputItem.Amount = Item.Amount;
+		InputItem.RescourceChoices = getInputChoices();
+
+		Data.InputItems.Add(InputItem);
+	}
+
+	//Output
+	for (int32 i = 0; i < OutputItemsData.Num(); i++)
+	{
+		FProductionItem Item = OutputItemsData[i];
+
+		FTableInfo_Item OutputItem;
+		OutputItem.Icon = Item.Icon;
+		OutputItem.Name = Item.Name;
+		OutputItem.Amount = Item.Amount;
+
+		Data.OutputItems.Add(OutputItem);
+	}
+
+	return Data;
 }

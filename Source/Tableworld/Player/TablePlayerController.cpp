@@ -44,12 +44,17 @@ void ATablePlayerController::SelectTool(EToolbarTools NewTool)
 	}
 }
 
-void ATablePlayerController::ShowBuildingInfoPanel(ABuildableTile* Building)
+void ATablePlayerController::ShowInfoPanel(FTableInfoPanel PanelData)
 {
 	if(getHudManager())
 	{
-		getHudManager()->ShowBuildingInfoPanel(Building);
+		getHudManager()->ShowBuildingInfoPanel(PanelData);
 	}
+}
+
+void ATablePlayerController::OnHumanDeactivated(AActor* Human)
+{
+	
 }
 
 void ATablePlayerController::UpdateMinimap()

@@ -71,7 +71,6 @@ void AFactoryBuilding::StopWork()
 
 void AFactoryBuilding::TryProduceOutput()
 {
-	DebugError("Try");
 	if (getTable())
 	{
 		//Regen the tiles around us
@@ -362,4 +361,12 @@ float AFactoryBuilding::getProductionProgress()
 void AFactoryBuilding::SaveData_Implementation(UTableSavegame* Savegame)
 {
 	
+}
+
+FTableInfoPanel AFactoryBuilding::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+	Data.WorkerComponent = WorkerComponent;
+
+	return Data;
 }

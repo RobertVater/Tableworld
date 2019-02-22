@@ -141,6 +141,16 @@ FName AHaulerCreature::getTargetBuildingUID()
 	return TargetBuildingUID;
 }
 
+FName AHaulerCreature::getReadableStatus()
+{
+	if(getStatus() == ECreatureStatus::GoingToWork)
+	{
+		return "Collecting Items";
+	}
+
+	return Super::getReadableStatus();
+}
+
 UAnimationAsset* AHaulerCreature::getWalkAnimation()
 {
 	if(getCarriedItems().Num() > 0)

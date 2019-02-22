@@ -4,7 +4,7 @@
 #include "Player/TablePlayerController.h"
 #include "UI/MainHud.h"
 #include "Tableworld.h"
-#include "UI/BuildingInfoPanel.h"
+#include "UI/InfoPanel.h"
 
 UHudManager::UHudManager()
 {
@@ -27,10 +27,10 @@ void UHudManager::BuildUI()
 		MainHud_Ref = nullptr;
 	}
 
-	if(BuildingInfoPanel_Ref)
+	if(InfoPanel_Ref)
 	{
-		BuildingInfoPanel_Ref->RemoveFromParent();
-		BuildingInfoPanel_Ref = nullptr;
+		InfoPanel_Ref->RemoveFromParent();
+		InfoPanel_Ref = nullptr;
 	}
 	
 	//MainHud
@@ -43,14 +43,14 @@ void UHudManager::BuildUI()
 		}
 	}
 
-	//BuildingInfoPanel
-	if(BuildingInfoPanel_Class)
+	//InfoPanel
+	if(InfoPanel_Class)
 	{
-		BuildingInfoPanel_Ref = CreateWidget<UBuildingInfoPanel>(getPlayerController(), BuildingInfoPanel_Class);
-		if(BuildingInfoPanel_Ref)
+		InfoPanel_Ref = CreateWidget<UInfoPanel>(getPlayerController(), InfoPanel_Class);
+		if(InfoPanel_Ref)
 		{
-			BuildingInfoPanel_Ref->AddToPlayerScreen(0);
-			BuildingInfoPanel_Ref->SetVisibility(ESlateVisibility::Hidden);
+			InfoPanel_Ref->AddToPlayerScreen(0);
+			InfoPanel_Ref->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 }
@@ -63,12 +63,17 @@ void UHudManager::ResetUI()
 	}
 }
 
-void UHudManager::ShowBuildingInfoPanel(ABuildableTile* SelectedBuilding)
+void UHudManager::ShowBuildingInfoPanel(FTableInfoPanel PanelData)
 {
-	if(getBuildingInfoPanel())
+	if(getInfoPanel())
 	{
-		getBuildingInfoPanel()->OpenBuildingInfo(SelectedBuilding);
+		getInfoPanel()->OpenPanel(PanelData);
 	}
+}
+
+void UHudManager::OnHumanDeactivated(AActor* Human)
+{
+	
 }
 
 ATablePlayerController* UHudManager::getPlayerController()
@@ -86,7 +91,7 @@ UMainHud* UHudManager::getMainHud()
 	return MainHud_Ref;
 }
 
-UBuildingInfoPanel* UHudManager::getBuildingInfoPanel()
+UInfoPanel* UHudManager::getInfoPanel()
 {
-	return BuildingInfoPanel_Ref;
+	return InfoPanel_Ref;
 }

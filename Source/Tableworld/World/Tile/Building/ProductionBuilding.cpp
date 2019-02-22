@@ -52,6 +52,16 @@ int32 AProductionBuilding::getStoredItemCount()
 	return InventoryComponent->getInventorySize();
 }
 
+TArray<ETileRescources> AProductionBuilding::getOutputChoices()
+{
+	return TArray<ETileRescources>();
+}
+
+TArray<ETileRescources> AProductionBuilding::getInputChoices()
+{
+	return TArray<ETileRescources>();
+}
+
 int32 AProductionBuilding::getCurrentStorage()
 {
 	return getStoredItemCount();
@@ -60,4 +70,13 @@ int32 AProductionBuilding::getCurrentStorage()
 int32 AProductionBuilding::getMaxStorage()
 {
 	return InventoryComponent->MaxInventory;
+}
+
+FTableInfoPanel AProductionBuilding::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+
+	Data.InventoryComponent = InventoryComponent;
+	
+	return Data;
 }

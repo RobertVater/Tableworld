@@ -507,3 +507,18 @@ void ABuildableTile::SaveData_Implementation(UTableSavegame* Savegame)
 {
 	
 }
+
+FTableInfoPanel ABuildableTile::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Panel;
+
+	FTableInfo_Text NameText;
+	NameText.RawText = getBuildingData().Name;
+	NameText.Icon = getBuildingData().Icon;
+	NameText.Size = 25;
+
+	Panel.DetailText.Add(NameText);
+
+	Panel.WorldContext = this;
+	return Panel;
+}

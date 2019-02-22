@@ -318,26 +318,29 @@ FTableBuilding ATableGamemode::getSelectedBuilding()
 
 bool ATableGamemode::OwnNeededItems(TArray<FNeededItems> Items)
 {
-	for(int32 i = 0; i < Items.Num(); i++)
+	if (Items.Num() > 0) 
 	{
-		FNeededItems Item = Items[i];
-		if(Item.NeededItem != EItem::None && Item.NeededItem != EItem::Max)
+		for (int32 i = 0; i < Items.Num(); i++)
 		{
-			bool bFound = false;
-			int32 Amount = getStoredItemAmount(Item.NeededItem, bFound);
-
-			if(!bFound)
+			FNeededItems Item = Items[i];
+			if (Item.NeededItem != EItem::None && Item.NeededItem != EItem::Max)
 			{
-				return false;
-			}
+				bool bFound = false;
+				int32 Amount = getStoredItemAmount(Item.NeededItem, bFound);
 
-			if(Amount < Item.NeededAmount)
-			{
-				return false;
-			}
+				if (!bFound)
+				{
+					return false;
+				}
 
-			return true;
+				if (Amount < Item.NeededAmount)
+				{
+					return false;
+				}
+			}
 		}
+
+		return true;
 	}
 
 	return false;

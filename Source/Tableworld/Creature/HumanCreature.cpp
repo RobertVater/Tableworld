@@ -1,6 +1,7 @@
 // Copyright by Robert Vater (Gunschlinger)
 
 #include "HumanCreature.h"
+#include "Player/TablePlayerController.h"
 
 void AHumanCreature::OnPlayHarvestEffect()
 {
@@ -16,7 +17,7 @@ void AHumanCreature::Create()
 	{
 		if(getGamemode()->getGameInstance())
 		{
-			NameIndex = getGamemode()->getGameInstance()->getRandomHumanName();
+			NameIndex = getGamemode()->getGameInstance()->getRandomHumanName(isMale());
 		}
 	}
 
@@ -36,13 +37,22 @@ void AHumanCreature::Create()
 
 }
 
+void AHumanCreature::OnDeactivate()
+{
+	ATablePlayerController* PC = Cast<ATablePlayerController>(GetWorld()->GetFirstPlayerController());
+	if (PC)
+	{
+		PC->OnHumanDeactivated(this);
+	}
+}
+
 FName AHumanCreature::getCreatureName()
 {
 	if (getGamemode())
 	{
 		if (getGamemode()->getGameInstance())
 		{
-			return getGamemode()->getGameInstance()->getHumanName(NameIndex);
+			return getGamemode()->getGameInstance()->getHumanName(NameIndex, isMale());
 		}
 	}
 

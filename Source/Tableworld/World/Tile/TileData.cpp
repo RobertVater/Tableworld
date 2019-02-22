@@ -7,6 +7,7 @@
 #include "../TableChunk.h"
 #include "DrawDebugHelpers.h"
 #include "Building/BuildableTile.h"
+#include "Core/TableGameInstance.h"
 
 void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ATableChunk* nTable)
 {
@@ -18,6 +19,8 @@ void UTileData::Set(int32 nX, int32 nY, int32 nLocalX, int32 nLocalY, ATableChun
 
 	WorldX = X * 100;
 	WorldY = Y * 100;
+
+	SetHeigth(getBaseHeigth());
 
 	ParentChunk = nTable;
 }
@@ -44,6 +47,8 @@ void UTileData::CopyTileData(UTileData* CopyTile)
 
 		TileObject = CopyTile->TileObject;
 
+		SetHeigth(getBaseHeigth());
+
 		TileRescource = CopyTile->getTileRescources();
 		RescourceCount = CopyTile->getTileRescourceAmount();
 	}
@@ -59,11 +64,12 @@ void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 	TileObject = nTileObject;
 }
 
-void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount)
+void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited)
 {
 	RescourceIndex = Index;
 	TileRescource = Type;
 	RescourceCount = Amount;
+	bUnlimitedRescource = bUnlimited;
 
 	LastResource = Type;
 	LastIndex = Index;
@@ -124,6 +130,11 @@ ETileRescources UTileData::getTileRescources()
 
 int32 UTileData::getTileRescourceAmount()
 {
+	if(bUnlimitedRescource)
+	{
+		return 1;
+	}
+	
 	return RescourceCount;
 }
 
@@ -240,6 +251,11 @@ ABuildableTile* UTileData::getTileObject()
 	return TileObject;
 }
 
+FText UTileData::getTileName()
+{
+	return FText::FromString("Tile");
+}
+
 bool UTileData::isModified()
 {
 	return bWasModified;
@@ -253,4 +269,41 @@ bool UTileData::HadRescource()
 int32 UTileData::getLastRescourceIndex()
 {
 	return LastIndex;
+}
+
+FTableInfoPanel UTileData::getInfoPanelData()
+{
+	FTableInfoPanel Data;
+
+	UTableGameInstance* GI = Cast<UTableGameInstance>(getParentChunk()->GetGameInstance());
+	if (GI)
+	{
+		bool bFound = false;
+		FTableRescource Rescource = GI->getRescource(getTileRescources(), bFound);
+		if (bFound)
+		{
+			FTableInfo_Text NameText;
+			NameText.Icon = Rescource.RescourceIcon;
+			NameText.RawText = Rescource.RescourceName;
+			NameText.Size = 25;
+			Data.DetailText.Add(NameText);
+
+			FTableInfo_Text AmountText;
+
+			if (!bUnlimitedRescource) 
+			{
+				AmountText.RawText = FText::FromString("Amount: " + FString::FromInt(getTileRescourceAmount()));
+			}else
+			{
+				AmountText.RawText = FText::FromString("Amount: Unlimited");
+			}
+			
+			AmountText.Size = 20;
+			Data.InfoText.Add(AmountText);
+		}
+	}
+
+	Data.StaticWorldLocation = getWorldCenter();
+	Data.WorldContext = getParentChunk();
+	return Data;
 }

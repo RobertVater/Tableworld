@@ -12,6 +12,17 @@ class UTileData;
 class ATableWorldTable;
 
 UENUM(BlueprintType)
+enum class ETableDirections : uint8
+{
+	North,
+	East,
+	South,
+	West,
+	Top,
+	Bottom
+};
+
+UENUM(BlueprintType)
 enum class ETableNotificationType : uint8
 {
 	Info,
@@ -134,6 +145,74 @@ enum class EToolbarTools : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FTableInfo_Text
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	UTexture2D* Icon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FText RawText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	FLinearColor Color = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Text")
+	int32 Size = 10;
+};
+
+USTRUCT(BlueprintType)
+struct FTableInfo_Item
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	UTexture2D* Icon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	int32 Amount = 1;
+
+	//Used specificly in production buildings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	TArray<ETileRescources> RescourceChoices;
+};
+
+USTRUCT(BlueprintType)
+struct FTableInfoPanel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	TArray<FTableInfo_Text> DetailText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	TArray<FTableInfo_Text> InfoText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	TArray<FTableInfo_Item> InputItems;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	TArray<FTableInfo_Item> OutputItems;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	class UInventoryComponent* InventoryComponent = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	class UWorkerComponent* WorkerComponent = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	AActor* WorldContext = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	FVector StaticWorldLocation = FVector::ZeroVector;
+};
+
+
+USTRUCT(BlueprintType)
 struct FReservedItem
 {
 	GENERATED_BODY()
@@ -222,6 +301,12 @@ struct FTableRescource : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
 	UTexture2D* RescourceIcon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
+	int32 RescourceAmount = 64;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rescource")
+	bool bUnlimitedRescources = false;
 };
 
 USTRUCT(BlueprintType)

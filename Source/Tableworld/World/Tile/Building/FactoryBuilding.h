@@ -82,6 +82,7 @@ public:
 	float getProductionProgress();
 
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
+	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
 
 protected:
 

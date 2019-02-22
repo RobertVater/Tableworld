@@ -18,6 +18,7 @@
 #include "Savegame/TableSavegame.h"
 #include "Misc/TableHelper.h"
 #include "MapGenerator.h"
+#include "Core/TableGameInstance.h"
 
 ATableWorldTable::ATableWorldTable()
 {
@@ -25,6 +26,10 @@ ATableWorldTable::ATableWorldTable()
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = Root;
+
+	WaterPlanes = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("WaterPlanes"));
+	WaterPlanes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WaterPlanes->SetupAttachment(Root);
 }
 
 void ATableWorldTable::BeginPlay()
@@ -128,6 +133,8 @@ void ATableWorldTable::InitTable(int32 nSeed, uint8 nWorldSize, bool bnHasRiver,
 			}
 		}
 	}
+
+	WaterPlanes->ClearInstances();
 	
 	Seed = nSeed;
 	WorldSize = nWorldSize;
@@ -240,6 +247,15 @@ void ATableWorldTable::GenerateChunks()
 
 				//Store the chunk in a array
 				Chunks.Add(Chunk);
+
+				//Add water
+				FVector Location;
+
+				Location.X = (((X * MapGenerator::ChunkSize) * MapGenerator::TileSize) + ((MapGenerator::ChunkSize / 2) * MapGenerator::TileSize)) + 2;
+				Location.Y = (((Y * MapGenerator::ChunkSize ) * MapGenerator::TileSize) + ((MapGenerator::ChunkSize / 2) * MapGenerator::TileSize)) + 2;
+				Location.Z = -15.0f;
+
+				WaterPlanes->AddInstanceWorldSpace(FTransform(FRotator::ZeroRotator, Location));
 			}
 		}
 	}
@@ -523,6 +539,30 @@ TArray<UTileData*> ATableWorldTable::getRescourcesInRadius(int32 X, int32 Y, int
 	return Tiles;
 }
 
+int32 ATableWorldTable::getNumTilesAroundTile(int32 X, int32 Y, ETileType Type)
+{
+	int32 Num = 0;
+	for (int32 x = -1; x <= 1; x++)
+	{
+		for (int32 y = -1; y <= 1; y++)
+		{
+			UTileData* Tile = getTile(X + x, Y + y);
+			if(Tile)
+			{
+				if(Tile->getTileType() == Type)
+				{
+					if(X+x != X && Y+y != Y)
+					{
+						Num++;
+					}
+				}
+			}
+		}
+	}
+
+	return Num;
+}
+
 bool ATableWorldTable::InInfluenceRange(int32 CenterX, int32 CenterY, int32 Radius, int32 X, int32 Y, FVector2D Size)
 {
 	int32 SizeX = (int32)Size.X / 2;
@@ -594,38 +634,44 @@ bool ATableWorldTable::HarvestRescource(UTileData* Tile, int32 Amount)
 	return false;
 }
 
-void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32 Amount, ETileType NeededType)
+void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, ETileType NeededType)
 {
 	if (Res != ETileRescources::None)
 	{
-		if (Amount > 0)
+		if (getGameInstance())
 		{
 			UTileData* Tile = getTile(X, Y);
 			if (Tile)
 			{
-				if (Tile->getTileType() == NeededType) 
+				if (Tile->getTileType() == NeededType)
 				{
-					if (!Tile->HasRescource()) 
+					if (!Tile->HasRescource())
 					{
-						UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Res);
-						if (Mesh)
+						bool bFound = false;
+						FTableRescource ResData = getGameInstance()->getRescource(Res, bFound);
+
+						if (bFound)
 						{
-							float OffsetX = 25.0f;
-							float OffsetY = 25.0f;
-							float RX = FMath::RandRange(-OffsetX, OffsetX);
-							float RY = FMath::RandRange(-OffsetY, OffsetY);
-							
-							FTransform Trans;
-							FRotator Rot = FRotator(FMath::RandRange(-2.5f,2.5f), FMath::RandRange(0.0f, 360.0f), 0.0f);
-							float Scale = FMath::RandRange(0.9f, 1.1f);
+							UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Res);
+							if (Mesh)
+							{
+								float OffsetX = 25.0f;
+								float OffsetY = 25.0f;
+								float RX = FMath::RandRange(-OffsetX, OffsetX);
+								float RY = FMath::RandRange(-OffsetY, OffsetY);
 
-							Trans.SetLocation(Tile->getWorldCenter() + FVector(RX,RY,0.0f));
-							Trans.SetRotation(Rot.Quaternion());
-							Trans.SetScale3D(FVector(Scale, Scale, Scale));
+								FTransform Trans;
+								FRotator Rot = FRotator(FMath::RandRange(-2.5f, 2.5f), FMath::RandRange(0.0f, 360.0f), 0.0f);
+								float Scale = FMath::RandRange(0.9f, 1.1f);
 
-							int32 Index = Mesh->AddInstanceWorldSpace(Trans);
+								Trans.SetLocation(Tile->getWorldCenter() + FVector(RX, RY, Tile->getHeigth() * MapGenerator::TileSize));
+								Trans.SetRotation(Rot.Quaternion());
+								Trans.SetScale3D(FVector(Scale, Scale, Scale));
 
-							Tile->SetRescource(Index, Res, Amount);
+								int32 Index = Mesh->AddInstanceWorldSpace(Trans);
+
+								Tile->SetRescource(Index, Res, ResData.RescourceAmount, ResData.bUnlimitedRescources);
+							}
 						}
 					}
 				}
@@ -634,13 +680,15 @@ void ATableWorldTable::SetRescource(int32 X, int32 Y, ETileRescources Res, int32
 	}
 }
 
-void ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture, bool bModifyTile)
+UTileData* ATableWorldTable::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTexture, bool bModifyTile)
 {
 	ATableChunk* Chunk = getChunkForTile(X, Y);
 	if (Chunk)
 	{
 		return Chunk->SetTile(X, Y, type, bUpdateTexture, bModifyTile);
 	}
+
+	return nullptr;
 }
 
 void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileType IfTile)
@@ -654,11 +702,19 @@ void ATableWorldTable::SetTileIfTile(int32 X, int32 Y, ETileType NewTile, ETileT
 
 void ATableWorldTable::LoadTile(FGeneratedMapTile Data)
 {
-	SetTile(Data.X, Data.Y, Data.TileType, false, false);
+	UTileData* Tile = SetTile(Data.X, Data.Y, Data.TileType, false, false);
 
-	if(Data.Resscource != ETileRescources::None && Data.Resscource != ETileRescources::Max)
+	if(Tile)
 	{
-		SetRescource(Data.X, Data.Y, Data.Resscource, Data.ResscourceAmount, Data.TileType);
+		if(Tile->getTileType() == ETileType::Rock)
+		{
+			Tile->SetHeigth(getNumTilesAroundTile(Data.X, Data.Y, Tile->getTileType()) + 2);
+		}
+	}
+
+	if (Data.Resscource != ETileRescources::None && Data.Resscource != ETileRescources::Max)
+	{
+		SetRescource(Data.X, Data.Y, Data.Resscource, Data.TileType);
 	}
 }
 
@@ -744,6 +800,16 @@ ATableGamemode* ATableWorldTable::getGamemode()
 	}
 
 	return GM;
+}
+
+UTableGameInstance* ATableWorldTable::getGameInstance()
+{
+	if(!GI)
+	{
+		GI = Cast<UTableGameInstance>(GetGameInstance());
+	}
+
+	return GI;
 }
 
 UFastNoise* ATableWorldTable::getNoise()

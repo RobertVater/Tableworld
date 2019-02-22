@@ -58,11 +58,11 @@ TArray<FGeneratedMapTile> MapGenerator::GenerateMap(int32 Seed, int32 WorldSize,
 			//Place Rock
 			if(NoiseValue >= RockLevel)
 			{
-				SetTile(Tiles, WorldSize, x, y, ETileType::Rock);
+				SetTile(Tiles, WorldSize, x, y, ETileType::Rock, ETileRescources::None, ETileType::Max, NoiseValue);
 
 				int32 dx = FMath::RandRange(-1, 1);
 				int32 dy = FMath::RandRange(-1, 1);
-				SetTile(Tiles, WorldSize, x + dx, y + dy, ETileType::Rock, ETileRescources::None, 0, ETileType::Grass);
+				SetTile(Tiles, WorldSize, x + dx, y + dy, ETileType::Rock, ETileRescources::None, ETileType::Grass, NoiseValue);
 			}
 		}
 	}
@@ -79,17 +79,17 @@ TArray<FGeneratedMapTile> MapGenerator::GenerateMap(int32 Seed, int32 WorldSize,
 			//Place Sand
 			if (NoiseValue >= SandLevel)
 			{
-				SetTile(Tiles, WorldSize, x, y, ETileType::Sand);
+				SetTile(Tiles, WorldSize, x, y, ETileType::Sand, ETileRescources::None, ETileType::Max, NoiseValue);
 
 				int32 dx = FMath::RandRange(-1, 1);
 				int32 dy = FMath::RandRange(-1, 1);
-				SetTile(Tiles, WorldSize, x, y, ETileType::Sand, ETileRescources::None, 0, ETileType::Grass);
+				SetTile(Tiles, WorldSize, x, y, ETileType::Sand, ETileRescources::None, ETileType::Grass, NoiseValue);
 			}
 
 			//Place Water
 			if (NoiseValue >= WaterLevel)
 			{
-				SetTile(Tiles, WorldSize, x, y, ETileType::Water);
+				SetTile(Tiles, WorldSize, x, y, ETileType::Water, ETileRescources::None, ETileType::Max, NoiseValue);
 			}
 		}
 	}
@@ -201,7 +201,27 @@ TArray<FGeneratedMapTile> MapGenerator::GenerateMap(int32 Seed, int32 WorldSize,
 			//Place trees
 			if (NoiseValue >= TreeValue)
 			{
-				SetTile(Tiles, WorldSize, x, y, ETileType::Grass, ETileRescources::Tree, 128, ETileType::Grass);
+				SetTile(Tiles, WorldSize, x, y, ETileType::Grass, ETileRescources::Tree, ETileType::Grass, NoiseValue);
+			}
+		}
+	}
+
+	Noise->SetSeed(FMath::Rand());
+
+	for (int32 y = 0; y < MaxTiles; y++)
+	{
+		for (int32 x = 0; x < MaxTiles; x++)
+		{
+			float NoiseValue = Noise->GetNoise2D(x, y);
+
+			if (NoiseValue >= TinValue)
+			{
+				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(1, 2), ETileRescources::TinOre, ETileType::Grass);
+			}
+
+			if (NoiseValue >= CoppperValue)
+			{
+				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(1, 2), ETileRescources::CopperOre, ETileType::Grass);
 			}
 		}
 	}
@@ -217,19 +237,7 @@ TArray<FGeneratedMapTile> MapGenerator::GenerateMap(int32 Seed, int32 WorldSize,
 			//Place Berries
 			if (NoiseValue >= BerrieValue)
 			{
-				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(2, 4), ETileRescources::Berries, 128, ETileType::Grass);
-			}
-
-			//Place Tin
-			if(NoiseValue >= TinValue)
-			{
-				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(1, 2), ETileRescources::TinOre, 128, ETileType::Rock);
-			}
-
-			//Place Copper
-			if(NoiseValue >= CoppperValue)
-			{
-				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(3, 4), ETileRescources::CopperOre, 96, ETileType::Rock);
+				SetRescourceInClump(Tiles, WorldSize, x, y, FMath::RandRange(2, 4), ETileRescources::Berries, ETileType::Grass);
 			}
 		}
 	}
@@ -249,7 +257,6 @@ FGeneratedMapTile MapGenerator::CreateTile(int32 X, int32 Y, ETileType Type, ETi
 	Tile.Y = Y;
 	Tile.TileType = Type;
 	Tile.Resscource = Res;
-	Tile.ResscourceAmount = Amount;
 
 	return Tile;
 }
@@ -267,7 +274,7 @@ FGeneratedMapTile MapGenerator::getTile(TArray<FGeneratedMapTile> Array, uint8 S
 	return Tile;
 }
 
-void MapGenerator::SetTile(TArray<FGeneratedMapTile>& Array, int32 Size, int32 X, int32 Y, ETileType Type, ETileRescources Res, uint8 Amount, ETileType IfType /*= ETileType::Max*/)
+void MapGenerator::SetTile(TArray<FGeneratedMapTile>& Array, int32 Size, int32 X, int32 Y, ETileType Type, ETileRescources Res, ETileType IfType, float NoiseValue)
 {
 	int32 TileIndex = getTileIndex(X, Y, Size);
 	if(Array.IsValidIndex(TileIndex))
@@ -294,14 +301,18 @@ void MapGenerator::SetTile(TArray<FGeneratedMapTile>& Array, int32 Size, int32 X
 		if(Res != ETileRescources::None)
 		{
 			CurrentTile.Resscource = Res;
-			CurrentTile.ResscourceAmount = Amount;
+		}
+
+		if(CurrentTile.NoiseValue != NoiseValue)
+		{
+			CurrentTile.NoiseValue = NoiseValue;
 		}
 
 		Array[TileIndex] = CurrentTile;
 	}
 }
 
-void MapGenerator::SetRescourceInClump(TArray<FGeneratedMapTile>& Array, int32 Size, int32 X, int32 Y, int32 Radius, ETileRescources Res, uint8 Amount, ETileType IfTile /*= ETileType::Max*/)
+void MapGenerator::SetRescourceInClump(TArray<FGeneratedMapTile>& Array, int32 Size, int32 X, int32 Y, int32 Radius, ETileRescources Res, ETileType IfTile /*= ETileType::Max*/)
 {
 	for (int32 x = -Radius; x <= Radius; x++)
 	{
@@ -312,10 +323,17 @@ void MapGenerator::SetRescourceInClump(TArray<FGeneratedMapTile>& Array, int32 S
 				int32 XX = (X + x);
 				int32 YY = (Y + y);
 
-				SetTile(Array, Size, XX, YY, ETileType::Max, Res, Amount, IfTile);
+				SetTile(Array, Size, XX, YY, ETileType::Max, Res, IfTile);
 			}
 		}
 	}
+}
+
+bool MapGenerator::getTileArea(TArray<FGeneratedMapTile>& Array, int32 Size, TMap<ETileType, int32> RequiredTiles, int32 SizeX, int32 SizeY, int32& OutX, int32& OutY)
+{
+	
+
+	return false;
 }
 
 FColor MapGenerator::getTileColor(ETileType Type, ETileRescources Rescource /*= ETileRescources::None*/)
