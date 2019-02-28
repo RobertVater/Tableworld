@@ -20,6 +20,7 @@
 #include "World/Tile/Building/HarvesterBuilding.h"
 #include "World/MapGenerator.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Component/InfluenceComponent.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -188,11 +189,6 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 	{
 		BuildingGhost->Destroy();
 		BuildingGhost = nullptr;
-
-		if (GlobalMaterialVariables)
-		{
-			UKismetMaterialLibrary::SetScalarParameterValue(this, GlobalMaterialVariables, "bShowGrid", 0.0f);
-		}
 	}
 	
 	if (Building.ID != NAME_None)
@@ -235,6 +231,13 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 
 void ATablePlayerPawn::Input_LeftMouse_Pressed()
 {
+	if(bDestructionmode)
+	{
+		//Destroy the currently selected Tile
+		DestroyBuilding(SelectedTile);
+
+		return;
+	}
 	
 	if (HasValidBuildableTile()) 
 	{
@@ -578,6 +581,38 @@ ABuildableTile* ATablePlayerPawn::PlaceBuilding(UTileData* TargetTile, float Rot
 	return nullptr;
 }
 
+void ATablePlayerPawn::ActivateDestroyMode(bool bnDestroyMode)
+{
+	bDestructionmode = bnDestroyMode;
+}
+
+bool ATablePlayerPawn::DestroyBuilding(UTileData* Tile)
+{
+	if(Tile)
+	{
+		//Check if we want to remove a building
+		if(Tile->getTileObject())
+		{
+			ABuildableTile* Building = Tile->getTileObject();
+			if(Building)
+			{
+				Building->OnBuildingRemoved();
+				return true;
+			}
+		}
+
+		//Check if we want to remove the road
+		if(Tile->getTileType() == ETileType::DirtRoad)
+		{
+			//Set the tile back to the previous tiletype
+			getGamemode()->SetTile(Tile->getX(), Tile->getY(), Tile->getPreviousTileType(), true, true);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void ATablePlayerPawn::AdjustZoom()
 {
 	float NewZoom = FMath::Lerp(MinZoom, MaxZoom, ZoomAlpha);
@@ -686,13 +721,13 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 				{
 					bool bCanBuild = false;
 
-					TArray<ACityCentreTile*> CityCentre = getGamemode()->getTable()->getCityCentres();
-					for (int32 i = 0; i < CityCentre.Num(); i++)
+					TArray<UInfluenceComponent*> InfluenceComponents = getGamemode()->getTable()->getInfluenceComponents();
+					for (int32 i = 0; i < InfluenceComponents.Num(); i++)
 					{
-						ACityCentreTile* City = CityCentre[i];
-						if (City)
+						UInfluenceComponent* Influence = InfluenceComponents[i];
+						if (Influence)
 						{
-							if (getGamemode()->getTable()->InInfluenceRange(City->getCenterX(), City->getCenterY(), City->getBuildGridRadius(), PlaceTile->getX(), PlaceTile->getY(), BuildingSize))
+							if (getGamemode()->getTable()->InInfluenceRange(Influence->getX(), Influence->getY(), Influence->InfluenceRange, PlaceTile->getX(), PlaceTile->getY(), BuildingSize))
 							{
 								bCanBuild = true;
 								break;							

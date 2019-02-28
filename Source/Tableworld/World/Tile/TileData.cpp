@@ -34,6 +34,8 @@ void UTileData::CopyTileData(UTileData* CopyTile)
 {
 	if(CopyTile)
 	{
+		PreviousTileType = CopyTile->getTileType();
+		
 		X = CopyTile->getX();
 		Y = CopyTile->getY();
 
@@ -62,6 +64,11 @@ void UTileData::SetModified()
 void UTileData::AddBuildableTile(ABuildableTile* nTileObject)
 {
 	TileObject = nTileObject;
+}
+
+void UTileData::ClearBuildingTile()
+{
+	TileObject = nullptr;
 }
 
 void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited)
@@ -141,6 +148,11 @@ int32 UTileData::getTileRescourceAmount()
 ETileType UTileData::getTileType()
 {
 	return ETileType::Grass;
+}
+
+ETileType UTileData::getPreviousTileType()
+{
+	return PreviousTileType;
 }
 
 float UTileData::getBaseHeigth()
@@ -271,7 +283,7 @@ int32 UTileData::getLastRescourceIndex()
 	return LastIndex;
 }
 
-FTableInfoPanel UTileData::getInfoPanelData()
+FTableInfoPanel UTileData::getInfoPanelData_Implementation()
 {
 	FTableInfoPanel Data;
 
@@ -290,20 +302,53 @@ FTableInfoPanel UTileData::getInfoPanelData()
 
 			FTableInfo_Text AmountText;
 
-			if (!bUnlimitedRescource) 
+			if (!bUnlimitedRescource)
 			{
 				AmountText.RawText = FText::FromString("Amount: " + FString::FromInt(getTileRescourceAmount()));
-			}else
+			}
+			else
 			{
 				AmountText.RawText = FText::FromString("Amount: Unlimited");
 			}
-			
+
 			AmountText.Size = 20;
 			Data.InfoText.Add(AmountText);
 		}
 	}
 
-	Data.StaticWorldLocation = getWorldCenter();
-	Data.WorldContext = getParentChunk();
+	Data.PanelSize = FVector2D(250, 150);
+
+	if (!HasRescource())
+	{
+		Data.StaticWorldLocation = getWorldCenter();
+	}
+	else
+	{
+		if (getParentChunk())
+		{
+			if (getParentChunk()->getTable())
+			{
+				Data.StaticWorldLocation = getParentChunk()->getTable()->getRescourceTransform(getTileRescources(), getTileRescourceIndex()).GetLocation();
+			}
+		}
+	}
+
+	Data.WorldContext = this;
+	return Data;
+}
+
+FTableInfoPanel UTileData::getUpdateInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data;
+
+	if(!bUnlimitedRescource)
+	{
+		FTableInfo_Text AmountText;
+		AmountText.RawText = FText::FromString("Amount: " + FString::FromInt(getTileRescourceAmount()));
+
+		AmountText.Size = 20;
+		Data.InfoText.Add(AmountText);
+	}
+
 	return Data;
 }

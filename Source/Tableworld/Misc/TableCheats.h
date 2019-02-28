@@ -19,4 +19,10 @@ public:
 
 	UFUNCTION(Exec)
 	void Give(EItem ItemID = EItem::WoodLog, int32 Amount = 1);
+
+	UFUNCTION(Exec)
+	void Starter();
+
+	UFUNCTION(Exec)
+	void SpawnFloater();
 };

@@ -20,6 +20,7 @@ class UTableGameInstance;
 
 class ABuildableTile;
 class ACityCentreTile;
+class UInfluenceComponent;
 
 struct FRescourceWobble
 {
@@ -96,6 +97,8 @@ public:
 	void LoadTile(FGeneratedMapTile Data);
 
 	void AddBuilding(ABuildableTile* nBuilding);
+	void RemoveBuilding(ABuildableTile* nBuilding);
+
 	void ShowInfluenceGrid();
 	void HideInfluenceGrid();
 
@@ -127,6 +130,9 @@ public:
 	ABuildableTile* getBuildingWithID(FName UID);
 	TArray<ABuildableTile*> getBuildings();
 	TArray<ACityCentreTile*> getCityCentres();
+	TArray<UInfluenceComponent*> getInfluenceComponents();
+
+	ACityCentreTile* getNearestCityCenter(int32 X, int32 Y);
 
 	UTexture2D* getMinimapTexture();
 

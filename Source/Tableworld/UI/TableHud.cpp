@@ -46,18 +46,18 @@ void ATableHud::DrawHUD()
 
 			if(Item.Icon != nullptr)
 			{
-				float Scale = 1.5f;
+				float Scale = 64.0f / Item.Icon->GetSurfaceWidth();
 				float IconSize = 32 * Scale;
+
+				float ImageSize = Item.Icon->GetSurfaceWidth() * Scale;
+				float ImageSizeHalf = ImageSize / 2;
 
 				float X = (ScreenLoc.X - (IconSize / Scale) / 2);
 				float Y = (ScreenLoc.Y - (IconSize / Scale)) + Item.YOffset;
 
 				//BlackBackground
-				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::Black, X - (IconSize / 2)+2, Y + (IconSize / 4)+2, NULL, Scale, false);
-
-				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::White, X - (IconSize / 2), Y + (IconSize / 4), NULL, Scale, false);
-
-				DrawTexture(Item.Icon, X, Y, IconSize /  Scale, IconSize / Scale, IconSize / Scale, IconSize / Scale, 1.0f, 1.0f, FLinearColor::White, EBlendMode::BLEND_Translucent, Scale, false);
+				DrawText("+" + FString::FromInt(Item.Amount), FLinearColor::White, X - ImageSize, Y + (ImageSizeHalf / 2.0f), NULL, 2.0f);
+				DrawTextureSimple(Item.Icon, X, Y, Scale);
 			}
 		}
 	}

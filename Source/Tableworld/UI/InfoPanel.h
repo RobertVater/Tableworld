@@ -19,6 +19,7 @@ public:
 	virtual void OpenPanel(FTableInfoPanel nPanelData);
 
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	void MoveWidgetInPosition();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Setup")
 	void SetupInfo(FTableInfoPanel PanelData);

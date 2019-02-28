@@ -45,6 +45,18 @@ void UWorkerComponent::SpawnAllWorkers()
 	}
 }
 
+void UWorkerComponent::OnBuildingDestroyed()
+{
+	for(int32 i = 0; i < Workers.Num(); i++)
+	{
+		AWorkerCreature* Worker = Workers[i];
+		if(Worker)
+		{
+			Worker->Destroy();
+		}
+	}
+}
+
 uint8 UWorkerComponent::getMaxWorkerCount()
 {
 	return MaxWorkerCount;

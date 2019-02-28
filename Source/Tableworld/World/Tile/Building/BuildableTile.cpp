@@ -12,6 +12,7 @@
 #include "DrawDebugHelpers.h"
 #include "World/TableChunk.h"
 #include "Savegame/TableSavegame.h"
+#include "Component/WorkerComponent.h"
 
 ABuildableTile::ABuildableTile()
 {
@@ -51,11 +52,9 @@ void ABuildableTile::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void ABuildableTile::ShowGridRadius()
+void ABuildableTile::BuildGrid(int32 Radius)
 {
 	ClearGridRadius();
-
-	int32 Radius = getBuildGridRadius();
 
 	if (Radius > 0)
 	{
@@ -75,7 +74,7 @@ void ABuildableTile::ShowGridRadius()
 						{
 							FTransform trans;
 							FVector Location = Tile->getWorldCenter();
-							Location.Z = getGridHeigth();
+							Location.Z = (Tile->getHeigth() * MapGenerator::TileSize) + getGridHeigth();
 
 							trans.SetLocation(Location);
 							GridHighlight->AddInstanceWorldSpace(trans);
@@ -85,6 +84,11 @@ void ABuildableTile::ShowGridRadius()
 			}
 		}
 	}
+}
+
+void ABuildableTile::ShowGridRadius()
+{
+	BuildGrid(getBuildGridRadius());
 }
 
 void ABuildableTile::ClearGridRadius()
@@ -223,6 +227,73 @@ void ABuildableTile::SetIsBlocked(bool bBlocked)
 void ABuildableTile::SetHaulLocked(bool bHaulLocked)
 {
 	bHaulerIsComming = bHaulLocked;
+}
+
+void ABuildableTile::OnBuildingRemoved()
+{
+	if (getGamemode()) 
+	{
+		if (getGamemode()->getTable())
+		{
+			//Get the nearest city center
+			ACityCentreTile* BestCity = getGamemode()->getTable()->getNearestCityCenter(getCenterX(), getCenterY());
+
+			//Refund half of the buildings cost
+			for (int32 i = 0; i < getBuildingData().NeededItems.Num(); i++)
+			{
+				FNeededItems Item = getBuildingData().NeededItems[i];
+
+				int32 Refund = Item.NeededAmount / 2;
+
+				getGamemode()->AddFloatingItem(Item.NeededItem, Refund, GetActorLocation());
+
+				getGamemode()->ModifyRescource(Item.NeededItem, Refund);
+
+				if(BestCity)
+				{
+					BestCity->ModifyInventory(Item.NeededItem, Refund);
+				}
+			}
+
+			//Remove the building from the building list
+			getGamemode()->getTable()->RemoveBuilding(this);
+		}
+
+		//Check if this building has a worker component.
+		if (GetComponentByClass(UWorkerComponent::StaticClass()))
+		{
+			UWorkerComponent* WorkerComponent = Cast<UWorkerComponent>(GetComponentByClass(UWorkerComponent::StaticClass()));
+			if (WorkerComponent)
+			{
+				WorkerComponent->OnBuildingDestroyed();
+			}
+		}
+
+		//Clear our placed tiles
+		TArray<UTileData*> ChangeTiles;
+		for (int32 i = 0; i < PlacedOnTiles.Num(); i++)
+		{
+			FVector2D Location = PlacedOnTiles[i];
+
+			int32 X = (int32)Location.X;
+			int32 Y = (int32)Location.Y;
+
+			UTileData* Tile = getGamemode()->getTile(X, Y);
+			if (Tile)
+			{
+				Tile->ClearBuildingTile();
+
+				ETileType Type = Tile->getPreviousTileType();
+				getGamemode()->SetTile(X, Y, Type);
+
+				ChangeTiles.Add(Tile);
+			}
+		}
+		getGamemode()->getTable()->SetMultipleTiles(ChangeTiles);
+
+		//Destroy the building
+		Destroy();
+	}
 }
 
 void ABuildableTile::StartWork()
@@ -521,4 +592,11 @@ FTableInfoPanel ABuildableTile::getInfoPanelData_Implementation()
 
 	Panel.WorldContext = this;
 	return Panel;
+}
+
+FTableInfoPanel ABuildableTile::getUpdateInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data;
+
+	return Data;
 }

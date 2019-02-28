@@ -558,3 +558,8 @@ UTileData* ATableChunk::getLocalTile(int32 X, int32 Y)
 
 	return nullptr;
 }
+
+ATableWorldTable* ATableChunk::getTable()
+{
+	return ParentTable;
+}

@@ -16,6 +16,9 @@ class TABLEWORLD_API UInventoryComponent : public UActorComponent
 public:	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+	FText InventoryName = FText::FromString("Storage");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	int32 MaxInventory = 5;
 
 	UInventoryComponent();

@@ -58,6 +58,14 @@ void UMainHud::SelectTool(EToolbarTools NewTool)
 {
 	ShowBuildMenu(false);
 
+	if (getGamemode())
+	{
+		if (getGamemode()->getPlayerPawn())
+		{
+			getGamemode()->getPlayerPawn()->ActivateDestroyMode(false);
+		}
+	}
+
 	if(SelectedTool == NewTool || NewTool == EToolbarTools::None)
 	{
 		SelectedTool = EToolbarTools::None;
@@ -68,7 +76,21 @@ void UMainHud::SelectTool(EToolbarTools NewTool)
 
 	switch(SelectedTool)
 	{
-		case EToolbarTools::Build: ShowBuildMenu(true); break;
+		case EToolbarTools::Build:
+			ShowBuildMenu(true); 
+
+			break;
+
+		case EToolbarTools::Demolish:
+			if(getGamemode())
+			{
+				if(getGamemode()->getPlayerPawn())
+				{
+					getGamemode()->getPlayerPawn()->ActivateDestroyMode(true);
+				}
+			}
+
+			break;
 	}
 }
 

@@ -19,4 +19,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "InfoPanel")
 	FTableInfoPanel getInfoPanelData();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "InfoPanel")
+	FTableInfoPanel getUpdateInfoPanelData();
 };

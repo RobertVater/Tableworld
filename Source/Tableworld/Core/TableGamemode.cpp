@@ -154,7 +154,6 @@ void ATableGamemode::ModifyRescource(EItem Item, int32 AddAmount)
 
 bool ATableGamemode::ConsumeRescource(TArray<FNeededItems> Rescources)
 {
-	DebugWarning("Consume-----------------");
 	if(getTable())
 	{
 		//A list of storage buildings that own the required items
@@ -172,7 +171,6 @@ bool ATableGamemode::ConsumeRescource(TArray<FNeededItems> Rescources)
 				ACityCentreTile* Building = Storage[i];
 				if (Building)
 				{
-					DebugWarning("New Building-----------------");
 					TMap<EItem, int32> Stored = Building->getStoredItems();
 					for (auto Elem : Stored)
 					{
@@ -181,8 +179,6 @@ bool ATableGamemode::ConsumeRescource(TArray<FNeededItems> Rescources)
 
 						if(Item == Needed.NeededItem)
 						{
-							DebugWarning("Store " + FString::FromInt(Stored));
-							
 							if(Stored >= NeededAmount)
 							{
 								Building->ModifyInventory(Item, -NeededAmount);

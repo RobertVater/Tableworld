@@ -59,6 +59,7 @@ public:
 
 	UTileData* getTile(int32 X, int32 Y);
 	UTileData* getLocalTile(int32 X, int32 Y);
+	ATableWorldTable* getTable();
 
 protected:
 

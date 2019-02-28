@@ -58,6 +58,8 @@ public:
 	virtual FName getReadableStatus() override;
 	virtual UAnimationAsset* getWalkAnimation() override;
 
+	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
+
 protected:
 
 	UTileData* HaulTile = nullptr;

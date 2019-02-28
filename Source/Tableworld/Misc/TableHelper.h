@@ -182,6 +182,25 @@ struct FTableInfo_Item
 };
 
 USTRUCT(BlueprintType)
+struct FTableInfo_Progressbar
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progressbar")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progressbar")
+	float StartValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progressbar")
+	float MaxValue = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progressbar")
+	FLinearColor Color = FLinearColor::Green;
+};
+
+
+USTRUCT(BlueprintType)
 struct FTableInfoPanel
 {
 	GENERATED_BODY()
@@ -199,13 +218,19 @@ struct FTableInfoPanel
 	TArray<FTableInfo_Item> OutputItems;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	TArray<FTableInfo_Progressbar> Progressbar;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
 	class UInventoryComponent* InventoryComponent = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
 	class UWorkerComponent* WorkerComponent = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
-	AActor* WorldContext = nullptr;
+	FVector2D PanelSize = FVector2D(350, 400);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	UObject* WorldContext = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
 	FVector StaticWorldLocation = FVector::ZeroVector;

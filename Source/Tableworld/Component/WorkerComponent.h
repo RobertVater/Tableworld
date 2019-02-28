@@ -28,6 +28,8 @@ public:
 	virtual AWorkerCreature* SpawnWorker();
 	virtual void SpawnAllWorkers();
 
+	virtual void OnBuildingDestroyed();
+
 	uint8 getMaxWorkerCount();
 	AWorkerCreature* getDeactivatedWorker();
 	TArray<AWorkerCreature*> getWorkers();

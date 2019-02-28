@@ -85,14 +85,10 @@ void AHaulerCreature::OnMoveCompleted()
 		{
 			if (HaulTile)
 			{
-				DebugError("HaulTile");
-
 				if (HaulTile->getX() == OurTile->getX())
 				{
 					if (HaulTile->getY() == OurTile->getY())
 					{
-						DebugError("0");
-						
 						//We reached the target building
 						Event_HaulerReachedTarget.Broadcast(this);
 
@@ -159,4 +155,14 @@ UAnimationAsset* AHaulerCreature::getWalkAnimation()
 	}
 
 	return Walk;
+}
+
+FTableInfoPanel AHaulerCreature::getInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+
+	Data.InventoryComponent = InventoryComponent;
+	Data.PanelSize.Y += 50.0f;
+
+	return Data;
 }

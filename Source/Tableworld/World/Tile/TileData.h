@@ -13,7 +13,7 @@ class ATableChunk;
 class ABuildableTile;
 
 UCLASS()
-class TABLEWORLD_API UTileData : public UObject
+class TABLEWORLD_API UTileData : public UObject, public IInfoPanelInterface
 {
 	GENERATED_BODY()
 	
@@ -26,6 +26,8 @@ public:
 	void SetModified();
 
 	void AddBuildableTile(ABuildableTile* nTileObject);
+	void ClearBuildingTile();
+
 	void SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited);
 
 	void GiveHarvester();
@@ -40,6 +42,7 @@ public:
 	int32 getTileRescourceAmount();
 
 	virtual ETileType getTileType();
+	virtual ETileType getPreviousTileType();
 	virtual float getBaseHeigth();
 	float getHeigth();
 
@@ -79,8 +82,15 @@ public:
 	int32 HCost = 0;
 	UTileData* PathParent = nullptr;
 
+
 	//Interface
-	virtual FTableInfoPanel getInfoPanelData();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	FTableInfoPanel getInfoPanelData();
+	virtual FTableInfoPanel getInfoPanelData_Implementation();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	FTableInfoPanel getUpdateInfoPanelData();
+	virtual FTableInfoPanel getUpdateInfoPanelData_Implementation();
 
 protected:
 
@@ -88,6 +98,8 @@ protected:
 	ABuildableTile* TileObject = nullptr;
 
 	ATableChunk* ParentChunk = nullptr;
+
+	ETileType PreviousTileType = ETileType::Max;
 	
 	float Heigth = 0.0f;
 

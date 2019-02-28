@@ -308,6 +308,9 @@ void AFactoryBuilding::OnItemProduce()
 	//Add the output items to our storage and mark this building as haulable.
 	InventoryComponent->ModifyInventory(OutputItem, OutputItemAmount);
 
+	//Remove the input items
+	InputItemComponent->ClearInventory();
+
 	if (getGamemode())
 	{
 		getGamemode()->AddFloatingItem(OutputItem, OutputItemAmount, getWorldCenter());
@@ -324,6 +327,7 @@ void AFactoryBuilding::OnItemProduce()
 			getGamemode()->AddNotification(NewNotify);
 		}
 	}
+
 	GetWorldTimerManager().SetTimer(RescourceCheckTimer, this, &AFactoryBuilding::TryProduceOutput, RescourceCheckTime);
 }
 
@@ -367,6 +371,56 @@ FTableInfoPanel AFactoryBuilding::getInfoPanelData_Implementation()
 {
 	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
 	Data.WorkerComponent = WorkerComponent;
+	Data.InventoryComponent = InventoryComponent;
+
+	//Input
+	for (int32 i = 0; i < InputItemsData.Num(); i++)
+	{
+		FProductionItem Item = InputItemsData[i];
+
+		FTableInfo_Item InputItem;
+		InputItem.Icon = Item.Icon;
+		InputItem.Name = Item.Name;
+		InputItem.Amount = Item.Amount;
+		InputItem.RescourceChoices = getInputChoices();
+
+		Data.InputItems.Add(InputItem);
+	}
+
+	//Output
+	for (int32 i = 0; i < OutputItemsData.Num(); i++)
+	{
+		FProductionItem Item = OutputItemsData[i];
+
+		FTableInfo_Item OutputItem;
+		OutputItem.Icon = Item.Icon;
+		OutputItem.Name = Item.Name;
+		OutputItem.Amount = Item.Amount;
+
+		Data.OutputItems.Add(OutputItem);
+	}
+
+	//Add a progressbar
+	FTableInfo_Progressbar Bar;
+	Bar.Name = FText::FromString("Production: ");
+	Bar.StartValue = (GetWorldTimerManager().GetTimerElapsed(ProductionTimer) + LoadProgress);
+	Bar.MaxValue = ProductionTime;
+	
+	Data.Progressbar.Add(Bar);
+
+	return Data;
+}
+
+FTableInfoPanel AFactoryBuilding::getUpdateInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
+
+	FTableInfo_Progressbar Bar;
+	Bar.StartValue = (GetWorldTimerManager().GetTimerElapsed(ProductionTimer) + LoadProgress);
+
+	Data.Progressbar.Add(Bar);
+
+	Data.InventoryComponent = InventoryComponent;
 
 	return Data;
 }

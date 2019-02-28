@@ -15,6 +15,7 @@ ACityCentreTile::ACityCentreTile()
 {
 	WorkerComponent = CreateDefaultSubobject<UWorkerComponent>(TEXT("WorkerComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	InfluenceComponent = CreateDefaultSubobject<UInfluenceComponent>(TEXT("InfluenceComponent"));
 	
 	Tags.Add("StorageBuilding");
 }
@@ -24,7 +25,6 @@ void ACityCentreTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, 
 	Super::Place(PlaceLoc, nPlacedOnTiles, nBuildingData, bNewRotated, bLoadBuilding);
 
 	WorkerComponent->Init(this);
-
 
 	if (!bLoadBuilding)
 	{
@@ -62,7 +62,7 @@ int32 ACityCentreTile::getBuildGridRadius()
 {
 	if (BuildingData.ID != NAME_None)
 	{
-		return InfluenceRadius;
+		return InfluenceComponent->InfluenceRange;
 	}
 
 	return Super::getBuildGridRadius();
@@ -94,6 +94,8 @@ void ACityCentreTile::OnRescourceCheck()
 
 	if (FoundHauler) 
 	{
+		//We found a valid hauler for the job
+
 		AProductionBuilding* Building = getValidHaulGoal(InTile, OutTile);
 		if (Building)
 		{
@@ -108,7 +110,6 @@ void ACityCentreTile::OnRescourceCheck()
 					if (StartTile && EndTile)
 					{
 						//Send the hauler to work.
-						
 						FoundHauler->SetActorLocation(StartTile->getWorldCenter());
 
 						FoundHauler->ActivateCreature();
@@ -158,7 +159,11 @@ void ACityCentreTile::OnHaulReachedTarget(AHaulerCreature* nHauler)
 	{
 		InventoryBuilding->TransferInventory(nHauler);
 		nHauler->GiveReturnJob();
+
+		return;
 	}
+
+	nHauler->GiveReturnJob();
 }
 
 void ACityCentreTile::ModifyInventory(EItem Item, int32 Amount)
@@ -195,6 +200,10 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 				return nullptr;
 			}
 
+			AProductionBuilding* FoundHaulTarget = nullptr;
+			UTileData* FoundInTile = nullptr;
+			UTileData* FoundEndTile = nullptr;
+
 			TArray<ABuildableTile*> Buildings = getGamemode()->getTable()->getBuildings();
 			for (int32 i = 0; i < Buildings.Num(); i++)
 			{
@@ -203,8 +212,14 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 				{
 					Building->getTilesAroundUs(true);
 					
-					//Check if the building is a inventory building
+					//Check if the building is a production building
 					if (!Building->IsA(AProductionBuilding::StaticClass()))
+					{
+						continue;
+					}
+
+					//Check if the target building is connected to a road
+					if(!Building->isConnectedToRoad())
 					{
 						continue;
 					}
@@ -218,12 +233,6 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 					if (!getTable()->InInfluenceRange(getCenterX(), getCenterY(), getBuildGridRadius(), Building->getTileX(), Building->getTileY(), Building->getBuildingSize()))
 					{
 						//Do not care about buildings that are outside your range
-						continue;
-					}
-
-					//Check if the target building is connected to a road
-					if(!Building->isConnectedToRoad())
-					{
 						continue;
 					}
 
@@ -276,17 +285,40 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 									TArray<UTileData*> Path = getGamemode()->getTable()->FindPathRoad(Tile, OurTile, false);
 									if (Path.Num() > 0)
 									{
-										InTile = Tile->getPositionAsVector();
-										OutTile = OurTile->getPositionAsVector();
+										if(!FoundHaulTarget)
+										{
+											FoundHaulTarget = InventoryTile;
+											FoundInTile = Tile;
+											FoundEndTile = OurTile;
 
-										//Found a valid building!
-										return InventoryTile;
+											continue;
+										}
+
+										//Check if this building has more items stored currently
+										int32 OldStorage = FoundHaulTarget->getStoredItemCount();
+										int32 NewStorage = InventoryTile->getStoredItemCount();
+
+										if(NewStorage > OldStorage)
+										{
+											FoundHaulTarget = InventoryTile;
+											FoundInTile = Tile;
+											FoundEndTile = OurTile;
+										}
 									}
 								}
 							}
 						}
 					}
 				}
+			}
+
+			if(FoundHaulTarget)
+			{
+				InTile = FoundInTile->getPositionAsVector();
+				OutTile = FoundEndTile->getPositionAsVector();
+
+				//Found a valid building!
+				return FoundHaulTarget;
 			}
 		}
 
@@ -316,6 +348,15 @@ FTableInfoPanel ACityCentreTile::getInfoPanelData_Implementation()
 
 	Data.InventoryComponent = InventoryComponent;
 	Data.WorkerComponent = WorkerComponent;
+
+	return Data;
+}
+
+FTableInfoPanel ACityCentreTile::getUpdateInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getUpdateInfoPanelData_Implementation();
+
+	Data.InventoryComponent = InventoryComponent;
 
 	return Data;
 }

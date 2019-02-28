@@ -346,6 +346,8 @@ FTableInfoPanel ABaseCreature::getInfoPanelData_Implementation()
 	Panel.InfoText.Add(GenderText);
 
 	Panel.WorldContext = this;
+	Panel.PanelSize = FVector2D(250.0f,150.0f);
+
 	return Panel;
 }
 

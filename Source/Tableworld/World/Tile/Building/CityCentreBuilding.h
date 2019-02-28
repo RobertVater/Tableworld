@@ -8,6 +8,7 @@
 
 class UWorkerComponent;
 class UInventoryComponent;
+class UInfluenceComponent;
 
 class AWorkerCreature;
 class AProductionBuilding;
@@ -26,8 +27,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UInventoryComponent* InventoryComponent = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
-	int32 InfluenceRadius = 10;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInfluenceComponent* InfluenceComponent = nullptr;
 
 	//The delay whenever the building checks for harvesters with inventory
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CityCentre")
@@ -66,6 +67,7 @@ public:
 
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
 	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
+	virtual FTableInfoPanel getUpdateInfoPanelData_Implementation() override;
 
 protected:
 

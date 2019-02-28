@@ -494,3 +494,12 @@ FTableInfoPanel AHarvesterTile::getInfoPanelData_Implementation()
 
 	return Data;
 }
+
+FTableInfoPanel AHarvesterTile::getUpdateInfoPanelData_Implementation()
+{
+	FTableInfoPanel Data = Super::getUpdateInfoPanelData_Implementation();
+
+	Data.InventoryComponent = InventoryComponent;
+
+	return Data;
+}

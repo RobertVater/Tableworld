@@ -92,6 +92,11 @@ public:
 	virtual void TryPlaceBuilding(int32 X, int32 Y,  FTableBuilding BuildingData);
 	virtual ABuildableTile* PlaceBuilding(UTileData* Tile, float Rotation, FTableBuilding BuildingData);
 
+	UFUNCTION(BlueprintCallable, Category = "Destruction")
+	virtual void ActivateDestroyMode(bool bDestroyMode);
+
+	virtual bool DestroyBuilding(UTileData* Tile);
+
 	virtual void AdjustZoom();
 
 	UFUNCTION(BlueprintCallable,Category = "Teleport")
@@ -118,6 +123,8 @@ public:
 	FVector2D getBuildingBuildLocationTile(UTileData* Tile);
 
 protected:
+
+	bool bDestructionmode = false;
 
 	//Building
 	UTileData* SelectedTile = nullptr;

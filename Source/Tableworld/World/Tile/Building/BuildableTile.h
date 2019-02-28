@@ -51,6 +51,7 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void BuildGrid(int32 Radius);
 	virtual void ShowGridRadius();
 	virtual void ClearGridRadius();
 
@@ -66,6 +67,8 @@ public:
 
 	virtual void SetIsBlocked(bool bBlocked);
 	virtual void SetHaulLocked(bool bHaulLocked);
+
+	virtual void OnBuildingRemoved();
 
 	UFUNCTION(BlueprintCallable, Category = "Building")
 	virtual void StartWork();
@@ -162,6 +165,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
 	FTableInfoPanel getInfoPanelData();
 	virtual FTableInfoPanel getInfoPanelData_Implementation();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")
+	FTableInfoPanel getUpdateInfoPanelData();
+	virtual FTableInfoPanel getUpdateInfoPanelData_Implementation();
 
 protected:
 

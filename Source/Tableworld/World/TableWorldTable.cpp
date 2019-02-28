@@ -723,28 +723,33 @@ void ATableWorldTable::AddBuilding(ABuildableTile* nBuilding)
 	Buildings.Add(nBuilding);
 }
 
+void ATableWorldTable::RemoveBuilding(ABuildableTile* nBuilding)
+{
+	Buildings.Remove(nBuilding);
+}
+
 void ATableWorldTable::ShowInfluenceGrid()
 {
-	TArray<ACityCentreTile*> Centres = getCityCentres();
-	for(int32 i = 0; i < Centres.Num();  i++)
+	TArray<UInfluenceComponent*> Influence = getInfluenceComponents();
+	for(int32 i = 0; i < Influence.Num(); i++)
 	{
-		ACityCentreTile* Centre = Centres[i];
-		if(Centre)
+		UInfluenceComponent* Inf = Influence[i];
+		if(Inf)
 		{
-			Centre->ShowGridRadius();
+			Inf->ShowInfluenceRadius();
 		}
 	}
 }
 
 void ATableWorldTable::HideInfluenceGrid()
 {
-	TArray<ACityCentreTile*> Centres = getCityCentres();
-	for (int32 i = 0; i < Centres.Num(); i++)
+	TArray<UInfluenceComponent*> Influence = getInfluenceComponents();
+	for (int32 i = 0; i < Influence.Num(); i++)
 	{
-		ACityCentreTile* Centre = Centres[i];
-		if (Centre)
+		UInfluenceComponent* Inf = Influence[i];
+		if (Inf)
 		{
-			Centre->ClearGridRadius();
+			Inf->HideInfluenceRadius();
 		}
 	}
 }
@@ -1049,6 +1054,56 @@ TArray<ACityCentreTile*> ATableWorldTable::getCityCentres()
 	}
 
 	return CityCentres;
+}
+
+TArray<UInfluenceComponent*> ATableWorldTable::getInfluenceComponents()
+{
+	TArray<UInfluenceComponent*> Comps;
+	
+	for (int32 i = 0; i < Buildings.Num(); i++)
+	{
+		ABuildableTile* Building = Buildings[i];
+		if (Building)
+		{
+			UInfluenceComponent* Comp = Cast<UInfluenceComponent>(Building->GetComponentByClass(UInfluenceComponent::StaticClass()));
+			if(Comp)
+			{
+				Comps.Add(Comp);
+			}
+		}
+	}
+
+	return Comps;
+}
+
+ACityCentreTile* ATableWorldTable::getNearestCityCenter(int32 X, int32 Y)
+{
+	ACityCentreTile* Best = nullptr;
+	
+	TArray<ACityCentreTile*> Centers = getCityCentres();
+	for(int32 i = 0; i < Centers.Num(); i++)
+	{
+		ACityCentreTile* City = Centers[i];
+		if(City)
+		{
+			if(!Best)
+			{
+				Best = City;
+
+				continue;
+			}
+
+			int32 OldDist = UTableHelper::getDistance(X, Y, Best->getCenterX(), Best->getCenterY());
+			int32 NewDist = UTableHelper::getDistance(X, Y, City->getCenterX(), City->getCenterY());
+
+			if(NewDist < OldDist)
+			{
+				Best = City;
+			}
+		}
+	}
+
+	return Best;
 }
 
 UTexture2D* ATableWorldTable::getMinimapTexture()

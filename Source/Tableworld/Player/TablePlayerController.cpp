@@ -54,7 +54,22 @@ void ATablePlayerController::ShowInfoPanel(FTableInfoPanel PanelData)
 
 void ATablePlayerController::OnHumanDeactivated(AActor* Human)
 {
-	
+	//Check if we need to close the info panel
+	if(getHudManager())
+	{
+		if(getHudManager()->getInfoPanel())
+		{
+			//If the panel is open
+			if(getHudManager()->getInfoPanel()->IsVisible())
+			{
+				if(getHudManager()->getInfoPanel()->getPanelData().WorldContext == Human)
+				{
+					//Close the panel
+					ShowInfoPanel(FTableInfoPanel());
+				}
+			}
+		}
+	}
 }
 
 void ATablePlayerController::UpdateMinimap()

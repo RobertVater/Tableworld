@@ -10,11 +10,10 @@ void UInfoPanel::OpenPanel(FTableInfoPanel nPanelData)
 		TargetActor = nullptr;
 		PanelData = FTableInfoPanel();
 
-		DebugWarning("Hide");
 		return;
 	}
 
-	TargetActor = nPanelData.WorldContext;
+	TargetActor = Cast<AActor>(nPanelData.WorldContext);
 	PanelData = nPanelData;
 
 	bHasStaticLocation = false;
@@ -31,14 +30,9 @@ void UInfoPanel::OpenPanel(FTableInfoPanel nPanelData)
 		SetupInfo(PanelData);
 
 		//Initial move
-		APlayerController* PC = GetOwningPlayer();
-		if (PC)
-		{
-			FVector2D ScreenLoc;
-			PC->ProjectWorldLocationToScreen(getTargetWorldLocation(), ScreenLoc);
-
-			SetPositionInViewport(ScreenLoc);
-		}
+		MoveWidgetInPosition();
+		DebugLog("PanelSize " + PanelData.PanelSize.ToString());
+		DebugLog("PanelSize HalfX " + FString::SanitizeFloat(PanelData.PanelSize.X / 2));
 
 		SetVisibility(ESlateVisibility::Visible);
 	}
@@ -48,6 +42,11 @@ void UInfoPanel::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	MoveWidgetInPosition();
+}
+
+void UInfoPanel::MoveWidgetInPosition()
+{
 	if (TargetActor)
 	{
 		APlayerController* PC = GetOwningPlayer();

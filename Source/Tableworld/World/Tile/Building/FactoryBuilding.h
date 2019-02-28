@@ -83,6 +83,7 @@ public:
 
 	virtual void SaveData_Implementation(UTableSavegame* Savegame) override;
 	virtual FTableInfoPanel getInfoPanelData_Implementation() override;
+	virtual FTableInfoPanel getUpdateInfoPanelData_Implementation() override;
 
 protected:
 
