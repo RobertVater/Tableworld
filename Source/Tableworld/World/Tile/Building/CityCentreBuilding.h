@@ -59,6 +59,8 @@ public:
 
 	AProductionBuilding* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
 
+	virtual bool CanBeDeleted() override;
+
 	UFUNCTION(BlueprintCallable,BlueprintPure,Category = "Getter")
 	TMap<EItem, int32> getStoredItems();
 

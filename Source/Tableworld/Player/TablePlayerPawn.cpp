@@ -85,6 +85,14 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 
 	if (getGamemode())
 	{
+		if (bDestructionmode) 
+		{
+			if (LastHighlightBuilding)
+			{
+				LastHighlightBuilding->SetHighlighted(false);
+			}
+		}
+		
 		//Select the tile
 		SelectedTile = getGamemode()->getTile(MouseX, MouseY);
 
@@ -92,12 +100,21 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 		{
 			if(SelectedTile->getTileObject())
 			{
-				DrawDebugString(GetWorld(), getMouseWorldLocation(), SelectedTile->getTileObject()->getUID().ToString(), NULL, FColor::White, 0, true);
+				if(bDestructionmode)
+				{
+					LastHighlightBuilding = SelectedTile->getTileObject();
+					
+					//Highlight the building
+					LastHighlightBuilding->SetHighlighted(true);
+				}
 			}
 		}
 	}
 
-	MoveSelectedBuilding();
+	if (!bDestructionmode) 
+	{
+		MoveSelectedBuilding();
+	}
 }
 
 void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -381,6 +398,9 @@ void ATablePlayerPawn::Input_RightMouse_Released()
 
 void ATablePlayerPawn::Input_ZoomIn()
 {
+	//Check if the camera will be blocked
+	//TODO
+
 	ZoomLerpGoal -= 10 * GetWorld()->GetDeltaSeconds();
 	ZoomLerpGoal = FMath::Clamp(ZoomLerpGoal, 0.0f, 1.0f);
 
@@ -584,6 +604,15 @@ ABuildableTile* ATablePlayerPawn::PlaceBuilding(UTileData* TargetTile, float Rot
 void ATablePlayerPawn::ActivateDestroyMode(bool bnDestroyMode)
 {
 	bDestructionmode = bnDestroyMode;
+
+	if(!bDestructionmode)
+	{
+		if(LastHighlightBuilding)
+		{
+			LastHighlightBuilding->SetHighlighted(false);
+			LastHighlightBuilding = nullptr;
+		}
+	}
 }
 
 bool ATablePlayerPawn::DestroyBuilding(UTileData* Tile)
@@ -596,8 +625,13 @@ bool ATablePlayerPawn::DestroyBuilding(UTileData* Tile)
 			ABuildableTile* Building = Tile->getTileObject();
 			if(Building)
 			{
-				Building->OnBuildingRemoved();
-				return true;
+				if (Building->CanBeDeleted()) 
+				{
+					Building->OnBuildingRemoved();
+					return true;
+				}
+
+				return false;
 			}
 		}
 

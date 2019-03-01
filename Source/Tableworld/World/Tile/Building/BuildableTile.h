@@ -56,6 +56,7 @@ public:
 	virtual void ClearGridRadius();
 
 	virtual void SetIsGhost(FTableBuilding nBuildingData);
+	virtual void SetHighlighted(bool bHighLight);
 
 	//Called once the building got place in the world.
 	virtual void Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bRotated, bool bLoadBuilding = false);
@@ -113,6 +114,12 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FTableBuilding getBuildingData();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	TArray<UTileData*> getPlacedOnTiles();
+
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	virtual bool CanBeDeleted();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	virtual int32 getBuildGridRadius();
@@ -155,6 +162,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool isConnectedToRoad();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	UMaterialInstanceDynamic* getDynMaterial();
 
 	//Interface
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interface")

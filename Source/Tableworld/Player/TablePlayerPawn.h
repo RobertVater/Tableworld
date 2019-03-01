@@ -124,6 +124,7 @@ public:
 
 protected:
 
+	ABuildableTile* LastHighlightBuilding = nullptr;
 	bool bDestructionmode = false;
 
 	//Building

@@ -5,10 +5,45 @@
 #include "World/TableWorldTable.h"
 #include "World/MapGenerator.h"
 #include "PlatformFilemanager.h"
+#include "UI/DialogChoice.h"
+#include "Civilization/TableCivilization.h"
+#include "Savegame/TableCivSavegame.h"
 
 void AMainmenu::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AMainmenu::SelectMenuState_Implementation(int32 ActiveID)
+{
+
+}
+
+void AMainmenu::ShowInfoBox(const FText& Title, const FText& Text)
+{
+	UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
+	if (GI)
+	{
+		GI->CreatePopupInfo(Title, Text);
+	}
+}
+
+void AMainmenu::CivNew_LeftPoints_Accept()
+{
+	SaveNewCiv();
+	FinalizeCiv();
+}
+
+UDialogChoice* AMainmenu::ShowDialogBox(FText Title, FText Text, FText OptionA, FText OptionB)
+{
+	UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
+	if (GI)
+	{
+		DebugLog("Dialog");
+		return GI->CreateDialogChoice(Title, Text, OptionA, OptionB);
+	}
+
+	return nullptr;
 }
 
 void AMainmenu::NewGame()
@@ -98,6 +133,40 @@ TArray<FLoadedSavegame> AMainmenu::ListSaveGames()
 	return SaveGames;
 }
 
+TArray<FLoadedCiv> AMainmenu::ListCivs()
+{
+	TArray<FLoadedCiv> Civs;
+
+	FString SavegamePath = FString(FPaths::GameSavedDir()) + "SaveGames/Civilization/*.sav";
+	DebugLog(SavegamePath);
+	IFileManager& FileManager = IFileManager::Get();
+
+	TArray<FString> Files;
+	FileManager.FindFiles(Files, *SavegamePath, true, false);
+
+	DebugLog("Found " + FString::FromInt(Files.Num()) + " Civ Files!");
+
+	for (FString FileString : Files)
+	{
+		UTableCivSavegame* Save = Cast<UTableCivSavegame>(UGameplayStatics::LoadGameFromSlot("Civilization/" + FileString.Left(FileString.Len() - 4), 0));
+		if(Save)
+		{
+			FLoadedCiv NewCiv;
+			NewCiv.CivName = Save->Name.ToString();
+			NewCiv.CivTitle = Save->Title.ToString();
+			NewCiv.FileName = FileString.Left(FileString.Len() - 4);
+			NewCiv.SaveVersion = Save->Version.ToString();
+
+			NewCiv.TakenTraits = Save->TakenTraits;
+
+			DebugLog("Loaded " + NewCiv.CivName);
+			Civs.Add(NewCiv);
+		}
+	}
+
+	return Civs;
+}
+
 void AMainmenu::SetSeed(int32 nUsedSeed)
 {
 	UsedSeed = nUsedSeed;
@@ -175,4 +244,146 @@ UTexture2D* AMainmenu::GenerateMapPreview()
 	}
 
 	return MapPreview;
+}
+
+void AMainmenu::CreateCiv()
+{
+	if(Civilization)
+	{
+		//Reset
+		Civilization->Create();
+
+		return;
+	}
+
+	Civilization = NewObject<UTableCivilization>(UTableCivilization::StaticClass());
+	if(Civilization)
+	{
+		Civilization->Create();
+	}
+}
+
+bool AMainmenu::SetCivDetails(FText Name, FText Title)
+{
+	if(Civilization)
+	{
+		if (Name.ToString().Len() <= 0) 
+		{
+			ShowInfoBox(FText::FromString("Error"), FText::FromString("You forgot to add a name!"));
+			return false; 
+		}
+
+		if (Title.ToString().Len() <= 0)
+		{
+			ShowInfoBox(FText::FromString("Error"), FText::FromString("You forgot to add a title!"));
+			return false;
+		}
+
+		Civilization->CivName = Name;
+		Civilization->CivTitle = Title;
+
+		if(Civilization->LeftOverPoints > 0)
+		{
+			UDialogChoice* ChoiceWidget = ShowDialogBox(FText::FromString("Info"), FText::FromString("You still have traitpoints left. Are you sure you want to continue ?"), FText::FromString("Yes"), FText::FromString("No"));
+			if(ChoiceWidget)
+			{
+				ChoiceWidget->Event_OptionA.AddDynamic(this, &AMainmenu::CivNew_LeftPoints_Accept);
+
+				return false;
+			}
+		}
+
+		SaveNewCiv();
+		FinalizeCiv();
+		return true;
+	}
+
+	return false;
+}
+
+void AMainmenu::SaveNewCiv()
+{
+	if (Civilization) 
+	{
+		UTableCivSavegame* Civ = Cast<UTableCivSavegame>(UGameplayStatics::CreateSaveGameObject(UTableCivSavegame::StaticClass()));
+		if (Civ)
+		{
+			Civ->Name = FName(*Civilization->CivName.ToString());
+			Civ->Title = FName(*Civilization->CivTitle.ToString());
+			Civ->TakenTraits = Civilization->TakenTraits;
+
+			UGameplayStatics::SaveGameToSlot(Civ, "Civilization/" + Civ->Name.ToString(), 0);
+
+			DebugLog(Civ->Name.ToString() + " saved!");
+		}
+	}
+}
+
+bool AMainmenu::DeleteCiv(FString SaveGame)
+{
+	FString SavegamePath = FString(FPaths::GameSavedDir()) + "SaveGames/Civilizations/" + SaveGame + ".sav";
+
+	if (!FPlatformFileManager::Get().GetPlatformFile().DeleteFile(*SavegamePath))
+	{
+		DebugError("Failed to delete " + SaveGame + "!");
+		return false;
+	}
+
+	return true;
+}
+
+void AMainmenu::FinalizeCiv()
+{
+	if(Civilization)
+	{
+		//Copy the civ data into the gameinstance.
+		UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
+		if (GI)
+		{
+			GI->SetCivilization(Civilization);
+		}
+
+		//Move into the worldgen gamestate
+		SelectMenuState(3);
+	}
+}
+
+bool AMainmenu::BuyTrait(FCivTrait Trait)
+{
+	if (Civilization) 
+	{
+		return Civilization->BuyTrait(Trait);
+	}
+
+	return false;
+}
+
+bool AMainmenu::RefundTrait(FCivTrait Trait)
+{
+	if(Civilization)
+	{
+		return Civilization->RemoveTrait(Trait);
+	}
+
+	return false;
+}
+
+int32 AMainmenu::getCivPoints()
+{
+	if (Civilization)
+	{
+		return Civilization->LeftOverPoints;
+	}
+
+	return 0;
+}
+
+TArray<FString> AMainmenu::getCivTraits()
+{
+	if(Civilization)
+	{
+		return Civilization->TakenTraits;
+	}
+
+	return TArray<FString>();
 }

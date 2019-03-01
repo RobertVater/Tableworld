@@ -12,6 +12,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FUIHideLoadingScreen);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FUIShowError, FText, Title, FText, Text);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FUIShowDialog, FText, Title, FText, Text, FText, ChoiceA, FText, ChoiceB);
 
+class UDialogChoice;
+class UPopupInfo;
+
+class UTableCivilization;
+
 UCLASS()
 class TABLEWORLD_API UTableGameInstance : public UGameInstance
 {
@@ -19,7 +24,14 @@ class TABLEWORLD_API UTableGameInstance : public UGameInstance
 	
 public:
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
+	TSubclassOf<UDialogChoice> DialogChoice_Class;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
+	TSubclassOf<UPopupInfo> PopupInfo_Class;
+
 	virtual void Init() override;
+	void SetCivilization(UTableCivilization* CopyData);
 
 	void LoadHumanNames();
 
@@ -36,6 +48,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideLoadingScreen();
 
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	UDialogChoice* CreateDialogChoice(FText Title, FText Text, FText A, FText B);
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	UPopupInfo* CreatePopupInfo(FText Title, FText Text);
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowError(FText Title, FText Text);
@@ -48,6 +65,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
 	FTableItem getItem(EItem Item, bool& bFound);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
+	FCivTrait getTrait(const FString& ID, bool& bFound);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
 	FTableRescource getRescource(ETileRescources Rescource, bool& bFound);
@@ -80,6 +100,9 @@ public:
 	FUIShowDialog Event_ShowDialog;
 
 protected:
+
+	UPROPERTY()
+	UTableCivilization* ActiveCivilization = nullptr;
 
 	TArray<FName> HumanMale_Names;
 	TArray<FName> HumanFemale_Names;

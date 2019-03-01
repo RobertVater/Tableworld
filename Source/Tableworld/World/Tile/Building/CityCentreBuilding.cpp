@@ -327,6 +327,16 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 	return nullptr;
 }
 
+bool ACityCentreTile::CanBeDeleted()
+{
+	if(getTable())
+	{
+		return !(getTable()->getCityCentres().Num() - 1 <= 0);
+	}
+
+	return false;
+}
+
 TMap<EItem, int32> ACityCentreTile::getStoredItems()
 {
 	return InventoryComponent->getInventory();

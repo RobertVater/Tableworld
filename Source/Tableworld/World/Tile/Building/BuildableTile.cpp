@@ -106,10 +106,10 @@ void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
 	bIsGhost = true;
 	GhostOffsetZ = 50.0f;
 
-	DynMaterial = TileMesh->CreateDynamicMaterialInstance(0);
-	if(DynMaterial)
+	if(getDynMaterial())
 	{
-		DynMaterial->SetScalarParameterValue("bIsGhost", 1.0f);
+		getDynMaterial()->SetScalarParameterValue("bIsGhost", 1.0f);
+		getDynMaterial()->SetVectorParameterValue("BlockedColor", FColor::Red);
 	}
 
 	DynGridMaterial = GridHighlight->CreateDynamicMaterialInstance(0);
@@ -119,6 +119,17 @@ void ABuildableTile::SetIsGhost(FTableBuilding nBuildingData)
 	}
 
 	ShowGridRadius();
+}
+
+void ABuildableTile::SetHighlighted(bool bHighLight)
+{
+	if (!CanBeDeleted())return;
+	
+	if(getDynMaterial())
+	{
+		getDynMaterial()->SetScalarParameterValue("bIsGhost", bHighLight ? 1.0f : 0.0f);
+		getDynMaterial()->SetVectorParameterValue("BlockedColor", FColor::White);
+	}
 }
 
 void ABuildableTile::Place(FVector PlaceLoc, TArray<FVector2D> nPlacedOnTiles, FTableBuilding nBuildingData, bool bNewRotated, bool bLoadBuilding)
@@ -269,27 +280,29 @@ void ABuildableTile::OnBuildingRemoved()
 			}
 		}
 
+		TArray<UTileData*> Tiles;
+
 		//Clear our placed tiles
-		TArray<UTileData*> ChangeTiles;
 		for (int32 i = 0; i < PlacedOnTiles.Num(); i++)
 		{
 			FVector2D Location = PlacedOnTiles[i];
 
 			int32 X = (int32)Location.X;
 			int32 Y = (int32)Location.Y;
-
+			
 			UTileData* Tile = getGamemode()->getTile(X, Y);
 			if (Tile)
 			{
 				Tile->ClearBuildingTile();
 
 				ETileType Type = Tile->getPreviousTileType();
-				getGamemode()->SetTile(X, Y, Type);
+				getGamemode()->getTable()->SetTile(Tile->getX(), Tile->getY(), Type);
 
-				ChangeTiles.Add(Tile);
+				Tiles.Add(getGamemode()->getTile(Tile->getX(),Tile->getY()));
 			}
 		}
-		getGamemode()->getTable()->SetMultipleTiles(ChangeTiles);
+
+		getGamemode()->getTable()->SetMultipleTiles(Tiles);
 
 		//Destroy the building
 		Destroy();
@@ -464,6 +477,32 @@ FTableBuilding ABuildableTile::getBuildingData()
 	return BuildingData;
 }
 
+TArray<UTileData*> ABuildableTile::getPlacedOnTiles()
+{
+	TArray<UTileData*> Tiles;
+
+	for (int32 i = 0; i < PlacedOnTiles.Num(); i++)
+	{
+		FVector2D Location = PlacedOnTiles[i];
+
+		int32 X = (int32)Location.X;
+		int32 Y = (int32)Location.Y;
+
+		UTileData* Tile = getGamemode()->getTile(X, Y);
+		if (Tile)
+		{
+			Tiles.Add(Tile);
+		}
+	}
+
+	return Tiles;
+}
+
+bool ABuildableTile::CanBeDeleted()
+{
+	return true;
+}
+
 int32 ABuildableTile::getBuildGridRadius()
 {
 	return 0;
@@ -572,6 +611,16 @@ bool ABuildableTile::isHaulerComming()
 bool ABuildableTile::isConnectedToRoad()
 {
 	return bIsConnectedToRoad;
+}
+
+UMaterialInstanceDynamic* ABuildableTile::getDynMaterial()
+{
+	if(!DynMaterial)
+	{
+		DynMaterial = TileMesh->CreateDynamicMaterialInstance(0);
+	}
+
+	return DynMaterial;
 }
 
 void ABuildableTile::SaveData_Implementation(UTableSavegame* Savegame)

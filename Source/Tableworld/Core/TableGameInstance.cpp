@@ -2,6 +2,9 @@
 
 #include "TableGameInstance.h"
 #include "Misc/TableHelper.h"
+#include "UI/DialogChoice.h"
+#include "UI/PopupInfo.h"
+#include "Civilization/TableCivilization.h"
 
 FTableBuilding UTableGameInstance::getBuilding_Implementation(const FName& ID, bool& bFound)
 {
@@ -28,6 +31,22 @@ void UTableGameInstance::Init()
 	Super::Init();
 
 	LoadHumanNames();
+}
+
+void UTableGameInstance::SetCivilization(UTableCivilization* CopyData)
+{
+	if(!ActiveCivilization)
+	{
+		ActiveCivilization = NewObject<UTableCivilization>();
+	}
+
+	if(CopyData)
+	{
+		ActiveCivilization->CivName = CopyData->CivName;
+		ActiveCivilization->CivTitle = CopyData->CivTitle;
+
+		ActiveCivilization->TakenTraits = CopyData->TakenTraits;
+	}
 }
 
 void UTableGameInstance::LoadHumanNames()
@@ -101,6 +120,40 @@ void UTableGameInstance::HideLoadingScreen()
 	Event_HideLoadingScreen.Broadcast();
 }
 
+UDialogChoice* UTableGameInstance::CreateDialogChoice(FText Title, FText Text, FText A, FText B)
+{
+	if(DialogChoice_Class)
+	{
+		UDialogChoice* Popup = CreateWidget<UDialogChoice>(GetWorld()->GetFirstPlayerController(), DialogChoice_Class);
+		if(Popup)
+		{
+			Popup->Set(Title, Text, A, B);
+			Popup->AddToPlayerScreen(99999);
+
+			return Popup;
+		}
+	}
+
+	return nullptr;
+}
+
+UPopupInfo* UTableGameInstance::CreatePopupInfo(FText Title, FText Text)
+{
+	if (PopupInfo_Class)
+	{
+		UPopupInfo* Popup = CreateWidget<UPopupInfo>(GetWorld()->GetFirstPlayerController(), PopupInfo_Class);
+		if (Popup)
+		{
+			Popup->Set(Title, Text);
+			Popup->AddToPlayerScreen(99999);
+
+			return Popup;
+		}
+	}
+
+	return nullptr;
+}
+
 void UTableGameInstance::ShowError(FText Title, FText Text)
 {
 	Event_ShowError.Broadcast(Title, Text);
@@ -109,6 +162,11 @@ void UTableGameInstance::ShowError(FText Title, FText Text)
 void UTableGameInstance::ShowDialog(FText Title, FText Text, FText ChoiceA, FText ChoiceB)
 {
 	Event_ShowDialog.Broadcast(Title, Text, ChoiceA, ChoiceB);
+}
+
+FCivTrait UTableGameInstance::getTrait_Implementation(const FString& ID, bool& bFound)
+{
+	return FCivTrait();
 }
 
 bool UTableGameInstance::isLoadGame()

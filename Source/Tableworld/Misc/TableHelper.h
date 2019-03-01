@@ -419,6 +419,52 @@ struct FLoadedSavegame
 	FName LastPlayed = "1.1.1";
 };
 
+USTRUCT(BlueprintType)
+struct FLoadedCiv
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FString FileName = "Save";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FString CivName = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FString CivTitle = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	TArray<FString> TakenTraits;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Savegame")
+	FString SaveVersion = "0";
+};
+
+USTRUCT(BlueprintType)
+struct FCivTrait : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	FString ID = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	FText Tooltip;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	UTexture2D* Icon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	int32 TraitCost = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
+	bool bAddPoints = false;
+
+};
+
 UCLASS()
 class TABLEWORLD_API UTableHelper : public UBlueprintFunctionLibrary
 {

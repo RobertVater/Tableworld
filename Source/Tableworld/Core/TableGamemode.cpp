@@ -283,7 +283,7 @@ void ATableGamemode::SetTile(int32 X, int32 Y, ETileType type, bool bUpdateTextu
 {
 	if(getTable())
 	{
-		getTable()->SetTile(X, Y, type,bUpdateTexture, bModifyTile);
+		getTable()->SetTile(X, Y, type, bUpdateTexture, bModifyTile);
 	}
 }
 
