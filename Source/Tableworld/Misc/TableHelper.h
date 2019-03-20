@@ -12,6 +12,15 @@ class UTileData;
 class ATableWorldTable;
 
 UENUM(BlueprintType)
+enum class ETableResearchCategory : uint8
+{
+	Production,
+	Efficency,
+	Civil,
+	Decoration
+};
+
+UENUM(BlueprintType)
 enum class ETableDirections : uint8
 {
 	North,
@@ -141,7 +150,74 @@ enum class EToolbarTools : uint8
 	None,
 	Build,
 	Demolish,
-	Duplicate
+	Duplicate,
+	CivOverview
+};
+
+USTRUCT(BlueprintType)
+struct FTableGrass
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	int32 MinGrass = 50;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	int32 MaxGrass = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float OffsetX = 45.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float OffsetY = 45.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float Pitch = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float Yaw = 360.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float Roll = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float MinScale = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float MaxScale = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float MinHeigth = -5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grass")
+	float MaxHeigth = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FTablePathfindingRequest
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	FVector2D StartTile;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	FVector2D EndTile;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	TArray<ETileType> ForbidenTiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	TArray<ETileType> AllowedTiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	bool bAllowDiag = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	bool bIgnoreWeigths = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Path")
+	bool bIgnoreRescources = false;
 };
 
 USTRUCT(BlueprintType)
@@ -231,6 +307,9 @@ struct FTableInfoPanel
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
 	UObject* WorldContext = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
+	bool bOpenPanel = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfoPanel")
 	FVector StaticWorldLocation = FVector::ZeroVector;
@@ -382,6 +461,9 @@ struct FTableBuilding : public FTableRowBase
 	bool bDragBuilding = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+	bool bDeleteRescources = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	bool bNeedsInfluence = true;
 
 	//Actor "places" down all ghost actors and makes the building ready. Tile modifies the tile beneath the ghost actor
@@ -463,6 +545,57 @@ struct FCivTrait : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trait")
 	bool bAddPoints = false;
 
+};
+
+USTRUCT(BlueprintType)
+struct FGeneratedMapTile
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 X = 0;
+
+	UPROPERTY()
+	int32 Y = 0;
+
+	UPROPERTY()
+	ETileType TileType = ETileType::Grass;
+
+	UPROPERTY()
+	ETileRescources Resscource = ETileRescources::None;
+
+	UPROPERTY()
+	float NoiseValue = -1;
+};
+
+USTRUCT(BlueprintType)
+struct FTableResearch : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	FString ID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	FText Tooltip;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	UTexture2D* Icon = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	bool bBaseResearch = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	TArray<FString> RequiredResearch;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	TArray<FNeededItems> RequiredItems;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Research")
+	int32 TechTier = 1;
 };
 
 UCLASS()

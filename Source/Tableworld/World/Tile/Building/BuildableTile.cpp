@@ -41,6 +41,17 @@ ABuildableTile::ABuildableTile()
 void ABuildableTile::BeginPlay()
 {
 	Super::BeginPlay();
+
+	//Get a random model
+	if(bUseRandomModels)
+	{
+		int32 Index = FMath::RandRange(0, RandomModels.Num() - 1);
+		if(RandomModels.IsValidIndex(Index))
+		{
+			RandomModelID = Index;
+			TileMesh->SetStaticMesh(RandomModels[Index]);
+		}
+	}
 	
 	DefaultMaterial = TileMesh->GetMaterial(0);
 
@@ -74,7 +85,7 @@ void ABuildableTile::BuildGrid(int32 Radius)
 						{
 							FTransform trans;
 							FVector Location = Tile->getWorldCenter();
-							Location.Z = (Tile->getHeigth() * MapGenerator::TileSize) + getGridHeigth();
+							Location.Z = ((Tile->getHeigth() * MapGenerator::TileSize) + getGridHeigth()) + 10.0f;
 
 							trans.SetLocation(Location);
 							GridHighlight->AddInstanceWorldSpace(trans);
@@ -128,7 +139,7 @@ void ABuildableTile::SetHighlighted(bool bHighLight)
 	if(getDynMaterial())
 	{
 		getDynMaterial()->SetScalarParameterValue("bIsGhost", bHighLight ? 1.0f : 0.0f);
-		getDynMaterial()->SetVectorParameterValue("BlockedColor", FColor::White);
+		getDynMaterial()->SetVectorParameterValue("BlockedColor", FColor::Red);
 	}
 }
 
@@ -186,6 +197,8 @@ void ABuildableTile::InitBuilding(FVector PlaceLoc, TArray<FVector2D> nPlacedOnT
 					if (Tile)
 					{
 						getTable()->SetTile(X, Y, FoundationTile);
+						
+						Tile->LowerGrass();
 						Tiles.Add(Tile);
 					}
 				}
@@ -639,7 +652,9 @@ FTableInfoPanel ABuildableTile::getInfoPanelData_Implementation()
 
 	Panel.DetailText.Add(NameText);
 
+	Panel.PanelSize = FVector2D(250, 100);
 	Panel.WorldContext = this;
+	Panel.bOpenPanel = true;
 	return Panel;
 }
 

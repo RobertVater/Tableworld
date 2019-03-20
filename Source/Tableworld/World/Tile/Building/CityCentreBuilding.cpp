@@ -70,9 +70,6 @@ int32 ACityCentreTile::getBuildGridRadius()
 
 void ACityCentreTile::OnRescourceCheck()
 {
-	FVector2D InTile;
-	FVector2D OutTile;
-
 	//Check if we have a valid hauler with nothing todo
 	AHaulerCreature* FoundHauler = nullptr;
 
@@ -94,26 +91,35 @@ void ACityCentreTile::OnRescourceCheck()
 
 	if (FoundHauler) 
 	{
-		//We found a valid hauler for the job
-
-		AProductionBuilding* Building = getValidHaulGoal(InTile, OutTile);
-		if (Building)
+		if(!HaulBuilding)
 		{
-			Building->SetHaulLocked(true);
-
+			//Start a search in a different thread
+			(new FAutoDeleteAsyncTask<Task_GetHaulGoal>(getGamemode()->getTable(), this))->StartBackgroundTask();
+			return;
+		}
+		
+		//We found a valid hauler for the job
+		if (HaulBuilding)
+		{
 			if (getGamemode())
 			{
 				if (getGamemode()->getTable())
 				{
-					UTileData* StartTile = getGamemode()->getTile((int32)OutTile.X, (int32)OutTile.Y);
-					UTileData* EndTile = getGamemode()->getTile((int32)InTile.X, (int32)InTile.Y);
+					UTileData* StartTile = getGamemode()->getTile((int32)HomeTile.X, (int32)HomeTile.Y);
+					UTileData* EndTile = getGamemode()->getTile((int32)TargetTile.X, (int32)TargetTile.Y);
 					if (StartTile && EndTile)
 					{
+						HaulBuilding->SetHaulLocked(true);
+
 						//Send the hauler to work.
 						FoundHauler->SetActorLocation(StartTile->getWorldCenter());
 
+						StartTile->DebugHighlightTile(999, FColor::Red);
+						EndTile->DebugHighlightTile(999, FColor::Green);
+
 						FoundHauler->ActivateCreature();
-						FoundHauler->GiveHaulJob(Building->getUID(), getUID(), EndTile, StartTile);
+						FoundHauler->GiveHaulJob(HaulBuilding->getUID(), getUID(), StartTile, EndTile);
+						HaulBuilding = nullptr;
 					}
 				}
 			}
@@ -247,7 +253,7 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 						}
 
 						//Check if we can reach any of the tiles around the building
-						TArray<UTileData*> Tiles = Building->getTilesAroundUs(true);
+						TArray<UTileData*> Tiles = Building->getTilesAroundUs(false);
 
 						for (int32 j = 0; j < Tiles.Num(); j++)
 						{
@@ -270,40 +276,42 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 							for (int32 k = 0; k < TilesAroundUs.Num(); k++)
 							{
 								UTileData* OurTile = TilesAroundUs[k];
-								if (OurTile)
+								if (!OurTile)
 								{
-									if (OurTile->getTileType() != ETileType::DirtRoad)
+									continue;
+								}
+
+								if (OurTile->getTileType() != ETileType::DirtRoad)
+								{
+									continue;
+								}
+
+								if (OurTile->IsBlocked())
+								{
+									continue;
+								}
+
+								TArray<UTileData*> Path = getGamemode()->getTable()->FindPathRoad(Tile, OurTile, false);
+								if (Path.Num() > 0)
+								{
+									if (!FoundHaulTarget)
 									{
+										FoundHaulTarget = InventoryTile;
+										FoundInTile = Tile;
+										FoundEndTile = OurTile;
+
 										continue;
 									}
 
-									if (OurTile->IsBlocked())
+									//Check if this building has more items stored currently
+									int32 OldStorage = FoundHaulTarget->getStoredItemCount();
+									int32 NewStorage = InventoryTile->getStoredItemCount();
+
+									if (NewStorage > OldStorage)
 									{
-										continue;
-									}
-
-									TArray<UTileData*> Path = getGamemode()->getTable()->FindPathRoad(Tile, OurTile, false);
-									if (Path.Num() > 0)
-									{
-										if(!FoundHaulTarget)
-										{
-											FoundHaulTarget = InventoryTile;
-											FoundInTile = Tile;
-											FoundEndTile = OurTile;
-
-											continue;
-										}
-
-										//Check if this building has more items stored currently
-										int32 OldStorage = FoundHaulTarget->getStoredItemCount();
-										int32 NewStorage = InventoryTile->getStoredItemCount();
-
-										if(NewStorage > OldStorage)
-										{
-											FoundHaulTarget = InventoryTile;
-											FoundInTile = Tile;
-											FoundEndTile = OurTile;
-										}
+										FoundHaulTarget = InventoryTile;
+										FoundInTile = Tile;
+										FoundEndTile = OurTile;
 									}
 								}
 							}
@@ -325,6 +333,13 @@ AProductionBuilding* ACityCentreTile::getValidHaulGoal(FVector2D& InTile, FVecto
 	}
 
 	return nullptr;
+}
+
+void ACityCentreTile::SetValidHaulGoal(AProductionBuilding* nBuilding, FVector2D nInTile, FVector2D nOutTile)
+{
+	HaulBuilding = nBuilding;
+	HomeTile = nOutTile;
+	TargetTile = nInTile;
 }
 
 bool ACityCentreTile::CanBeDeleted()
@@ -358,6 +373,7 @@ FTableInfoPanel ACityCentreTile::getInfoPanelData_Implementation()
 
 	Data.InventoryComponent = InventoryComponent;
 	Data.WorkerComponent = WorkerComponent;
+	Data.PanelSize = FVector2D(350, 400);
 
 	return Data;
 }

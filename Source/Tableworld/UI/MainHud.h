@@ -41,6 +41,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Toolbar")
 	void ShowBuildMenu(bool bShow);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Toolbar")
+	void SelectBuildMenu(int32 MenuID);
 	
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	EToolbarTools getSelectedTool();

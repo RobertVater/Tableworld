@@ -25,9 +25,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	void OptionB();
 
-	UPROPERTY()
+	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FDialogChoice_OptionA Event_OptionA;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FDialogChoice_OptionB Event_OptionB;
 };

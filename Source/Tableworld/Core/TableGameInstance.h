@@ -16,6 +16,7 @@ class UDialogChoice;
 class UPopupInfo;
 
 class UTableCivilization;
+class UTableCivSavegame;
 
 UCLASS()
 class TABLEWORLD_API UTableGameInstance : public UGameInstance
@@ -25,13 +26,16 @@ class TABLEWORLD_API UTableGameInstance : public UGameInstance
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
-	TSubclassOf<UDialogChoice> DialogChoice_Class;
+	TSubclassOf<UDialogChoice> DialogChoice_Class = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
-	TSubclassOf<UPopupInfo> PopupInfo_Class;
+	TSubclassOf<UPopupInfo> PopupInfo_Class = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Popup")
+	TSubclassOf<UUserWidget> LoadingScreen_Class = nullptr;
 
 	virtual void Init() override;
-	void SetCivilization(UTableCivilization* CopyData);
+	void LoadCivilization(UTableCivSavegame* Save);
 
 	void LoadHumanNames();
 
@@ -55,6 +59,9 @@ public:
 	UPopupInfo* CreatePopupInfo(FText Title, FText Text);
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
+	UUserWidget* CreateLoadingScreen();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowError(FText Title, FText Text);
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
@@ -75,16 +82,38 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Data")
 	TArray<FTableBuilding> getBuildingsForAgeAndCategory(ETableAge Age, ETableTileCategory Category, bool& bFound);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool isLoadGame();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FString getSaveGame();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	int32 getSeed();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	uint8 getWorldSize();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	bool hasRivers();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	uint8 getRiverCount();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	FName getHumanName(int32 Index, bool bIsMale);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	int32 getRandomHumanName(bool bIsMale);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	FText getCivName();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	FText getCivTitle();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
+	TArray<FString> getCivTraits();
 
 	//Event
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "Events")

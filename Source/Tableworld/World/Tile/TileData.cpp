@@ -71,14 +71,18 @@ void UTileData::ClearBuildingTile()
 	TileObject = nullptr;
 }
 
-void UTileData::SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited)
+void UTileData::SetRescource(ETileRescources Type, int32 Amount, bool bUnlimited)
 {
-	RescourceIndex = Index;
 	TileRescource = Type;
 	RescourceCount = Amount;
 	bUnlimitedRescource = bUnlimited;
 
 	LastResource = Type;
+}
+
+void UTileData::SetRescourceIndex(int32 Index)
+{
+	RescourceIndex = Index;
 	LastIndex = Index;
 }
 
@@ -117,6 +121,28 @@ void UTileData::ClearRescource()
 	bWasModified = true;
 }
 
+void UTileData::SetGrassIDs(uint8 GrassIDs)
+{
+	GrassID = GrassIDs;
+}
+
+void UTileData::LowerGrass()
+{
+	if (ParentChunk)
+	{
+		if (ParentChunk->getTable()) 
+		{
+			FTransform Trans = ParentChunk->getGrassTransform(GrassID);
+
+			FVector Loc = Trans.GetLocation();
+			Loc.Z -= 200;
+
+			Trans.SetLocation(Loc);
+			ParentChunk->UpdateGrassTransform(GrassID, Trans);
+		}
+	}
+}
+
 void UTileData::DebugHighlightTile(float Time /*= 10.0f*/, FColor Color)
 {
 	if (UTableHelper::isDebug()) 
@@ -143,6 +169,16 @@ int32 UTileData::getTileRescourceAmount()
 	}
 	
 	return RescourceCount;
+}
+
+FTransform UTileData::getRescourceTransform()
+{
+	if(ParentChunk)
+	{
+		return ParentChunk->getRescourceTransform(getTileRescources(), getTileRescourceIndex());
+	}
+
+	return FTransform();
 }
 
 ETileType UTileData::getTileType()
@@ -225,9 +261,9 @@ int32 UTileData::getGCost()
 	return GCost;
 }
 
-bool UTileData::IsBlocked()
+bool UTileData::IsBlocked(bool bIgnoreRescource)
 {
-	return !CanBuildOnTile();
+	return !CanBuildOnTile(bIgnoreRescource);
 }
 
 int32 UTileData::getMovementCost()
@@ -235,10 +271,11 @@ int32 UTileData::getMovementCost()
 	return 0;
 }
 
-bool UTileData::CanBuildOnTile()
+bool UTileData::CanBuildOnTile(bool bIgnoreRescource)
 {
 	if (TileObject != nullptr)return false;
-	if (getTileRescources() != ETileRescources::None)return false;
+	if (!bIgnoreRescource && getTileRescources() != ETileRescources::None)return false;
+	if (bIgnoreRescource && HasHarvester())return false;
 
 	return true;
 }
@@ -317,23 +354,10 @@ FTableInfoPanel UTileData::getInfoPanelData_Implementation()
 	}
 
 	Data.PanelSize = FVector2D(250, 150);
-
-	if (!HasRescource())
-	{
-		Data.StaticWorldLocation = getWorldCenter();
-	}
-	else
-	{
-		if (getParentChunk())
-		{
-			if (getParentChunk()->getTable())
-			{
-				Data.StaticWorldLocation = getParentChunk()->getTable()->getRescourceTransform(getTileRescources(), getTileRescourceIndex()).GetLocation();
-			}
-		}
-	}
+	Data.StaticWorldLocation = getWorldCenter();
 
 	Data.WorldContext = this;
+	Data.bOpenPanel = true;
 	return Data;
 }
 

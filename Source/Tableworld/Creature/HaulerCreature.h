@@ -37,7 +37,7 @@ public:
 	FHaulerReturnedHome Event_HaulerReturnedHome;
 
 	AHaulerCreature();
-	void GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nTargetTile, UTileData* nHomeTile);
+	void GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nHomeTile, UTileData* nTargetTile);
 
 	void GiveReturnJob();
 	void ForceReturnJob();

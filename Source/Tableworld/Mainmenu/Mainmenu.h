@@ -73,6 +73,9 @@ public:
 	bool DeleteCiv(FString SaveGame);
 
 	UFUNCTION(BlueprintCallable, Category = "Civilization")
+	void SelectCiv(FString CivSaveGame);
+
+	UFUNCTION(BlueprintCallable, Category = "Civilization")
 	void FinalizeCiv();
 
 	UFUNCTION(BlueprintCallable, Category = "Main")
@@ -87,6 +90,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Getter")
 	TArray<FString> getCivTraits();
 
+	void OnGamemapLoaded();
 
 protected:
 
@@ -97,6 +101,10 @@ protected:
 	int32 WorldSize = 8;
 	bool bGenerateRivers = true;
 	uint8 RiverCount = 4;
+
+	UPROPERTY()
+	UUserWidget* Loading = nullptr;
+	FTimerHandle GamemapLoadTimer;
 
 	UPROPERTY()
 	UTexture2D* MapPreview = nullptr;

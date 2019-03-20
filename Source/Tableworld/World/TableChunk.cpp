@@ -9,6 +9,8 @@
 #include "Misc/TableHelper.h"
 #include "Misc/Math/FastNoise.h"
 #include "Tile/GrassTile.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
 ATableChunk::ATableChunk()
 {
@@ -16,6 +18,10 @@ ATableChunk::ATableChunk()
 
 	ChunkMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ChunkMesh"));
 	RootComponent = ChunkMesh;
+
+	Grass = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("Grass"));
+	Grass->SetCastShadow(false);
+	Grass->SetupAttachment(GetRootComponent());
 }
 
 void ATableChunk::BeginPlay()
@@ -122,6 +128,108 @@ void ATableChunk::GenerateChunkMesh()
 		ChunkTexture->SRGB = false;
 		ChunkTexture->Filter = TextureFilter::TF_Nearest;
 		ChunkTexture->UpdateResource();
+	}
+}
+
+void ATableChunk::GenerateInstancedMesh(FTableGrass GrassSettings, TMap<ETileRescources, UStaticMesh*> RescourceMesh, UStaticMesh* GrassMesh)
+{
+	for (auto Elem : RescourceMesh)
+	{
+		ETileRescources Res = Elem.Key;
+		UStaticMesh* Mesh = Elem.Value;
+
+		if (Res != ETileRescources::None && Res != ETileRescources::Max)
+		{
+			UInstancedStaticMeshComponent* InstMesh = NewObject<UInstancedStaticMeshComponent>(this);
+			if (InstMesh)
+			{
+				InstMesh->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+				InstMesh->SetStaticMesh(Mesh);
+				InstMesh->RegisterComponent();
+
+				InstancedRescourcesMesh.Add(Res, InstMesh);
+			}
+		}
+	}
+
+	Grass->SetStaticMesh(GrassMesh);
+	Grass->ClearInstances();
+	
+	for(int32 i = 0; i < Tiles.Num(); i++)
+	{
+		UTileData* Tile = Tiles[i];
+		if(Tile)
+		{
+			//Generate grass
+			if(Tile->getTileType() == ETileType::Grass)
+			{
+				float OffSetX = GrassSettings.OffsetX;
+				float OffSetY = GrassSettings.OffsetY;
+
+				float WorldX = Tile->getWorldCenter().X + FMath::RandRange(-OffSetX, OffSetX);
+				float WorldY = Tile->getWorldCenter().Y + FMath::RandRange(-OffSetY, OffSetY);
+
+				float Pitch = FMath::RandRange(-GrassSettings.Pitch, GrassSettings.Pitch);
+				float Yaw = FMath::RandRange(-GrassSettings.Yaw, GrassSettings.Yaw);
+				float Roll = FMath::RandRange(-GrassSettings.Roll, GrassSettings.Roll);
+
+				float Scale = FMath::RandRange(GrassSettings.MinScale, GrassSettings.MaxScale);
+				float Heigth = FMath::RandRange(GrassSettings.MinHeigth, GrassSettings.MaxHeigth);
+
+				FTransform Trans;
+				FVector WorldLoc = FVector(WorldX, WorldY, Heigth);
+				FRotator WorldRot = FRotator(Pitch, Yaw, Roll);
+				FVector WorldScale = FVector(Scale, Scale, Scale);
+
+				Trans.SetLocation(WorldLoc);
+				Trans.SetRotation(WorldRot.Quaternion());
+				Trans.SetScale3D(WorldScale);
+
+				int32 ID = Grass->AddInstanceWorldSpace(Trans);
+				Tile->SetGrassIDs(ID);
+			}
+
+			//Generate other Rescources
+			if(Tile->HasRescource())
+			{
+				UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Tile->getTileRescources());
+				if(Mesh)
+				{
+					float OffsetX = FMath::RandRange(-50, 50);
+					float OffsetY = FMath::RandRange(-50, 50);
+
+					float Scale = FMath::RandRange(0.8f, 1.0f);
+					float Heigth = FMath::RandRange(-10.0f, 0.5f);
+
+					float Pitch = FMath::RandRange(-5.0f, 5.0f);
+					float Roll = FMath::RandRange(-5.0f, 5.0f);
+					float Yaw = FMath::RandRange(0.0f, 360.0f);
+
+					FTransform MeshTrans;
+					FVector Location = Tile->getWorldCenter();
+					Location.X += OffsetX;
+					Location.Y += OffsetY;
+					Location.Z = (Tile->getHeigth() * MapGenerator::TileSize) + Heigth;
+
+					FRotator Rotation;
+					Rotation.Pitch = Pitch;
+					Rotation.Roll = Roll;
+					Rotation.Yaw = Yaw;
+
+					FVector ScaleVector;
+					ScaleVector.X = Scale;
+					ScaleVector.Y = Scale;
+					ScaleVector.Z = Scale;
+
+					MeshTrans.SetLocation(Location);
+					MeshTrans.SetRotation(Rotation.Quaternion());
+					MeshTrans.SetScale3D(ScaleVector);
+
+					int32 Index = Mesh->AddInstanceWorldSpace(MeshTrans);
+					Tile->SetRescourceIndex(Index);
+				}
+			}
+		}
 	}
 }
 
@@ -519,6 +627,84 @@ void ATableChunk::RebuildMesh()
 	UKismetProceduralMeshLibrary::CreateGridMeshTriangles(ActualChunkSize, ActualChunkSize, true, Triangles);
 	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UVs, Normals, Tangents);
 	ChunkMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, TArray<FVector2D>(), TArray<FVector2D>(), TArray<FVector2D>(), TArray<FColor>(), Tangents, true);
+}
+
+UInstancedStaticMeshComponent* ATableChunk::getRescourceInstanceMesh(ETileRescources Rescource)
+{
+	return InstancedRescourcesMesh.FindRef(Rescource);
+}
+
+FTransform ATableChunk::getRescourceTransform(ETileRescources Rescource, int32 Index)
+{
+	FTransform Trans;
+	UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Rescource);
+	if (Mesh)
+	{
+		Mesh->GetInstanceTransform(Index, Trans, true);
+	}
+
+	return Trans;
+}
+
+bool ATableChunk::RemoveRescource(UTileData* Tile)
+{
+	if (Tile)
+	{
+		DebugWarning("-1");
+
+		if (Tile->HasRescource())
+		{
+			DebugWarning("0");
+			if (!Tile->HasHarvester())
+			{
+				DebugWarning("1");
+				int32 ID = Tile->getTileRescourceIndex();
+
+				UInstancedStaticMeshComponent* Mesh = InstancedRescourcesMesh.FindRef(Tile->getTileRescources());
+				if (Mesh)
+				{
+					DebugWarning("2");
+
+					FTransform Trans;
+					Mesh->GetInstanceTransform(ID, Trans);
+
+					FVector Location = Trans.GetLocation();
+					Location.Z = -500;
+					Trans.SetLocation(Location);
+
+					Mesh->UpdateInstanceTransform(ID, Trans, true, true);
+
+					//Clear the rescource
+					Tile->ClearRescource();
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+FTransform ATableChunk::getGrassTransform(int32 Index)
+{
+	FTransform Trans;
+	if (Grass)
+	{
+		Grass->GetInstanceTransform(Index, Trans, true);
+	}
+
+	return Trans;
+}
+
+bool ATableChunk::UpdateGrassTransform(int32 ID, FTransform Trans)
+{
+	if (Grass)
+	{
+		Grass->UpdateInstanceTransform(ID, Trans, true, true);
+		return true;
+	}
+
+	return false;
 }
 
 int32 ATableChunk::getX()

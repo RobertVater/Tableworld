@@ -3,15 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-struct FGeneratedMapTile
-{
-	int32 X = 0;
-	int32 Y = 0;
-	ETileType TileType = ETileType::Grass;
-	ETileRescources Resscource = ETileRescources::None;
-	float NoiseValue = -1;
-};
+#include "Misc/TableHelper.h"
 
 class TABLEWORLD_API MapGenerator
 {

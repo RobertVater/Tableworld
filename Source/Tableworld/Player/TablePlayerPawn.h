@@ -15,6 +15,9 @@ class ABuildableTile;
 class ATablePlayerController;
 class USpringArmComponent;
 class UCameraComponent;
+class UBillboardComponent;
+
+class UInstancedStaticMeshComponent;
 
 class UMaterialExpressionCollectionParameter;
 
@@ -32,7 +35,31 @@ public:
 	USpringArmComponent* SpringArm = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UBillboardComponent* CameraGoal = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCameraComponent* Camera = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UInstancedStaticMeshComponent* DragBuildingMesh = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UInstancedStaticMeshComponent* InstancedHighlightMesh = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* HighlightMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	USoundBase* BuildingPlaceSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	USoundBase* BuildingRemoveSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	UParticleSystem* BuildingPlaceParticles = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	UParticleSystem* BuildingRemoveParticles = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zoom")
 	UMaterialParameterCollection* GlobalMaterialVariables = nullptr;;
@@ -58,7 +85,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	void UpdateCamera(float Delta);
 	void MoveSelectedBuilding();
+
+	//FX
+	void PlaySound2D(USoundBase* Sound);
 
 	virtual void SetCurrentBuilding(FTableBuilding Building);
 
@@ -95,6 +126,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Destruction")
 	virtual void ActivateDestroyMode(bool bDestroyMode);
 
+	virtual int32 AddHighlight(FVector Location);
+	virtual void RemoveHighlight(int32 Index);
+	virtual void ClearHighlight();
+
 	virtual bool DestroyBuilding(UTileData* Tile);
 
 	virtual void AdjustZoom();
@@ -124,6 +159,9 @@ public:
 
 protected:
 
+	UPROPERTY()
+	UAudioComponent* UISound = nullptr;
+
 	ABuildableTile* LastHighlightBuilding = nullptr;
 	bool bDestructionmode = false;
 
@@ -142,7 +180,7 @@ protected:
 	FVector2D DragTileLocation;
 	FVector2D StartDragTile;
 	FVector2D EndDragTile;
-	TArray<FVector2D> DragTiles;
+	TArray<UTileData*> DragTiles;
 
 	ATableGamemode* GM = nullptr;
 	UTableGameInstance* GI = nullptr;

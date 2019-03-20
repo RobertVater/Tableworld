@@ -77,8 +77,8 @@ void UMainHud::SelectTool(EToolbarTools NewTool)
 	switch(SelectedTool)
 	{
 		case EToolbarTools::Build:
+			SelectBuildMenu(0);
 			ShowBuildMenu(true); 
-
 			break;
 
 		case EToolbarTools::Demolish:
@@ -91,7 +91,17 @@ void UMainHud::SelectTool(EToolbarTools NewTool)
 			}
 
 			break;
+
+		case EToolbarTools::CivOverview:
+			SelectBuildMenu(1);
+			ShowBuildMenu(true);
+			break;
 	}
+}
+
+void UMainHud::SelectBuildMenu_Implementation(int32 MenuID)
+{
+
 }
 
 EToolbarTools UMainHud::getSelectedTool()

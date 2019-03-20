@@ -251,7 +251,6 @@ void AHarvesterTile::OnWorkerReturn(AHarvesterCreature* ReturningWorker)
 
 void AHarvesterTile::OnInputItemChanged(int32 Index)
 {
-	DebugLog("Changed Input Rescource to index " + FString::FromInt(Index));
 	HarvestRescourceIndex = Index;
 
 	TArray<AWorkerCreature*> Workers = getWorkers();
@@ -410,6 +409,8 @@ EItem AHarvesterTile::getItemType()
 
 EItem AHarvesterTile::getProducedItem()
 {
+	if (HarvesterType == EHarvesterType::Tile)return EItem::None;
+	
 	if(ProducedItems.IsValidIndex(getHarvestRescourceIndex()))
 	{
 		return ProducedItems[getHarvestRescourceIndex()];
@@ -421,6 +422,8 @@ EItem AHarvesterTile::getProducedItem()
 
 ETileRescources AHarvesterTile::getHarvestRescource()
 {
+	if (HarvesterType == EHarvesterType::Rescource)return ETileRescources::None;
+	
 	if (HarvestRescources.IsValidIndex(getHarvestRescourceIndex())) 
 	{
 		return HarvestRescources[getHarvestRescourceIndex()];
@@ -492,6 +495,7 @@ FTableInfoPanel AHarvesterTile::getInfoPanelData_Implementation()
 		Data.OutputItems.Add(OutputItem);
 	}
 
+	Data.PanelSize = FVector2D(350, 400);
 	return Data;
 }
 

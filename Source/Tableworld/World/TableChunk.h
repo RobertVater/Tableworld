@@ -12,6 +12,8 @@ class UProceduralMeshComponent;
 class UTileData;
 class ATableWorldTable;
 
+class UInstancedStaticMeshComponent;
+
 UCLASS()
 class TABLEWORLD_API ATableChunk : public AActor
 {
@@ -22,6 +24,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UProceduralMeshComponent* ChunkMesh = nullptr;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UInstancedStaticMeshComponent* Grass = nullptr;
+
 	ATableChunk();
 	virtual void BeginPlay() override;
 
@@ -31,6 +36,7 @@ public:
 
 	virtual void GenerateTileData();
 	virtual void GenerateChunkMesh();
+	virtual void GenerateInstancedMesh(FTableGrass Grass, TMap<ETileRescources, UStaticMesh*> RescourceMesh, UStaticMesh* GrassMesh);
 
 	//Mesh
 	virtual void AddPlane(float X, float Y, int32 VertIndex, TArray<FVector>& Verts, TArray<FVector2D>& UVs);
@@ -53,6 +59,13 @@ public:
 	void ChangeTileHeight(int32 X, int32 Y, float Heigth);
 	void ChangeVertHeight(int32 WorldX, int32 WorldY, float Heigth);
 	void RebuildMesh();
+
+	//Instanced Mesh
+	UInstancedStaticMeshComponent* getRescourceInstanceMesh(ETileRescources Rescource);
+	FTransform getRescourceTransform(ETileRescources Rescource, int32 Index);
+	bool RemoveRescource(UTileData* Tile);
+	FTransform getGrassTransform(int32 Index);
+	bool UpdateGrassTransform(int32 ID, FTransform Trans);
 
 	int32 getX();
 	int32 getY();
@@ -86,4 +99,7 @@ protected:
 
 	UPROPERTY()
 	UTexture2D* ChunkTexture = nullptr;
+
+	UPROPERTY()
+	TMap<ETileRescources, UInstancedStaticMeshComponent*> InstancedRescourcesMesh;
 };

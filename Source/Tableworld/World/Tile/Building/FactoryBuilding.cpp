@@ -407,6 +407,7 @@ FTableInfoPanel AFactoryBuilding::getInfoPanelData_Implementation()
 	Bar.MaxValue = ProductionTime;
 	
 	Data.Progressbar.Add(Bar);
+	Data.PanelSize = FVector2D(350, 400);
 
 	return Data;
 }

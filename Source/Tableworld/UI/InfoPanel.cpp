@@ -21,10 +21,12 @@ void UInfoPanel::OpenPanel(FTableInfoPanel nPanelData)
 	{
 		bHasStaticLocation = true;
 		StaticWorldLocation = nPanelData.StaticWorldLocation;
+
+		DebugLog("StaticLoc");
 	}
 
 	//Set the location of the widget to the buildings world location
-	if (TargetActor)
+	if (PanelData.bOpenPanel)
 	{
 		//Setup the default data
 		SetupInfo(PanelData);
@@ -47,7 +49,7 @@ void UInfoPanel::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 void UInfoPanel::MoveWidgetInPosition()
 {
-	if (TargetActor)
+	if (IsVisible()) 
 	{
 		APlayerController* PC = GetOwningPlayer();
 		if (PC)

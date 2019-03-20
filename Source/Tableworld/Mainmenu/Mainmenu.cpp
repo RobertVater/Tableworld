@@ -39,7 +39,6 @@ UDialogChoice* AMainmenu::ShowDialogBox(FText Title, FText Text, FText OptionA, 
 	UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
 	if (GI)
 	{
-		DebugLog("Dialog");
 		return GI->CreateDialogChoice(Title, Text, OptionA, OptionB);
 	}
 
@@ -53,12 +52,11 @@ void AMainmenu::NewGame()
 	{
 		//Save the chosen settings
 		GI->PrepareNewGame(UsedSeed, WorldSize, bGenerateRivers, RiverCount);
-		
-		//Leave the main menu
-		LeaveMainmenu();
+
+		Loading = GI->CreateLoadingScreen();
 
 		//Load a new map
-		UGameplayStatics::OpenLevel(this, "Gamemap");
+		GetWorldTimerManager().SetTimer(GamemapLoadTimer, this, &AMainmenu::OnGamemapLoaded, 1.0f);
 	}
 }
 
@@ -321,7 +319,7 @@ void AMainmenu::SaveNewCiv()
 
 bool AMainmenu::DeleteCiv(FString SaveGame)
 {
-	FString SavegamePath = FString(FPaths::GameSavedDir()) + "SaveGames/Civilizations/" + SaveGame + ".sav";
+	FString SavegamePath = FString(FPaths::GameSavedDir()) + "SaveGames/Civilization/" + SaveGame + ".sav";
 
 	if (!FPlatformFileManager::Get().GetPlatformFile().DeleteFile(*SavegamePath))
 	{
@@ -332,17 +330,27 @@ bool AMainmenu::DeleteCiv(FString SaveGame)
 	return true;
 }
 
+void AMainmenu::SelectCiv(FString CivSaveGame)
+{
+	if (CivSaveGame != "") 
+	{
+		UTableCivSavegame* Save = Cast<UTableCivSavegame>(UGameplayStatics::LoadGameFromSlot("Civilization/" + CivSaveGame, 0));
+		if (Save) 
+		{
+			//Copy the civ data into the gameinstance.
+			UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
+			if (GI)
+			{
+				GI->LoadCivilization(Save);
+			}
+		}
+	}
+}
+
 void AMainmenu::FinalizeCiv()
 {
 	if(Civilization)
 	{
-		//Copy the civ data into the gameinstance.
-		UTableGameInstance* GI = Cast<UTableGameInstance>(UGameplayStatics::GetGameInstance(this));
-		if (GI)
-		{
-			GI->SetCivilization(Civilization);
-		}
-
 		//Move into the worldgen gamestate
 		SelectMenuState(3);
 	}
@@ -386,4 +394,12 @@ TArray<FString> AMainmenu::getCivTraits()
 	}
 
 	return TArray<FString>();
+}
+
+void AMainmenu::OnGamemapLoaded()
+{
+	//Leave the main menu
+	LeaveMainmenu();
+
+	UGameplayStatics::OpenLevel(this, "Gamemap");
 }

@@ -28,18 +28,23 @@ public:
 	void AddBuildableTile(ABuildableTile* nTileObject);
 	void ClearBuildingTile();
 
-	void SetRescource(int32 Index, ETileRescources Type, int32 Amount, bool bUnlimited);
+	void SetRescource(ETileRescources Type, int32 Amount, bool bUnlimited);
+	void SetRescourceIndex(int32 Index);
 
 	void GiveHarvester();
 	void ClearHarvester();
 	void UpdateRescource(int32 Amount);
 	void ClearRescource();
 
+	void SetGrassIDs(uint8 GrassIDs);
+	void LowerGrass();
+
 	void DebugHighlightTile(float Time = 10.0f, FColor Color = FColor::Blue);
 
 	int32 getTileRescourceIndex();
 	ETileRescources getTileRescources();
 	int32 getTileRescourceAmount();
+	FTransform getRescourceTransform();
 
 	virtual ETileType getTileType();
 	virtual ETileType getPreviousTileType();
@@ -61,10 +66,10 @@ public:
 	int32 getFCost();
 	int32 getHCost();
 	int32 getGCost();
-	virtual bool IsBlocked();
+	virtual bool IsBlocked(bool bIgnoreRescource = false);
 	virtual int32 getMovementCost();
 
-	bool CanBuildOnTile();
+	bool CanBuildOnTile(bool bIgnoreRescource = false);
 
 	bool HasRescource();
 	bool HasHarvester();
@@ -96,10 +101,10 @@ protected:
 
 	//The building that is sitting on this tile
 	ABuildableTile* TileObject = nullptr;
-
 	ATableChunk* ParentChunk = nullptr;
 
 	ETileType PreviousTileType = ETileType::Max;
+	uint8 GrassID;
 	
 	float Heigth = 0.0f;
 

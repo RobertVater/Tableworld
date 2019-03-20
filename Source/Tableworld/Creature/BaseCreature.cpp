@@ -182,8 +182,12 @@ void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 			{
 				StopMovement();
 				MinDistance = nMinDistance;
+				FTablePathfindingRequest request;
 
-				LastCalculatedPath = getGamemode()->getTable()->FindPath(FVector2D(getStandingTile()->getX(), getStandingTile()->getY()), FVector2D(TargetTile->getX(), TargetTile->getY()), TArray<ETileType>());
+				request.StartTile = FVector2D(getStandingTile()->getX(), getStandingTile()->getY());
+				request.EndTile = FVector2D(TargetTile->getX(), TargetTile->getY());
+
+				LastCalculatedPath = getGamemode()->getTable()->FindPath(request);
 				for(int32 i = LastCalculatedPath.Num()-1; i > 0; i--)
 				{
 					UTileData* Tile = LastCalculatedPath[i];
@@ -197,7 +201,7 @@ void ABaseCreature::PathMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 	}
 }
 
-void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.0f*/)
+void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance)
 {
 	if (TargetTile)
 	{
@@ -208,7 +212,7 @@ void ABaseCreature::RoadMoveTo(UTileData* TargetTile, float nMinDistance /*= 50.
 				StopMovement();
 				MinDistance = nMinDistance;
 
-				LastCalculatedPath = getGamemode()->getTable()->FindPathRoad(getStandingTile(), TargetTile, false);
+				LastCalculatedPath = getGamemode()->getTable()->FindPathRoad(getStandingTile(), TargetTile);
 				for (int32 i = 0; i < LastCalculatedPath.Num(); i++)
 				{
 					UTileData* Tile = LastCalculatedPath[i];
@@ -347,6 +351,7 @@ FTableInfoPanel ABaseCreature::getInfoPanelData_Implementation()
 
 	Panel.WorldContext = this;
 	Panel.PanelSize = FVector2D(250.0f,150.0f);
+	Panel.bOpenPanel = true;
 
 	return Panel;
 }

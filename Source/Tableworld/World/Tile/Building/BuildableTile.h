@@ -39,6 +39,12 @@ public:
 	UInstancedStaticMeshComponent* GridHighlight = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+	bool bUseRandomModels = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+	TArray<UStaticMesh*> RandomModels;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
 	bool bChangeFoundationTiles = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
@@ -182,6 +188,7 @@ public:
 
 protected:
 
+	int32 RandomModelID = 0;
 	bool bRotated = false;
 	float GhostOffsetZ = 0.0f;
 

@@ -14,6 +14,7 @@ class UTileData;
 class ATableChunk;
 class UFastNoise;
 class UInstancedStaticMeshComponent;
+class UHierarchicalInstancedStaticMeshComponent;
 class ATablePlayerController;
 class ATableGamemode;
 class UTableGameInstance;
@@ -21,9 +22,12 @@ class UTableGameInstance;
 class ABuildableTile;
 class ACityCentreTile;
 class UInfluenceComponent;
+class Thread_Pathfinder;
 
 struct FRescourceWobble
 {
+	ATableChunk* ParentChunk = nullptr;
+
 	ETileRescources Rescource = ETileRescources::None;
 	int32 InstanceIndex = 0;
 
@@ -46,6 +50,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UInstancedStaticMeshComponent* WaterPlanes = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+	FTableGrass GrassSettings;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	int32 TilesInPixels = 32;
 
@@ -61,18 +68,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
 	TMap<ETileRescources, UStaticMesh*> RescourceMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tile")
+	UStaticMesh* GrassMesh = nullptr;
+
 	ATableWorldTable();
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	void AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life);
+	void AddRescourceWobble(ETileRescources Rescource, int32 Index, float Life, ATableChunk* nParentChunk);
 
 	//Generated a new map
 	virtual void InitTable(int32 Seed, uint8 WorldSize, bool bHasRiver, uint8 RiverCount);
 	virtual void GenerateMap();
 	virtual void GenerateChunks();
 
+	//Minimap
 	void ClearMinimap();
 	virtual UTexture2D* GenerateMinimap();
 
@@ -99,12 +110,12 @@ public:
 	void AddBuilding(ABuildableTile* nBuilding);
 	void RemoveBuilding(ABuildableTile* nBuilding);
 
+	//Grid
 	void ShowInfluenceGrid();
 	void HideInfluenceGrid();
 
 	TArray<FColor> getTilePixels(ETileType TileType);
 
-	FTransform getRescourceTransform(ETileRescources Rescource, int32 Index);
 	ATablePlayerController* getPlayerController();
 	ATableGamemode* getGamemode();
 	UTableGameInstance* getGameInstance();
@@ -120,7 +131,7 @@ public:
 	Arg3 = True if the path can go diagonal
 	Arg4 = True if we should consider the Movement Penalty of tiles
 	*/
-	TArray<UTileData*> FindPath(FVector2D StartTile, FVector2D EndTile, TArray<ETileType> ForbidenTiles = TArray<ETileType>(), bool bAllowDiag = false, bool bIgnoreWeigths = false, TArray<ETileType> AllowedTiles = TArray<ETileType>());
+	TArray<UTileData*> FindPath(FTablePathfindingRequest Request);
 	TArray<UTileData*> RetracePath(UTileData* Start, UTileData* End);
 	TArray<UTileData*> GetNeighbours(UTileData* Tile, bool bAllowDiag);
 
@@ -148,6 +159,8 @@ public:
 
 protected:
 
+	Thread_Pathfinder* Pathfinder = nullptr;
+
 	int32 Seed = 0;
 	uint8 WorldSize = 0;
 	bool bHasRiver = false;
@@ -164,9 +177,6 @@ protected:
 
 	UPROPERTY()
 	TArray<ABuildableTile*> Buildings;
-
-	UPROPERTY()
-	TMap<ETileRescources, UInstancedStaticMeshComponent*> InstancedRescourcesMesh;
 
 	UPROPERTY()
 	UFastNoise* Noise = nullptr;

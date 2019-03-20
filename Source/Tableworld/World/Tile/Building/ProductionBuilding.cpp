@@ -77,6 +77,7 @@ FTableInfoPanel AProductionBuilding::getInfoPanelData_Implementation()
 	FTableInfoPanel Data = Super::getInfoPanelData_Implementation();
 
 	Data.InventoryComponent = InventoryComponent;
+	Data.PanelSize = FVector2D(350, 400);
 	
 	return Data;
 }

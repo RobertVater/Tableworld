@@ -13,7 +13,7 @@ ATableWorldTable* UTableHelper::TableRef = nullptr;
 
 bool UTableHelper::isDebug()
 {
-	return false;
+	return true;
 }
 
 void UTableHelper::Init(ATableWorldTable* nTableRef)

@@ -5,6 +5,7 @@
 #include "UI/DialogChoice.h"
 #include "UI/PopupInfo.h"
 #include "Civilization/TableCivilization.h"
+#include "Savegame/TableCivSavegame.h"
 
 FTableBuilding UTableGameInstance::getBuilding_Implementation(const FName& ID, bool& bFound)
 {
@@ -33,7 +34,7 @@ void UTableGameInstance::Init()
 	LoadHumanNames();
 }
 
-void UTableGameInstance::SetCivilization(UTableCivilization* CopyData)
+void UTableGameInstance::LoadCivilization(UTableCivSavegame* CopyData)
 {
 	if(!ActiveCivilization)
 	{
@@ -42,8 +43,8 @@ void UTableGameInstance::SetCivilization(UTableCivilization* CopyData)
 
 	if(CopyData)
 	{
-		ActiveCivilization->CivName = CopyData->CivName;
-		ActiveCivilization->CivTitle = CopyData->CivTitle;
+		ActiveCivilization->CivName = FText::FromName(CopyData->Name);
+		ActiveCivilization->CivTitle = FText::FromName(CopyData->Title);
 
 		ActiveCivilization->TakenTraits = CopyData->TakenTraits;
 	}
@@ -154,6 +155,26 @@ UPopupInfo* UTableGameInstance::CreatePopupInfo(FText Title, FText Text)
 	return nullptr;
 }
 
+UUserWidget* UTableGameInstance::CreateLoadingScreen()
+{
+	DebugLog("Called");
+	if(LoadingScreen_Class)
+	{
+		DebugLog("Class k");
+
+		UUserWidget* Loading = CreateWidget<UUserWidget>(GetWorld()->GetFirstPlayerController(), LoadingScreen_Class);
+		if(Loading)
+		{
+			Loading->AddToPlayerScreen(99998);
+			DebugLog("Add Loadingscreen");
+
+			return Loading;
+		}
+	}
+
+	return nullptr;
+}
+
 void UTableGameInstance::ShowError(FText Title, FText Text)
 {
 	Event_ShowError.Broadcast(Title, Text);
@@ -235,4 +256,34 @@ int32 UTableGameInstance::getRandomHumanName(bool bIsMale)
 	}
 
 	return 0;
+}
+
+FText UTableGameInstance::getCivName()
+{
+	if(ActiveCivilization)
+	{
+		return ActiveCivilization->CivName;
+	}
+
+	return FText();
+}
+
+FText UTableGameInstance::getCivTitle()
+{
+	if (ActiveCivilization)
+	{
+		return ActiveCivilization->CivTitle;
+	}
+
+	return FText();
+}
+
+TArray<FString> UTableGameInstance::getCivTraits()
+{
+	if (ActiveCivilization)
+	{
+		return ActiveCivilization->TakenTraits;
+	}
+
+	return TArray<FString>();
 }

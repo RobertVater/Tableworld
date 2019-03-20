@@ -14,14 +14,13 @@ AHaulerCreature::AHaulerCreature()
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 }
 
-void AHaulerCreature::GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nTargetTile, UTileData* nHomeTile)
+void AHaulerCreature::GiveHaulJob(FName nTargetBuilding, FName nHomeBuilding, UTileData* nHomeTile, UTileData* nTargetTile)
 {
 	HaulTile = nTargetTile;
+	HomeTile = nHomeTile->getPositionAsVector();
 	
 	HomeBuildingUID = nHomeBuilding;
 	TargetBuildingUID = nTargetBuilding;
-	
-	HomeTile = nHomeTile->getPositionAsVector();
 
 	SetCreatureStatus(ECreatureStatus::GoingToWork);
 	RoadMoveTo(nTargetTile);
@@ -89,6 +88,7 @@ void AHaulerCreature::OnMoveCompleted()
 				{
 					if (HaulTile->getY() == OurTile->getY())
 					{
+						DebugLog("ReachedTarget");
 						//We reached the target building
 						Event_HaulerReachedTarget.Broadcast(this);
 
@@ -103,6 +103,8 @@ void AHaulerCreature::OnMoveCompleted()
 		{
 			if (HomeTile.Y == OurTile->getY())
 			{
+				DebugLog("ReturnedHome");
+
 				//We reached our home base
 				Event_HaulerReturnedHome.Broadcast(this);
 				return;

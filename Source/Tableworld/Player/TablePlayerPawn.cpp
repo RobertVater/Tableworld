@@ -21,6 +21,9 @@
 #include "World/MapGenerator.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Component/InfluenceComponent.h"
+#include "Components/BillboardComponent.h"
+#include "Components/AudioComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 ATablePlayerPawn::ATablePlayerPawn()
 {
@@ -32,8 +35,27 @@ ATablePlayerPawn::ATablePlayerPawn()
 	SpringArm->bDoCollisionTest = false;
 	SpringArm->SetupAttachment(GetRootComponent());
 
+	CameraGoal = CreateDefaultSubobject<UBillboardComponent>(TEXT("CameraGoal"));
+	CameraGoal->SetupAttachment(SpringArm);
+
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm);
+	Camera->SetFieldOfView(90.0f);
+	Camera->SetupAttachment(GetRootComponent());
+
+	InstancedHighlightMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("InstancedHighlightMesh"));
+	InstancedHighlightMesh->SetCastShadow(false);
+	InstancedHighlightMesh->SetReceivesDecals(false);
+	InstancedHighlightMesh->SetupAttachment(GetRootComponent());
+
+	DragBuildingMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("DragBuilding"));
+	DragBuildingMesh->SetCastShadow(false);
+	DragBuildingMesh->SetReceivesDecals(false);
+	DragBuildingMesh->SetupAttachment(GetRootComponent());
+
+	HighlightMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HighlightMesh"));
+	HighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HighlightMesh->SetCastShadow(false);
+	HighlightMesh->SetupAttachment(GetRootComponent());
 
 	PrimaryActorTick.bCanEverTick = true;
 }
@@ -56,10 +78,6 @@ void ATablePlayerPawn::BeginPlay()
 void ATablePlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	//Smoothly zoom to the target ZoomLevel
-	ZoomAlpha = FMath::Lerp(ZoomAlpha, ZoomLerpGoal, ZoomSpeed*DeltaTime);
-	AdjustZoom();
 
 	//Camera Drag
 	if(bDraggingCamera)
@@ -90,6 +108,7 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 			if (LastHighlightBuilding)
 			{
 				LastHighlightBuilding->SetHighlighted(false);
+				LastHighlightBuilding = nullptr;
 			}
 		}
 		
@@ -98,14 +117,25 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 
 		if(SelectedTile)
 		{
-			if(SelectedTile->getTileObject())
+			if (bDestructionmode)
 			{
-				if(bDestructionmode)
+				if (SelectedTile->getTileObject())
 				{
 					LastHighlightBuilding = SelectedTile->getTileObject();
-					
+
 					//Highlight the building
 					LastHighlightBuilding->SetHighlighted(true);
+				}else
+				{
+					FVector Loc = SelectedTile->getWorldCenter();
+					Loc.Z += 100;
+
+					if(SelectedTile->HasRescource())
+					{
+						Loc = SelectedTile->getRescourceTransform().GetLocation();
+					}
+
+					HighlightMesh->SetWorldLocation(Loc);
 				}
 			}
 		}
@@ -115,6 +145,8 @@ void ATablePlayerPawn::Tick(float DeltaTime)
 	{
 		MoveSelectedBuilding();
 	}
+
+	UpdateCamera(DeltaTime);
 }
 
 void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -148,6 +180,38 @@ void ATablePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 }
 
+void ATablePlayerPawn::UpdateCamera(float Delta)
+{
+	FVector GoalLoc = CameraGoal->GetComponentLocation();
+	FRotator GoalRot = CameraGoal->GetComponentRotation();
+
+	FVector BoxSize = FVector(50, 25, 25);
+
+	FHitResult Hit;
+
+	//Check if the camera would be blocked at the target lot
+	if(UKismetSystemLibrary::BoxTraceSingle(this, GoalLoc, GoalLoc + FVector(0,0,1), BoxSize, GoalRot, TraceTypeQuery1, false, TArray<AActor*>(), EDrawDebugTrace::None, Hit, true))
+	{
+		//Get the dir
+		FVector Dir = (GoalLoc - Hit.ImpactPoint);
+		Dir.Normalize();
+
+		FVector SuggestedLoc = GoalLoc + (Dir * BoxSize.X/2.0f);
+
+		//Snap the zoom loc
+		ZoomLerpGoal = (ZoomAlpha + 10.0f * Delta);
+
+		GoalLoc = SuggestedLoc;
+	}
+
+	Camera->SetWorldLocation(GoalLoc);
+	Camera->SetWorldRotation(GoalRot);
+
+	//Smoothly zoom to the target ZoomLevel
+	ZoomAlpha = FMath::Lerp(ZoomAlpha, ZoomLerpGoal, ZoomSpeed * Delta);
+	AdjustZoom();
+}
+
 void ATablePlayerPawn::MoveSelectedBuilding()
 {
 	//Check if we have a valid building to build
@@ -175,25 +239,72 @@ void ATablePlayerPawn::MoveSelectedBuilding()
 					{
 						if (getGamemode()->getTable())
 						{
-							TArray<UTileData*> Path = getGamemode()->getTable()->FindPath(StartDragTile, DragTileLocation, CurrentBuilding.BlockedTiles,false, true);
+							FTablePathfindingRequest request;
+							request.StartTile = StartDragTile;
+							request.EndTile = DragTileLocation;
+							request.ForbidenTiles = CurrentBuilding.BlockedTiles;
+							request.bAllowDiag = false;
+							request.bIgnoreWeigths = true;
+							request.bIgnoreRescources = CurrentBuilding.bDeleteRescources;
+
+							TArray<UTileData*> Path = getGamemode()->getTable()->FindPath(request);
 							for (int32 i = 0; i < Path.Num(); i++)
 							{
 								UTileData* Tile = Path[i];
 								if (Tile)
 								{
-									DragTiles.Add(Tile->getPositionAsVector());
+									DragTiles.Add(Tile);
 								}
 							}
 						}
 					}
 				}
 
+				DragBuildingMesh->ClearInstances();
+				InstancedHighlightMesh->ClearInstances();
 				for (int32 i = 0; i < DragTiles.Num(); i++)
 				{
-					FVector2D Loc = DragTiles[i];
-					DrawDebugPoint(GetWorld(), FVector(Loc.X * 100 + 50, Loc.Y * 100 + 50, 0), 10, FColor::Red, false, 0, 0);
+					UTileData* Tile = DragTiles[i];
+					if (Tile)
+					{
+						FVector2D Loc = Tile->getPositionAsVector();
+						FTransform Trans = FTransform(FRotator::ZeroRotator, FVector(Loc.X * 100 + 50, Loc.Y * 100 + 50, 0));
+						DragBuildingMesh->AddInstanceWorldSpace(Trans);
+
+						//Mark Rescources that would get deleted
+						if (CurrentBuilding.bDeleteRescources)
+						{
+							if (Tile->HadRescource())
+							{
+								FTransform ResTrans = Tile->getRescourceTransform();
+								FVector ResLoc = ResTrans.GetLocation();
+
+								ResTrans.SetLocation(ResLoc);
+
+								InstancedHighlightMesh->AddInstanceWorldSpace(ResTrans);
+							}
+						}
+					}
 				}
 			}
+		}
+	}
+}
+
+void ATablePlayerPawn::PlaySound2D(USoundBase* Sound)
+{
+	if(Sound)
+	{
+		if (!UISound) 
+		{
+			UISound = UGameplayStatics::SpawnSound2D(this, Sound);
+			return;
+		}
+
+		if (UISound) 
+		{
+			UISound->SetSound(Sound);
+			UISound->Play();
 		}
 	}
 }
@@ -215,6 +326,13 @@ void ATablePlayerPawn::SetCurrentBuilding(FTableBuilding Building)
 		if (BuildingGhost)
 		{
 			BuildingGhost->SetIsGhost(Building);
+			
+			if (Building.bDragBuilding)
+			{
+				UStaticMesh* Mesh = BuildingGhost->TileMesh->GetStaticMesh();
+				DragBuildingMesh->SetStaticMesh(Mesh);
+				DragBuildingMesh->ClearInstances();
+			}
 
 			if (Building.bNeedsInfluence) 
 			{
@@ -251,7 +369,19 @@ void ATablePlayerPawn::Input_LeftMouse_Pressed()
 	if(bDestructionmode)
 	{
 		//Destroy the currently selected Tile
-		DestroyBuilding(SelectedTile);
+		if(DestroyBuilding(SelectedTile))
+		{
+			//Play the FX
+			if (BuildingRemoveSound)
+			{
+				PlaySound2D(BuildingRemoveSound);
+			}
+
+			if (BuildingRemoveParticles)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BuildingRemoveParticles, SelectedTile->getWorldCenter(), FRotator(0, FMath::RandRange(0, 360), 0));
+			}
+		}
 
 		return;
 	}
@@ -270,7 +400,7 @@ void ATablePlayerPawn::Input_LeftMouse_Pressed()
 					EndDragTile = StartDragTile;
 					DragTileLocation = StartDragTile;
 
-					DragTiles.Add(StartDragTile);
+					DragTiles.Add(SelectedTile);
 				}
 			}
 
@@ -320,9 +450,12 @@ void ATablePlayerPawn::Input_LeftMouse_Pressed()
 				return;
 			}
 
-			if (SelectedTile->HadRescource())
+			if (SelectedTile->HasRescource())
 			{
-				getPlayerController()->ShowInfoPanel(SelectedTile->getInfoPanelData());
+				if (SelectedTile->GetClass()->ImplementsInterface(UInfoPanelInterface::StaticClass()))
+				{
+					getPlayerController()->ShowInfoPanel(IInfoPanelInterface::Execute_getInfoPanelData(SelectedTile));
+				}
 				return;
 			}
 
@@ -339,8 +472,15 @@ void ATablePlayerPawn::Input_LeftMouse_Released()
 		{
 			for (int32 i = 0; i < DragTiles.Num(); i++)
 			{
-				TryPlaceBuilding((int32)DragTiles[i].X, (int32)DragTiles[i].Y, CurrentBuilding);
+				UTileData* Tile = DragTiles[i];
+				if (Tile) 
+				{
+					TryPlaceBuilding(Tile->getX(), Tile->getY(), CurrentBuilding);
+				}
 			}
+
+			InstancedHighlightMesh->ClearInstances();
+			DragBuildingMesh->ClearInstances();
 		}
 
 		bIsDragBuilding = false;
@@ -398,9 +538,6 @@ void ATablePlayerPawn::Input_RightMouse_Released()
 
 void ATablePlayerPawn::Input_ZoomIn()
 {
-	//Check if the camera will be blocked
-	//TODO
-
 	ZoomLerpGoal -= 10 * GetWorld()->GetDeltaSeconds();
 	ZoomLerpGoal = FMath::Clamp(ZoomLerpGoal, 0.0f, 1.0f);
 
@@ -506,7 +643,21 @@ void ATablePlayerPawn::TryPlaceBuilding(int32 X, int32 Y, FTableBuilding Data)
 				//Consume the buildcosts
 				getGamemode()->ConsumeRescource(Data.NeededItems);
 				
-				PlaceBuilding(PlaceTile, BuildingGhost->GetActorRotation().Yaw, Data);
+				ABuildableTile* PlacedBuilding = PlaceBuilding(PlaceTile, BuildingGhost->GetActorRotation().Yaw, Data);
+
+				//Play the FX
+				if(BuildingPlaceSound)
+				{
+					PlaySound2D(BuildingPlaceSound);
+				}
+
+				if(BuildingPlaceParticles)
+				{
+					if (PlacedBuilding)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BuildingPlaceParticles, PlacedBuilding->getWorldCenter(), FRotator(0, FMath::RandRange(0, 360), 0));
+					}
+				}
 
 				//Select the same building again
 				SetCurrentBuilding(Data);
@@ -531,8 +682,25 @@ ABuildableTile* ATablePlayerPawn::PlaceBuilding(UTileData* TargetTile, float Rot
 		{
 			for (int32 y = 0; y < BuildingSize.Y; y++)
 			{
-				getGamemode()->SetTile(TargetTile->getX() + x, TargetTile->getY() + y, BuildingData.BuildTileType, false, true);
-				TilesToModify.Add(getGamemode()->getTile(TargetTile->getX() + x, TargetTile->getY() + y));
+				UTileData* Tile = getGamemode()->getTile(TargetTile->getX() + x, TargetTile->getY() + y);
+				if (Tile) 
+				{
+					Tile->DebugHighlightTile();
+
+					if (BuildingData.bDeleteRescources)
+					{
+						if (Tile->getParentChunk())
+						{
+							Tile->getParentChunk()->RemoveRescource(Tile);
+						}
+					}
+
+					getGamemode()->SetTile(TargetTile->getX() + x, TargetTile->getY() + y, BuildingData.BuildTileType, false, true);
+
+
+					Tile->LowerGrass();
+					TilesToModify.Add(Tile);
+				}
 			}
 		}
 
@@ -604,15 +772,41 @@ ABuildableTile* ATablePlayerPawn::PlaceBuilding(UTileData* TargetTile, float Rot
 void ATablePlayerPawn::ActivateDestroyMode(bool bnDestroyMode)
 {
 	bDestructionmode = bnDestroyMode;
+	HighlightMesh->SetVisibility(bDestructionmode);
 
 	if(!bDestructionmode)
 	{
+		ClearHighlight();
+		
 		if(LastHighlightBuilding)
 		{
 			LastHighlightBuilding->SetHighlighted(false);
 			LastHighlightBuilding = nullptr;
 		}
 	}
+}
+
+int32 ATablePlayerPawn::AddHighlight(FVector Location)
+{
+	Location.Z += 100;
+
+	FTransform Trans;
+	Trans.SetLocation(Location);
+
+	FVector Scale = FVector(1.0f, 1.0f, 2.0f);
+	Trans.SetScale3D(Scale);
+
+	return InstancedHighlightMesh->AddInstanceWorldSpace(Trans);
+}
+
+void ATablePlayerPawn::RemoveHighlight(int32 Index)
+{
+	InstancedHighlightMesh->RemoveInstance(Index);
+}
+
+void ATablePlayerPawn::ClearHighlight()
+{
+	InstancedHighlightMesh->ClearInstances();
 }
 
 bool ATablePlayerPawn::DestroyBuilding(UTileData* Tile)
@@ -641,6 +835,19 @@ bool ATablePlayerPawn::DestroyBuilding(UTileData* Tile)
 			//Set the tile back to the previous tiletype
 			getGamemode()->SetTile(Tile->getX(), Tile->getY(), Tile->getPreviousTileType(), true, true);
 			return true;
+		}
+
+		//Check if the tile has rescources we could remove
+		if(Tile->getTileRescources() != ETileRescources::None)
+		{
+			if (!Tile->HasHarvester()) 
+			{
+				ATableChunk* TileChunk = Tile->getParentChunk();
+				if (TileChunk)
+				{
+					return TileChunk->RemoveRescource(Tile);
+				}
+			}
 		}
 	}
 
@@ -782,7 +989,7 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 				{
 					if (!CurrentBuilding.BlockedTiles.Contains(PlaceTile->getTileType()))
 					{
-						return PlaceTile->CanBuildOnTile();
+						return PlaceTile->CanBuildOnTile(CurrentBuilding.bDeleteRescources);
 					}
 				}
 			}
@@ -805,7 +1012,7 @@ bool ATablePlayerPawn::CanBuild(FVector2D BuildingSize, UTileData* PlaceTile)
 								return false;
 							}
 
-							if (!Tile->CanBuildOnTile())
+							if (!Tile->CanBuildOnTile(CurrentBuilding.bDeleteRescources))
 							{
 								Tile->DebugHighlightTile(0.0f, FColor::Red);
 								return false;

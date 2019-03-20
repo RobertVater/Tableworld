@@ -125,14 +125,13 @@ void AHarvesterCreature::PlayHarvestEffect()
 	{
 		if (getGamemode()->getTable())
 		{
-			getGamemode()->getTable()->AddRescourceWobble(HarvestTile->getTileRescources(), HarvestTile->getTileRescourceIndex(), 1.0f);
+			getGamemode()->getTable()->AddRescourceWobble(HarvestTile->getTileRescources(), HarvestTile->getTileRescourceIndex(), 1.0f, HarvestTile->getParentChunk());
 
 			if (HarvestParticles)
 			{
 				if (HarvestTile)
 				{
-					int32 Index = HarvestTile->getTileRescourceIndex();
-					FTransform ResTransform = getGamemode()->getTable()->getRescourceTransform(HarvestTile->getTileRescources(), Index);
+					FTransform ResTransform = HarvestTile->getRescourceTransform();
 
 					FVector Location = ResTransform.GetLocation();
 

@@ -58,6 +58,7 @@ public:
 	TArray<AWorkerCreature*> getWorkers();
 
 	AProductionBuilding* getValidHaulGoal(FVector2D& InTile, FVector2D& OutTile);
+	void SetValidHaulGoal(AProductionBuilding* nBuilding, FVector2D nInTile, FVector2D nOutTile);
 
 	virtual bool CanBeDeleted() override;
 
@@ -72,6 +73,11 @@ public:
 	virtual FTableInfoPanel getUpdateInfoPanelData_Implementation() override;
 
 protected:
+
+	UPROPERTY()
+	AProductionBuilding* HaulBuilding;
+	FVector2D HomeTile;
+	FVector2D TargetTile;
 
 	FTimerHandle RescourceCheckTimer;
 };
